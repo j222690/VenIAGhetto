@@ -1,0 +1,17 @@
+{
+  "name": "Vest IA",
+  "short_name": "Vest IA",
+  "description": "IA de moda para sua loja: provador virtual, criador de posts, scanner e catálogo.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0e14",
+  "theme_color": "#0d0e14",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

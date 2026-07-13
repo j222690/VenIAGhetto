@@ -78,15 +78,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { title: "StyleDesk AI — IA de moda para sua loja" },
+      {
+        name: "viewport",
+        content:
+          "width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover",
+      },
+      { title: "Vest IA — IA de moda para sua loja" },
       {
         name: "description",
         content:
           "Conteúdo profissional de moda em segundos: provador virtual, scanner de peças e criador de posts com IA.",
       },
-      { name: "author", content: "StyleDesk AI" },
-      { property: "og:title", content: "StyleDesk AI" },
+      { name: "author", content: "Vest IA" },
+      // Cara de app instalável (standalone) no iOS e Android.
+      { name: "theme-color", content: "#0d0e14" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "Vest IA" },
+      { name: "application-name", content: "Vest IA" },
+      { property: "og:title", content: "Vest IA" },
       {
         property: "og:description",
         content: "IA para vendedores e lojas de moda.",
@@ -96,6 +107,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "icon", type: "image/png", href: "/icon.png" },
+      { rel: "apple-touch-icon", href: "/icon.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -112,7 +126,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className="dark" data-segment="feminina">
       <head>
         <HeadContent />
       </head>

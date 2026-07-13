@@ -75,43 +75,30 @@ export const TokenService = {
     return txs;
   },
 
-  // Débito real por geração. Atualiza cache (otimista) e persiste no banco.
-  // TEMPORÁRIO: idealmente atômico via RPC/Edge Function (evita corrida de
-  // saldo) — fica para a fase de IA. `refId` liga o débito à geração.
+  // Débito real por geração. Atômico e server-side via RPC `debit_tokens`
+  // (SECURITY DEFINER): o cliente NÃO pode alterar o saldo direto (F1). Atualiza
+  // o cache de forma otimista e sincroniza com o saldo real retornado pelo RPC.
   async debit(amount: number, reason: string, refId?: string): Promise<void> {
     const store = StoreService.get();
-    const next = Math.max(0, store.tokensBalance - amount);
+    const optimistic = Math.max(0, store.tokensBalance - amount);
     StoreService.update({
-      tokensBalance: next,
+      tokensBalance: optimistic,
       tokensUsedThisMonth: store.tokensUsedThisMonth + amount,
     });
     txs = [localTx(store.id, -amount, reason), ...txs];
     notify();
 
     try {
-      await supabase.from("stores").update({ tokens_balance: next }).eq("id", store.id);
-      await supabase
-        .from("token_transactions")
-        .insert({ store_id: store.id, type: "debit", amount, ref_id: refId ?? null });
-    } catch {
-      // Mantém o estado otimista mesmo se a persistência falhar.
-    }
-  },
-
-  // Crédito real (recarga). A compra via pagamento fica para depois; por ora é
-  // usado pelo botão de teste do owner.
-  async credit(amount: number, reason: string): Promise<void> {
-    const store = StoreService.get();
-    const next = store.tokensBalance + amount;
-    StoreService.update({ tokensBalance: next });
-    txs = [localTx(store.id, amount, reason), ...txs];
-    notify();
-
-    try {
-      await supabase.from("stores").update({ tokens_balance: next }).eq("id", store.id);
-      await supabase
-        .from("token_transactions")
-        .insert({ store_id: store.id, type: "credit", amount });
+      const { data, error } = await supabase.rpc("debit_tokens", {
+        p_amount: amount,
+        p_reason: reason,
+        p_ref: refId ?? null,
+      });
+      if (error) throw error;
+      if (typeof data === "number") {
+        StoreService.update({ tokensBalance: data });
+        notify();
+      }
     } catch {
       // Mantém o estado otimista mesmo se a persistência falhar.
     }

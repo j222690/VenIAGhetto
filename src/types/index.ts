@@ -1,4 +1,4 @@
-// Domain types for StyleDesk AI.
+// Domain types for Vest IA.
 // Reused across services, hooks and components. Never use `any`.
 
 export type UserRole = "owner" | "manager" | "seller";
@@ -41,6 +41,10 @@ export interface Client {
 
 export type PlanId = "starter" | "pro" | "business";
 
+// Segmento da loja — define o esquema de cores neon do app.
+// feminina = rosa/roxo · masculina = azul/verde · unissex (os dois) = roxo/azul.
+export type StoreSegment = "feminina" | "masculina" | "unissex";
+
 export interface Plan {
   id: PlanId;
   name: string;
@@ -63,6 +67,7 @@ export interface Store {
   contactEmail?: string;
   contactPhone?: string;
   planId: PlanId;
+  segment: StoreSegment;
   tokensBalance: number;
   tokensUsedThisMonth: number;
 }

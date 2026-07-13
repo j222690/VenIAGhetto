@@ -8,8 +8,18 @@
 import type { CatalogItem } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { mapCatalogItem } from "@/integrations/supabase/mappers";
+import { AIService } from "./AIService";
 import { StoreService } from "./StoreService";
-import { seedCatalog } from "./_temp/seed";
+
+export const CATALOG_CATEGORIES = [
+  "Vestidos",
+  "Conjuntos",
+  "Camisas",
+  "Calças",
+  "Saias",
+  "Casacos",
+  "Acessórios",
+] as const;
 
 export interface CatalogInput {
   name: string;
@@ -68,12 +78,11 @@ export const CatalogService = {
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
+      // Reflete apenas as peças reais da loja (vazio até a loja cadastrar).
       cache = (data ?? []).map(mapCatalogItem);
-      // TEMPORÁRIO: fallback de visualização quando ainda não há peças reais.
-      if (cache.length === 0) cache = [...seedCatalog];
     } catch {
-      // Tabela ainda não existe (migration 0004 não rodou) — usa o seed.
-      cache = [...seedCatalog];
+      // Tabela ainda não existe (migration 0004 não rodou) — catálogo vazio.
+      cache = [];
     }
     loaded = true;
     return cache;
@@ -134,6 +143,69 @@ export const CatalogService = {
       cache = cache.map((c) => (c.id === id ? item : c));
       return item;
     }
+  },
+
+  // Importação por IA: lê a foto de um produto (e-commerce, WhatsApp, print) e
+  // devolve um rascunho de nome/categoria/preço. Nunca lança — em falha devolve
+  // um rascunho mínimo para o lojista completar.
+  async draftFromImage(
+    imageUrl: string,
+  ): Promise<{ name: string; category: string; price: number | null }> {
+    try {
+      const prompt =
+        "Analise a peça de roupa/produto de moda na imagem e responda APENAS um JSON válido " +
+        '(sem markdown, sem crases) com: "name" (nome curto do produto em pt-BR), "category" (a ' +
+        `mais próxima entre: ${CATALOG_CATEGORIES.join(", ")}), "price" (número em reais estimado ` +
+        'ou null). Baseie-se só no que é visível.';
+      const raw = await AIService.describe(prompt, [imageUrl]);
+      const clean = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+      const parsed = JSON.parse(clean.slice(clean.indexOf("{"), clean.lastIndexOf("}") + 1)) as {
+        name?: string;
+        category?: string;
+        price?: number | string | null;
+      };
+      const price = parsed.price == null ? null : Number(parsed.price) || null;
+      return {
+        name: parsed.name?.toString().trim() || "Peça sem nome",
+        category: parsed.category?.toString().trim() || "",
+        price,
+      };
+    } catch {
+      return { name: "Peça sem nome", category: "", price: null };
+    }
+  },
+
+  // Importa o catálogo a partir de um LINK (e-commerce, Instagram, etc.). A
+  // Edge Function acessa a página e extrai os produtos com IA. Só devolve a lista
+  // (o app confirma, cobra tokens e cria as peças). Lança com mensagem amigável.
+  async importFromUrl(
+    url: string,
+  ): Promise<{ name: string; category: string; price: number | null; imageUrl: string }[]> {
+    const { data, error } = await supabase.functions.invoke("import-catalog", { body: { url } });
+    if (error) {
+      let detail = error.message;
+      try {
+        const ctx = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context;
+        const parsed = await ctx?.json?.();
+        if (parsed?.error) detail = parsed.error;
+      } catch {
+        /* ignora */
+      }
+      throw new Error(detail || "Não foi possível importar do link.");
+    }
+    if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
+    const list = (data as { products?: unknown[] })?.products ?? [];
+    return list
+      .map((p) => {
+        const o = p as Record<string, unknown>;
+        return {
+          name: (o.name ?? "").toString().trim(),
+          category: (o.category ?? "").toString().trim(),
+          price: o.price == null ? null : Number(o.price) || null,
+          imageUrl: (o.imageUrl ?? "").toString().trim(),
+        };
+      })
+      .filter((p) => p.name);
   },
 
   async remove(id: string): Promise<void> {

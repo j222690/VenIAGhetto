@@ -11,10 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as TryonRouteImport } from './routes/tryon'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ScannerRouteImport } from './routes/scanner'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as PlansRouteImport } from './routes/plans'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
@@ -37,6 +40,11 @@ const TryonRoute = TryonRouteImport.update({
   path: '/tryon',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -47,6 +55,11 @@ const ScannerRoute = ScannerRouteImport.update({
   path: '/scanner',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
@@ -55,6 +68,11 @@ const RegisterRoute = RegisterRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PostsRoute = PostsRouteImport.update({
@@ -125,10 +143,13 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/plans': typeof PlansRoute
   '/posts': typeof PostsRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/scanner': typeof ScannerRoute
   '/settings': typeof SettingsRoute
+  '/terms': typeof TermsRoute
   '/tryon': typeof TryonRoute
   '/welcome': typeof WelcomeRoute
 }
@@ -144,10 +165,13 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/plans': typeof PlansRoute
   '/posts': typeof PostsRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/scanner': typeof ScannerRoute
   '/settings': typeof SettingsRoute
+  '/terms': typeof TermsRoute
   '/tryon': typeof TryonRoute
   '/welcome': typeof WelcomeRoute
 }
@@ -164,10 +188,13 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/plans': typeof PlansRoute
   '/posts': typeof PostsRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/scanner': typeof ScannerRoute
   '/settings': typeof SettingsRoute
+  '/terms': typeof TermsRoute
   '/tryon': typeof TryonRoute
   '/welcome': typeof WelcomeRoute
 }
@@ -185,10 +212,13 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/plans'
     | '/posts'
+    | '/privacy'
     | '/profile'
     | '/register'
+    | '/reset-password'
     | '/scanner'
     | '/settings'
+    | '/terms'
     | '/tryon'
     | '/welcome'
   fileRoutesByTo: FileRoutesByTo
@@ -204,10 +234,13 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/plans'
     | '/posts'
+    | '/privacy'
     | '/profile'
     | '/register'
+    | '/reset-password'
     | '/scanner'
     | '/settings'
+    | '/terms'
     | '/tryon'
     | '/welcome'
   id:
@@ -223,10 +256,13 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/plans'
     | '/posts'
+    | '/privacy'
     | '/profile'
     | '/register'
+    | '/reset-password'
     | '/scanner'
     | '/settings'
+    | '/terms'
     | '/tryon'
     | '/welcome'
   fileRoutesById: FileRoutesById
@@ -243,10 +279,13 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   PlansRoute: typeof PlansRoute
   PostsRoute: typeof PostsRoute
+  PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
   RegisterRoute: typeof RegisterRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   ScannerRoute: typeof ScannerRoute
   SettingsRoute: typeof SettingsRoute
+  TermsRoute: typeof TermsRoute
   TryonRoute: typeof TryonRoute
   WelcomeRoute: typeof WelcomeRoute
 }
@@ -267,6 +306,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TryonRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -281,6 +327,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScannerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/register': {
       id: '/register'
       path: '/register'
@@ -293,6 +346,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/posts': {
@@ -387,10 +447,13 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   PlansRoute: PlansRoute,
   PostsRoute: PostsRoute,
+  PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
   RegisterRoute: RegisterRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   ScannerRoute: ScannerRoute,
   SettingsRoute: SettingsRoute,
+  TermsRoute: TermsRoute,
   TryonRoute: TryonRoute,
   WelcomeRoute: WelcomeRoute,
 }

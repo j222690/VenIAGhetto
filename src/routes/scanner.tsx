@@ -2,9 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Copy, Save } from "@/lib/icons";
 import { AppLayout } from "@/layouts/AppLayout";
-import { EmptyImagePicker } from "@/components/EmptyImagePicker";
+import { ImageUploadField } from "@/components/ImageUploadField";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
-import { AssetService } from "@/services/AssetService";
 import { ProductService } from "@/services/ProductService";
 import { GenerationService } from "@/services/GenerationService";
 import { TokenService } from "@/services/TokenService";
@@ -13,7 +12,7 @@ import { toast } from "sonner";
 import type { ProductSheet } from "@/types";
 
 export const Route = createFileRoute("/scanner")({
-  head: () => ({ meta: [{ title: "Scanner de peças — StyleDesk" }] }),
+  head: () => ({ meta: [{ title: "Scanner de peças — Vest IA" }] }),
   component: ScannerPage,
 });
 
@@ -22,11 +21,6 @@ function ScannerPage() {
   const [imageUrl, setImageUrl] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
   const [sheet, setSheet] = useState<ProductSheet | null>(null);
-
-  const pick = () => {
-    const a = AssetService.list("look")[0];
-    setImageUrl(a?.url);
-  };
 
   const scan = async () => {
     if (!imageUrl || !session) {
@@ -48,7 +42,7 @@ function ScannerPage() {
         storeId: session.store.id,
         resultUrl: imageUrl,
       });
-      // TEMPORÁRIO: ficha vem de placeholder (_temp via ProductService) até a IA.
+      // Ficha real extraída da imagem pela visão da OpenAI (via ProductService).
       const s = await ProductService.scan(imageUrl);
       setSheet(s);
     } catch {
@@ -99,7 +93,14 @@ function ScannerPage() {
               <Copy className="h-4 w-4 text-clay" /> Copiar
             </button>
             <button
-              onClick={() => toast.success("Salvo no acervo.")}
+              onClick={async () => {
+                try {
+                  await ProductService.save(sheet);
+                  toast.success("Ficha salva no acervo.");
+                } catch {
+                  toast.error("Não foi possível salvar a ficha.");
+                }
+              }}
               className="flex items-center justify-center gap-2 rounded-2xl bg-clay px-4 py-3 text-sm font-semibold text-clay-foreground"
             >
               <Save className="h-4 w-4" /> Salvar
@@ -113,11 +114,12 @@ function ScannerPage() {
   return (
     <AppLayout title="Scanner" subtitle="Ficha completa em segundos">
       <div className="space-y-5">
-        <EmptyImagePicker
+        <ImageUploadField
+          bucket="catalog"
+          value={imageUrl}
+          onChange={setImageUrl}
           label="Foto da peça"
           hint="Use boa luz e fundo neutro"
-          imageUrl={imageUrl}
-          onClick={pick}
         />
         <button
           onClick={scan}

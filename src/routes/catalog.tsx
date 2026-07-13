@@ -1,21 +1,28 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Pencil, Plus, Search, Trash2 } from "@/lib/icons";
+import { Globe, ImagePlus, Pencil, Plus, Search, Sparkles, Trash2 } from "@/lib/icons";
 import { AppLayout } from "@/layouts/AppLayout";
 import { ImageUploadField } from "@/components/ImageUploadField";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { usePermissions } from "@/hooks/usePermissions";
-import { CatalogService } from "@/services/CatalogService";
+import { CatalogService, CATALOG_CATEGORIES } from "@/services/CatalogService";
+import { TokenService } from "@/services/TokenService";
 import type { CatalogItem } from "@/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
+// Custo em tokens por item importado (foto ou link). O link tem um mínimo para
+// cobrir a leitura da página mesmo em importações pequenas.
+const IMPORT_TOKEN_PER_ITEM = 1;
+const IMPORT_URL_MIN_TOKENS = 5;
+
 export const Route = createFileRoute("/catalog")({
-  head: () => ({ meta: [{ title: "Catálogo — StyleDesk" }] }),
+  head: () => ({ meta: [{ title: "Catálogo — Vest IA" }] }),
   component: CatalogPage,
 });
 
 // Categorias sugeridas para o filtro/formulário.
-const CATEGORIES = ["Vestidos", "Conjuntos", "Camisas", "Calças", "Saias", "Casacos", "Acessórios"];
+const CATEGORIES = [...CATALOG_CATEGORIES];
 
 interface ItemForm {
   name: string;
@@ -46,9 +53,14 @@ function CatalogPage() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>("all");
 
-  const [editing, setEditing] = useState<CatalogItem | "new" | null>(null);
+  const [editing, setEditing] = useState<CatalogItem | "new" | "import" | null>(null);
   const [form, setForm] = useState<ItemForm>(EMPTY_FORM);
   const [busy, setBusy] = useState(false);
+
+  // Importação por foto (IA) e por link.
+  const [importPhotos, setImportPhotos] = useState<string[]>([]);
+  const [importUrl, setImportUrl] = useState("");
+  const [importLabel, setImportLabel] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -88,9 +100,112 @@ function CatalogPage() {
     setEditing(it);
   };
 
+  const openImport = () => {
+    setImportPhotos([]);
+    setImportUrl("");
+    setEditing("import");
+  };
+
+  // Importa o catálogo a partir de um link (e-commerce/Instagram). Cobra tokens
+  // por item importado.
+  const runImportUrl = async () => {
+    const url = importUrl.trim();
+    if (!url) {
+      toast.error("Cole o link da loja.");
+      return;
+    }
+    setBusy(true);
+    setImportLabel("Acessando o link e lendo o catálogo…");
+    try {
+      const products = await CatalogService.importFromUrl(url);
+      if (products.length === 0) {
+        toast.error("Nenhum produto encontrado nesse link.");
+        return;
+      }
+      // 1 token por item, com um mínimo para cobrir a leitura da página.
+      const cost = Math.max(IMPORT_URL_MIN_TOKENS, products.length * IMPORT_TOKEN_PER_ITEM);
+      if (!TokenService.hasBalance(cost)) {
+        toast.error(`São necessários ${cost} tokens para importar ${products.length} itens.`);
+        return;
+      }
+      let done = 0;
+      for (const p of products) {
+        setImportLabel(`Importando… ${done + 1}/${products.length}`);
+        await CatalogService.add({
+          name: p.name,
+          category: p.category || null,
+          price: p.price,
+          imageUrl: p.imageUrl || null,
+          active: true,
+        });
+        done++;
+      }
+      await TokenService.debit(cost, `Importação de catálogo (${done} itens)`);
+      setItems([...CatalogService.list()]);
+      toast.success(`${done} produto(s) importado(s) do link.`);
+      setEditing(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível importar do link.");
+    } finally {
+      setBusy(false);
+      setImportLabel(null);
+    }
+  };
+
+  // Importa vários produtos de uma vez: para cada foto, a IA extrai nome,
+  // categoria e preço e cria a peça já com a imagem.
+  const runImport = async () => {
+    if (importPhotos.length === 0) {
+      toast.error("Adicione ao menos uma foto de produto.");
+      return;
+    }
+    const cost = importPhotos.length * IMPORT_TOKEN_PER_ITEM;
+    if (!TokenService.hasBalance(cost)) {
+      toast.error(`São necessários ${cost} tokens para importar ${importPhotos.length} fotos.`);
+      return;
+    }
+    setBusy(true);
+    try {
+      let done = 0;
+      for (const url of importPhotos) {
+        setImportLabel(`Lendo produtos… ${done + 1}/${importPhotos.length}`);
+        const draft = await CatalogService.draftFromImage(url);
+        await CatalogService.add({
+          name: draft.name,
+          category: draft.category || null,
+          price: draft.price,
+          imageUrl: url,
+          active: true,
+        });
+        done++;
+      }
+      await TokenService.debit(cost, `Importação por foto (${done} itens)`);
+      setItems([...CatalogService.list()]);
+      toast.success(`${done} peça(s) importada(s) para o catálogo.`);
+      setEditing(null);
+    } catch {
+      toast.error("Não foi possível importar. Tente novamente.");
+    } finally {
+      setBusy(false);
+      setImportLabel(null);
+    }
+  };
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) return;
+    // Obrigatórios para criar/editar uma peça: nome, foto e categoria.
+    if (!form.name.trim()) {
+      toast.error("Informe o nome da peça.");
+      return;
+    }
+    if (!form.imageUrl.trim()) {
+      toast.error("Adicione a foto da peça.");
+      return;
+    }
+    if (!form.category.trim()) {
+      toast.error("Escolha a categoria.");
+      return;
+    }
     setBusy(true);
     try {
       const input = {
@@ -105,7 +220,7 @@ function CatalogPage() {
       if (editing === "new") {
         await CatalogService.add(input);
         toast.success("Peça adicionada ao catálogo.");
-      } else if (editing) {
+      } else if (editing && editing !== "import") {
         await CatalogService.update(editing.id, input);
         toast.success("Peça atualizada.");
       }
@@ -128,11 +243,103 @@ function CatalogPage() {
     }
   };
 
+  if (editing === "import") {
+    return (
+      <AppLayout title="Importar catálogo">
+        <div className="space-y-5">
+          {/* Importar por LINK (e-commerce / Instagram) */}
+          <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
+            <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Globe className="h-4 w-4 text-clay" /> Importar por link
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Cole o link da sua loja (e-commerce). A IA acessa a página e extrai os produtos
+              automaticamente. Consome {IMPORT_TOKEN_PER_ITEM} token por item (mínimo{" "}
+              {IMPORT_URL_MIN_TOKENS}).
+            </p>
+            <input
+              value={importUrl}
+              onChange={(e) => setImportUrl(e.target.value)}
+              placeholder="https://sualoja.com.br/produtos"
+              className="w-full rounded-xl border border-input bg-card px-4 py-3 text-sm outline-none focus:border-clay"
+            />
+            <button
+              type="button"
+              onClick={runImportUrl}
+              disabled={busy || !importUrl.trim()}
+              className="w-full rounded-full bg-clay px-6 py-3 text-sm font-semibold text-clay-foreground disabled:opacity-60"
+            >
+              Importar do link
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">ou por foto</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Sparkles className="h-4 w-4 text-clay" /> Importe por foto — a IA cataloga
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Envie as fotos dos seus produtos (prints do WhatsApp ou qualquer formato). A IA
+              identifica o nome, a categoria e um preço sugerido de cada peça. Consome{" "}
+              {IMPORT_TOKEN_PER_ITEM} token por foto. Você revisa depois.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {importPhotos.map((url, i) => (
+              <div key={url} className="relative overflow-hidden rounded-2xl border border-border">
+                <img src={url} alt={`Produto ${i + 1}`} className="aspect-square w-full object-cover" />
+                <button
+                  onClick={() => setImportPhotos((p) => p.filter((_, idx) => idx !== i))}
+                  aria-label="Remover foto"
+                  className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-background/85 text-foreground shadow-soft backdrop-blur"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+            <ImageUploadField
+              bucket="catalog"
+              onChange={(url) => setImportPhotos((p) => [...p, url])}
+              label={importPhotos.length ? "Adicionar" : "Adicionar fotos"}
+              hint="1 ou várias"
+              aspectClassName="aspect-square"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setEditing(null)}
+              className="flex-1 rounded-full border border-border bg-card px-6 py-3.5 text-sm font-medium text-foreground"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={runImport}
+              disabled={busy || importPhotos.length === 0}
+              className="flex-1 rounded-full bg-clay px-6 py-3.5 text-sm font-semibold text-clay-foreground shadow-soft disabled:opacity-60"
+            >
+              {busy ? "Importando…" : `Importar ${importPhotos.length || ""} peça(s)`}
+            </button>
+          </div>
+        </div>
+        {busy ? <LoadingOverlay label={importLabel ?? "Importando…"} /> : null}
+      </AppLayout>
+    );
+  }
+
   if (editing !== null) {
     return (
       <AppLayout title={editing === "new" ? "Nova peça" : "Editar peça"}>
         <form onSubmit={save} className="space-y-4">
-          <Field label="Foto da peça">
+          <Field label="Foto da peça *">
             <ImageUploadField
               bucket="catalog"
               label="Enviar foto da peça"
@@ -141,7 +348,7 @@ function CatalogPage() {
               onChange={(url) => setForm((f) => ({ ...f, imageUrl: url }))}
             />
           </Field>
-          <Field label="Nome">
+          <Field label="Nome *">
             <Input
               value={form.name}
               onChange={set(setForm, "name")}
@@ -149,13 +356,13 @@ function CatalogPage() {
               placeholder="Vestido midi linho"
             />
           </Field>
-          <Field label="Categoria">
+          <Field label="Categoria *">
             <select
               value={form.category}
               onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
               className="w-full rounded-xl border border-input bg-card px-4 py-3 text-base outline-none focus:border-clay"
             >
-              <option value="">Sem categoria</option>
+              <option value="">Selecione a categoria…</option>
               {CATEGORIES.map((c) => (
                 <option key={c} value={c}>
                   {c}
@@ -224,26 +431,33 @@ function CatalogPage() {
   return (
     <AppLayout title="Catálogo" subtitle="As peças que a loja vende">
       <div className="space-y-5">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-          <div className="relative min-w-0">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar peça ou SKU…"
-              className="w-full rounded-full border border-input bg-card py-2.5 pl-9 pr-4 text-sm outline-none focus:border-clay"
-            />
-          </div>
-          {canManage ? (
+        <div className="relative min-w-0">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar peça ou SKU…"
+            className="w-full rounded-full border border-input bg-card py-2.5 pl-9 pr-4 text-sm outline-none focus:border-clay"
+          />
+        </div>
+        {canManage ? (
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={openImport}
+              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-clay bg-card px-4 py-2.5 text-sm font-medium text-clay"
+            >
+              <ImagePlus className="h-4 w-4" />
+              Importar
+            </button>
             <button
               onClick={openNew}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-clay px-4 py-2.5 text-sm font-medium text-clay-foreground"
+              className="inline-flex items-center justify-center gap-1.5 rounded-full bg-clay px-4 py-2.5 text-sm font-medium text-clay-foreground"
             >
               <Plus className="h-4 w-4" />
-              Nova
+              Nova peça
             </button>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
         <div className="-mx-5 overflow-x-auto px-5">
           <div className="flex gap-2 pb-1">

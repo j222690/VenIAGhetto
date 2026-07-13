@@ -42,6 +42,9 @@ export {
   AlertTriangle,
   Bell,
   Heart,
+  Palette,
+  Shield,
+  FileText,
   // People / account
   Users,
   UserPlus,
@@ -52,6 +55,7 @@ export {
   Phone,
   Mail,
   Instagram,
+  MessageCircle,
   Globe,
   Building2,
   Calendar,

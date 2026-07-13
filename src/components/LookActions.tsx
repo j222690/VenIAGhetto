@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Download, Heart, Save, Share2 } from "@/lib/icons";
+import { Download, Heart, Instagram, MessageCircle, Save, Share2 } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import type { Generation } from "@/types";
 import { FavoritesService } from "@/services/FavoritesService";
@@ -12,7 +12,13 @@ import { ShareService } from "@/services/ShareService";
 import { AssetService } from "@/services/AssetService";
 import { ClientService } from "@/services/ClientService";
 
-export type LookAction = "favorite" | "save" | "share" | "download";
+export type LookAction =
+  | "favorite"
+  | "save"
+  | "share"
+  | "download"
+  | "instagram"
+  | "whatsapp";
 
 interface Props {
   look: Generation;
@@ -43,22 +49,26 @@ export function LookActions({
     toast.success(next ? "Adicionado aos favoritos" : "Removido dos favoritos");
   };
 
-  const save = () => {
-    AssetService.add({
-      storeId: look.storeId,
-      category: "generated",
-      name: lookLabel,
-      url: look.resultUrl,
-    });
-    toast.success("Look salvo na biblioteca");
+  const save = async () => {
+    try {
+      await AssetService.add({
+        storeId: look.storeId,
+        category: "generated",
+        name: lookLabel,
+        url: look.resultUrl,
+      });
+      toast.success("Look salvo na biblioteca");
+    } catch {
+      toast.error("Não foi possível salvar na biblioteca.");
+    }
   };
 
   const share = async () => {
     setBusy(true);
     try {
       const result = await ShareService.share({
-        title: "StyleDesk AI",
-        text: "Veja este look criado no StyleDesk AI",
+        title: "Vest IA",
+        text: "Veja este look criado no Vest IA",
         url: look.resultUrl,
       });
       if (result === "copied") toast.success("Link copiado para a área de transferência");
@@ -69,22 +79,49 @@ export function LookActions({
     }
   };
 
-  // Baixa a imagem para o aparelho. Nome amigável com cliente (se houver) e
-  // data; toda a lógica de fetch/download mora no ShareService.
+  // Nome de arquivo amigável (cliente + data) reutilizado por baixar/compartilhar.
+  const buildFilename = () => {
+    const clientName = look.clientId ? ClientService.find(look.clientId)?.name : undefined;
+    return ShareService.lookFilename(look.resultUrl, { createdAt: look.createdAt, clientName });
+  };
+
+  // Baixa a imagem para o aparelho. Toda a lógica de fetch/download no ShareService.
   const download = async () => {
     setDownloading(true);
     try {
-      const clientName = look.clientId ? ClientService.find(look.clientId)?.name : undefined;
-      const filename = ShareService.lookFilename(look.resultUrl, {
-        createdAt: look.createdAt,
-        clientName,
-      });
-      await ShareService.downloadImage(look.resultUrl, filename);
+      await ShareService.downloadImage(look.resultUrl, buildFilename());
       toast.success("Imagem salva no aparelho");
     } catch {
       toast.error("Não foi possível baixar a imagem.");
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const postInstagram = async () => {
+    setBusy(true);
+    try {
+      const r = await ShareService.shareToInstagram(look.resultUrl, buildFilename());
+      toast.success(
+        r === "shared"
+          ? "Escolha o Instagram para publicar."
+          : "Imagem baixada e Instagram aberto — é só publicar.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const shareWhatsapp = async () => {
+    setBusy(true);
+    try {
+      await ShareService.shareToWhatsApp(
+        look.resultUrl,
+        "Veja este look criado no Vest IA ✨",
+        buildFilename(),
+      );
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -142,6 +179,32 @@ export function LookActions({
         >
           <Share2 className="h-4 w-4" />
           {!isOverlay ? <span>Compartilhar</span> : null}
+        </button>
+      ) : null}
+
+      {actions.includes("instagram") ? (
+        <button
+          type="button"
+          aria-label="Postar no Instagram"
+          disabled={busy}
+          onClick={postInstagram}
+          className={cn(btnBase, busy && "opacity-60")}
+        >
+          <Instagram className="h-4 w-4" />
+          {!isOverlay ? <span>Instagram</span> : null}
+        </button>
+      ) : null}
+
+      {actions.includes("whatsapp") ? (
+        <button
+          type="button"
+          aria-label="Compartilhar no WhatsApp"
+          disabled={busy}
+          onClick={shareWhatsapp}
+          className={cn(btnBase, busy && "opacity-60")}
+        >
+          <MessageCircle className="h-4 w-4" />
+          {!isOverlay ? <span>WhatsApp</span> : null}
         </button>
       ) : null}
     </div>

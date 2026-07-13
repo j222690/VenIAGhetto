@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { AuthService } from "@/services/AuthService";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Entrar — StyleDesk AI" }] }),
+  head: () => ({ meta: [{ title: "Entrar — Vest IA" }] }),
   component: LoginPage,
 });
 
@@ -64,7 +65,19 @@ function LoginPage() {
 
         <button
           type="button"
-          onClick={() => toast.success("Em breve: recuperação por e-mail.")}
+          onClick={async () => {
+            const value = email.trim();
+            if (!value) {
+              toast.error("Digite seu e-mail acima primeiro.");
+              return;
+            }
+            try {
+              await AuthService.requestPasswordReset(value);
+              toast.success("Enviamos um link de recuperação para seu e-mail.");
+            } catch {
+              toast.error("Não foi possível enviar o e-mail. Tente novamente.");
+            }
+          }}
           className="-mt-2 text-left text-sm text-muted-foreground hover:text-foreground"
         >
           Esqueci minha senha

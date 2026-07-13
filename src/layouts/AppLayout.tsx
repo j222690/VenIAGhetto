@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Navigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { AppHeader } from "@/components/AppHeader";
@@ -13,6 +13,12 @@ interface Props {
 
 export function AppLayout({ title, subtitle, showTokens, children }: Props) {
   const { session, loading } = useAuth();
+
+  // Aplica o esquema de cores neon conforme o segmento da loja (feminina/masculina).
+  const segment = session?.store.segment;
+  useEffect(() => {
+    if (segment) document.documentElement.dataset.segment = segment;
+  }, [segment]);
 
   if (loading) {
     return (

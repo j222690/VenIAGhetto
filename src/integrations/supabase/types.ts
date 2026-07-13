@@ -1,10 +1,11 @@
-// Tipos do banco StyleDesk AI.
+// Tipos do banco Vest IA.
 // Espelham o schema de supabase/migrations/0001_init.sql.
 // Podem ser regenerados com a CLI:
 //   supabase gen types typescript --project-id <ref> --schema public > types.ts
 
 export type PlanType = "starter" | "pro" | "business";
 export type UserRoleDb = "owner" | "manager" | "seller";
+export type StoreSegmentDb = "feminina" | "masculina" | "unissex";
 export type AssetType = "model" | "look" | "background" | "generated";
 export type GenerationTypeDb = "provador" | "post" | "scanner";
 export type TransactionType = "credit" | "debit";
@@ -34,6 +35,7 @@ export interface Database {
           cnpj: string | null;
           plan: PlanType;
           tokens_balance: number;
+          segment: StoreSegmentDb;
           logo_url: string | null;
           description: string | null;
           location: string | null;
@@ -48,6 +50,7 @@ export interface Database {
           cnpj?: string | null;
           plan?: PlanType;
           tokens_balance?: number;
+          segment?: StoreSegmentDb;
           logo_url?: string | null;
           description?: string | null;
           location?: string | null;
@@ -62,6 +65,7 @@ export interface Database {
           cnpj?: string | null;
           plan?: PlanType;
           tokens_balance?: number;
+          segment?: StoreSegmentDb;
           logo_url?: string | null;
           description?: string | null;
           location?: string | null;
@@ -143,6 +147,7 @@ export interface Database {
           tokens_used: number;
           is_favorite: boolean;
           client_id: string | null;
+          copies: Json | null;
           created_at: string;
         };
         Insert: {
@@ -155,6 +160,7 @@ export interface Database {
           tokens_used?: number;
           is_favorite?: boolean;
           client_id?: string | null;
+          copies?: Json | null;
           created_at?: string;
         };
         Update: {
@@ -167,6 +173,7 @@ export interface Database {
           tokens_used?: number;
           is_favorite?: boolean;
           client_id?: string | null;
+          copies?: Json | null;
           created_at?: string;
         };
         Relationships: [];
@@ -364,6 +371,14 @@ export interface Database {
       current_user_role: {
         Args: Record<never, never>;
         Returns: UserRoleDb;
+      };
+      debit_tokens: {
+        Args: { p_amount: number; p_reason?: string | null; p_ref?: string | null };
+        Returns: number;
+      };
+      credit_tokens: {
+        Args: { p_amount: number; p_reason?: string | null };
+        Returns: number;
       };
     };
     Enums: {

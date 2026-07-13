@@ -1,4 +1,4 @@
-// Cliente Supabase único do StyleDesk AI.
+// Cliente Supabase único do Vest IA.
 // Importado APENAS pela camada de services (src/services/*). Nenhum componente
 // deve falar com o Supabase diretamente — os services são a única fronteira.
 //

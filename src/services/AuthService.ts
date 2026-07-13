@@ -5,7 +5,7 @@
 // hidratação dos caches de Store/User/Token para que a UI continue lendo de
 // forma síncrona (StoreService.get(), UserService.list(), TokenService...).
 
-import type { Session } from "@/types";
+import type { Session, StoreSegment } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { mapUser } from "@/integrations/supabase/mappers";
 import { StoreService } from "./StoreService";
@@ -14,6 +14,7 @@ import { TokenService } from "./TokenService";
 import { InviteService } from "./InviteService";
 import { ClientService } from "./ClientService";
 import { GenerationService } from "./GenerationService";
+import { AssetService } from "./AssetService";
 
 // Limpa todos os caches em memória da loja (logout / sessão ausente).
 function resetStoreCaches(): void {
@@ -23,6 +24,7 @@ function resetStoreCaches(): void {
   InviteService.reset();
   ClientService.reset();
   GenerationService.reset();
+  AssetService.reset();
 }
 
 let sessionCache: Session | null = null;
@@ -61,6 +63,7 @@ async function buildSession(): Promise<Session | null> {
     UserService.load(store.id),
     TokenService.load(store.id),
     GenerationService.load(),
+    AssetService.load(store.id),
   ]);
 
   sessionCache = { user: mapUser(userRow), store };
@@ -98,6 +101,7 @@ export const AuthService = {
     email: string;
     password: string;
     cnpj?: string;
+    segment?: StoreSegment;
   }): Promise<Session | null> {
     const { error } = await supabase.auth.signUp({
       email: params.email,
@@ -108,6 +112,8 @@ export const AuthService = {
           // Lido pelo trigger handle_new_user → public.users.name (migration 0002).
           owner_name: params.ownerName ?? null,
           cnpj: params.cnpj ?? null,
+          // Direcionamento da loja → stores.segment (migrations 0006/0007).
+          segment: params.segment ?? "feminina",
         },
       },
     });
@@ -131,8 +137,19 @@ export const AuthService = {
     return () => subscription.unsubscribe();
   },
 
+  // Envia o e-mail de recuperação. O link volta para /reset-password, onde o
+  // usuário define a nova senha.
   async requestPasswordReset(email: string): Promise<void> {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const redirectTo =
+      typeof window !== "undefined" ? `${window.location.origin}/reset-password` : undefined;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) throw error;
+  },
+
+  // Define a nova senha (usado na página /reset-password, com a sessão de
+  // recuperação já ativa via link do e-mail).
+  async updatePassword(newPassword: string): Promise<void> {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) throw error;
   },
 };

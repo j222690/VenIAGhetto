@@ -13,7 +13,7 @@ import type { StoreInvite, User, UserRole } from "@/types";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/profile")({
-  head: () => ({ meta: [{ title: "Perfil da Loja — StyleDesk" }] }),
+  head: () => ({ meta: [{ title: "Perfil da Loja — Vest IA" }] }),
   component: ProfilePage,
 });
 

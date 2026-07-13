@@ -5,9 +5,13 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * StyleDesk AI — Design Tokens
- * Editorial fashion: warm neutral base, deep charcoal text, single
- * sophisticated terracotta accent. Change identity here only.
+ * Vest IA — Design Tokens
+ * Tema DARK NEON. Base grafite-noturno com acentos neon vibrantes.
+ * O acento principal muda conforme o SEGMENTO da loja:
+ *   • feminina  → rosa neon (+ roxo neon de apoio)   ← padrão em :root
+ *   • masculina → azul neon (+ verde neon de apoio)  ← [data-segment="masculina"]
+ * As 4 cores neon ficam sempre disponíveis como utilitários (bg-neon-*, text-neon-*).
+ * Troque a identidade aqui — o app inteiro herda destes tokens.
  */
 
 @theme inline {
@@ -35,6 +39,7 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-2: var(--accent-2);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
@@ -46,76 +51,104 @@
   --color-cream: var(--cream);
   --color-charcoal: var(--charcoal);
 
-  --shadow-soft: 0 1px 2px oklch(0.2 0.02 40 / 0.04), 0 8px 24px oklch(0.2 0.02 40 / 0.06);
-  --shadow-elevated: 0 4px 12px oklch(0.2 0.02 40 / 0.08), 0 24px 48px oklch(0.2 0.02 40 / 0.10);
+  /* Paleta neon — sempre disponível: bg-neon-green, text-neon-pink, etc. */
+  --color-neon-green: var(--neon-green);
+  --color-neon-blue: var(--neon-blue);
+  --color-neon-purple: var(--neon-purple);
+  --color-neon-pink: var(--neon-pink);
+
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.45), 0 8px 24px oklch(0 0 0 / 0.5);
+  --shadow-elevated: 0 4px 14px oklch(0 0 0 / 0.5), 0 24px 56px oklch(0 0 0 / 0.55);
+  --shadow-glow: var(--glow);
 }
 
 :root {
-  --radius: 1rem;
+  --radius: 1.1rem;
 
-  /* Warm neutral cream base */
-  --background: oklch(0.985 0.008 80);
-  --foreground: oklch(0.20 0.015 40);
+  /* Base grafite-noturno */
+  --background: oklch(0.16 0.02 275);
+  --foreground: oklch(0.97 0.006 285);
 
-  --cream: oklch(0.985 0.008 80);
-  --charcoal: oklch(0.20 0.015 40);
+  --cream: oklch(0.97 0.006 285);
+  --charcoal: oklch(0.16 0.02 275);
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.20 0.015 40);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.20 0.015 40);
+  --card: oklch(0.205 0.024 278);
+  --card-foreground: oklch(0.97 0.006 285);
+  --popover: oklch(0.205 0.024 278);
+  --popover-foreground: oklch(0.97 0.006 285);
 
-  /* Primary = charcoal (text-on-cream surfaces, primary buttons) */
-  --primary: oklch(0.22 0.015 40);
-  --primary-foreground: oklch(0.985 0.008 80);
+  --secondary: oklch(0.27 0.03 278);
+  --secondary-foreground: oklch(0.97 0.006 285);
 
-  --secondary: oklch(0.955 0.012 75);
-  --secondary-foreground: oklch(0.22 0.015 40);
+  --muted: oklch(0.25 0.025 278);
+  --muted-foreground: oklch(0.73 0.03 282);
 
-  --muted: oklch(0.945 0.010 75);
-  --muted-foreground: oklch(0.50 0.020 50);
+  --destructive: oklch(0.62 0.24 18);
+  --destructive-foreground: oklch(0.99 0.005 285);
 
-  /* Single sophisticated accent — terracotta / clay */
-  --accent: oklch(0.66 0.115 40);
-  --accent-foreground: oklch(0.99 0.005 80);
-  --clay: oklch(0.66 0.115 40);
-  --clay-foreground: oklch(0.99 0.005 80);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
 
-  --destructive: oklch(0.55 0.20 25);
-  --destructive-foreground: oklch(0.99 0.005 80);
+  /* --- Paleta neon (fixa) --- */
+  --neon-green: oklch(0.87 0.25 150);
+  --neon-blue: oklch(0.78 0.17 232);
+  --neon-purple: oklch(0.63 0.27 305);
+  --neon-pink: oklch(0.72 0.27 352);
 
-  --border: oklch(0.90 0.012 75);
-  --input: oklch(0.92 0.012 75);
-  --ring: oklch(0.66 0.115 40);
+  /* --- Acento por segmento: FEMININA (padrão) = rosa + roxo --- */
+  --accent: var(--neon-pink);
+  --accent-foreground: oklch(0.15 0.02 275);
+  --accent-2: var(--neon-purple);
+  --clay: var(--neon-pink);
+  --clay-foreground: oklch(0.15 0.02 275);
+  --primary: var(--neon-pink);
+  --primary-foreground: oklch(0.15 0.02 275);
+  --ring: var(--neon-pink);
+
+  --glow:
+    0 0 18px color-mix(in oklch, var(--accent) 55%, transparent),
+    0 0 40px color-mix(in oklch, var(--accent) 28%, transparent);
 }
 
+/* MASCULINA = azul + verde */
+[data-segment="masculina"] {
+  --accent: var(--neon-blue);
+  --accent-foreground: oklch(0.15 0.02 275);
+  --accent-2: var(--neon-green);
+  --clay: var(--neon-blue);
+  --clay-foreground: oklch(0.15 0.02 275);
+  --primary: var(--neon-blue);
+  --primary-foreground: oklch(0.15 0.02 275);
+  --ring: var(--neon-blue);
+}
+
+/* UNISSEX (os dois) = roxo + azul — identidade neutra entre os dois públicos */
+[data-segment="unissex"] {
+  --accent: var(--neon-purple);
+  --accent-foreground: oklch(0.99 0.005 285);
+  --accent-2: var(--neon-blue);
+  --clay: var(--neon-purple);
+  --clay-foreground: oklch(0.99 0.005 285);
+  --primary: var(--neon-purple);
+  --primary-foreground: oklch(0.99 0.005 285);
+  --ring: var(--neon-purple);
+}
+
+/* Mantém `.dark` coerente com o tema (o app já nasce dark). */
 .dark {
-  --background: oklch(0.18 0.012 40);
-  --foreground: oklch(0.97 0.008 80);
-  --card: oklch(0.22 0.012 40);
-  --card-foreground: oklch(0.97 0.008 80);
-  --popover: oklch(0.22 0.012 40);
-  --popover-foreground: oklch(0.97 0.008 80);
-  --primary: oklch(0.97 0.008 80);
-  --primary-foreground: oklch(0.20 0.015 40);
-  --secondary: oklch(0.27 0.015 40);
-  --secondary-foreground: oklch(0.97 0.008 80);
-  --muted: oklch(0.27 0.015 40);
-  --muted-foreground: oklch(0.70 0.020 50);
-  --accent: oklch(0.70 0.120 40);
-  --accent-foreground: oklch(0.20 0.015 40);
-  --clay: oklch(0.70 0.120 40);
-  --clay-foreground: oklch(0.20 0.015 40);
-  --destructive: oklch(0.65 0.20 25);
-  --destructive-foreground: oklch(0.99 0.005 80);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.70 0.120 40);
+  color-scheme: dark;
 }
 
 @layer base {
   * {
     border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: dark;
+    /* Não reajusta o tamanho da fonte no giro do celular. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   html, body {
@@ -125,8 +158,86 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  body {
+    /* Cara de app: sem zoom por duplo-toque (touch-action), sem "bounce",
+       sem realce de toque, sem seleção acidental. A rolagem vertical continua
+       normal — só o excesso horizontal é cortado. */
+    touch-action: manipulation;
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow-x: hidden;
+  }
+
+  /* Campos continuam selecionáveis/editáveis. */
+  input,
+  textarea,
+  select,
+  [contenteditable="true"] {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  /* Esconde as barras de rolagem mantendo o scroll (visual limpo de app). */
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+
+  /* Áreas roláveis rolam suave e sem propagar o scroll para trás. */
+  main {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Atmosfera: brilho neon sutil nos cantos superiores, fixo ao rolar. */
+  body {
+    background-image:
+      radial-gradient(58% 46% at 12% -4%, color-mix(in oklch, var(--accent) 16%, transparent), transparent 70%),
+      radial-gradient(52% 42% at 104% -2%, color-mix(in oklch, var(--accent-2) 14%, transparent), transparent 70%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+  }
+
   h1, h2, h3, .font-display {
     font-family: var(--font-display);
     letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background: color-mix(in oklch, var(--accent) 40%, transparent);
+    color: var(--foreground);
+  }
+}
+
+@layer utilities {
+  /* Brilho neon reutilizável no acento atual (adapta ao segmento). */
+  .shadow-glow {
+    box-shadow: var(--glow);
+  }
+
+  /* Texto com gradiente neon (marca, títulos de destaque). */
+  .text-gradient-neon {
+    background-image: linear-gradient(
+      100deg,
+      var(--accent) 0%,
+      var(--accent-2) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Borda/anel neon suave para cards de destaque. */
+  .ring-neon {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in oklch, var(--accent) 40%, transparent),
+      var(--glow);
   }
 }

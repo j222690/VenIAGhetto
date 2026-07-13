@@ -44,7 +44,7 @@ export const ShareService = {
   // e dispara o download via link com `download` — assim o navegador salva o
   // arquivo em vez de abrir. Funciona em Android (Downloads) e desktop; no iOS
   // o blob abre para o usuário salvar nas Fotos. Lança Error se a busca falhar.
-  async downloadImage(url: string, filename = "styledesk-look.jpg"): Promise<void> {
+  async downloadImage(url: string, filename = "vest-ia-look.jpg"): Promise<void> {
     let blob: Blob;
     try {
       const response = await fetch(url);
@@ -65,6 +65,68 @@ export const ShareService = {
     // Revoga depois de um tempo: revogar na hora pode cancelar o download em
     // alguns navegadores mobile.
     setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
+  },
+
+  // Compartilha a IMAGEM como ARQUIVO via Web Share API (nível 2). No celular
+  // isso abre a folha de compartilhamento nativa com Instagram, WhatsApp, etc.
+  // Retorna "shared" (compartilhou), "canceled" (usuário fechou) ou
+  // "unsupported" (navegador/desktop sem suporte a compartilhar arquivos).
+  async shareImageFile(
+    url: string,
+    opts: { title?: string; text?: string; filename?: string } = {},
+  ): Promise<"shared" | "canceled" | "unsupported"> {
+    if (typeof navigator === "undefined" || typeof navigator.share !== "function") {
+      return "unsupported";
+    }
+    let file: File;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      file = new File([blob], opts.filename ?? "vest-ia-look.png", {
+        type: blob.type || "image/png",
+      });
+    } catch {
+      return "unsupported";
+    }
+    // canShare({files}) confirma suporte real a arquivos antes de tentar.
+    if (typeof navigator.canShare === "function" && !navigator.canShare({ files: [file] })) {
+      return "unsupported";
+    }
+    try {
+      await navigator.share({ files: [file], title: opts.title, text: opts.text });
+      return "shared";
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return "canceled";
+      return "unsupported";
+    }
+  },
+
+  // Compartilhar no WhatsApp. Tenta o compartilhamento nativo do arquivo (para
+  // enviar a imagem direto); se não houver, abre o WhatsApp com o texto e o link
+  // público da imagem (mostra a prévia). Sempre resolve — nunca lança.
+  async shareToWhatsApp(url: string, text: string, filename?: string): Promise<void> {
+    const r = await this.shareImageFile(url, { title: "Vest IA", text, filename });
+    if (r === "shared" || r === "canceled") return;
+    const msg = encodeURIComponent(`${text ? text + "\n" : ""}${url}`);
+    window.open(`https://wa.me/?text=${msg}`, "_blank", "noopener,noreferrer");
+  },
+
+  // Postar no Instagram. O Instagram não tem API web para publicar direto a
+  // partir de uma URL, então: no celular usamos o compartilhamento nativo (o
+  // usuário escolhe o Instagram e a imagem já vai anexada); no desktop/sem
+  // suporte, baixamos a imagem e abrimos o Instagram para o usuário postar.
+  // Retorna "shared" (foi pro app) ou "fallback" (baixou + abriu o site).
+  async shareToInstagram(url: string, filename?: string): Promise<"shared" | "fallback"> {
+    const r = await this.shareImageFile(url, { title: "Vest IA", filename });
+    if (r === "shared" || r === "canceled") return "shared";
+    try {
+      await this.downloadImage(url, filename);
+    } catch {
+      /* segue mesmo se o download falhar */
+    }
+    window.open("https://www.instagram.com/", "_blank", "noopener,noreferrer");
+    return "fallback";
   },
 
   // Monta um nome de arquivo amigável: `look_2026-06-18.jpg` ou, com cliente,

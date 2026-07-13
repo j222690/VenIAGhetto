@@ -2,6 +2,7 @@
 // (camelCase) usados pela UI. Mantém a UI desacoplada do schema do Supabase.
 
 import type {
+  Asset,
   CatalogItem,
   Client,
   Generation,
@@ -11,6 +12,7 @@ import type {
   User,
 } from "@/types";
 import type {
+  AssetRow,
   CatalogItemRow,
   ClientRow,
   GenerationRow,
@@ -33,6 +35,17 @@ export function displayNameFromEmail(email: string): string {
   return words
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
+}
+
+export function mapAsset(row: AssetRow): Asset {
+  return {
+    id: row.id,
+    storeId: row.store_id,
+    category: row.type,
+    name: row.name?.trim() || "Sem nome",
+    url: row.url,
+    createdAt: row.created_at,
+  };
 }
 
 export function mapUser(row: UserRow): User {
@@ -60,6 +73,7 @@ export function mapStore(row: StoreRow, tokensUsedThisMonth = 0): Store {
     contactEmail: row.email ?? undefined,
     contactPhone: row.phone ?? undefined,
     planId: row.plan,
+    segment: row.segment ?? "feminina",
     tokensBalance: row.tokens_balance,
     tokensUsedThisMonth,
   };
@@ -80,6 +94,7 @@ export function mapGeneration(row: GenerationRow): Generation {
     type: GENERATION_TYPE_FROM_DB[row.type],
     inputs: (row.input_refs as Generation["inputs"]) ?? {},
     resultUrl: row.output_url ?? "",
+    copies: (row.copies as unknown as Generation["copies"]) ?? undefined,
     tokensCost: row.tokens_used,
     isFavorite: row.is_favorite,
     clientId: row.client_id ?? undefined,

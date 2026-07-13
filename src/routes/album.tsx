@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Heart } from "@/lib/icons";
+import { Copy, Heart } from "@/lib/icons";
 import { AppLayout } from "@/layouts/AppLayout";
 import { LookActions } from "@/components/LookActions";
 import { GenerationService } from "@/services/GenerationService";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/album")({
-  head: () => ({ meta: [{ title: "Álbum de Looks — StyleDesk" }] }),
+  head: () => ({ meta: [{ title: "Álbum de Looks — Vest IA" }] }),
   component: AlbumPage,
 });
 
@@ -75,6 +76,24 @@ function AlbumPage() {
                   <p className="truncate text-sm font-medium text-foreground">
                     {new Date(look.createdAt).toLocaleDateString("pt-BR")}
                   </p>
+                  {look.copies ? (
+                    <>
+                      <p className="mt-1.5 line-clamp-3 whitespace-pre-line text-[11px] leading-snug text-muted-foreground">
+                        {look.copies.instagram}
+                      </p>
+                      <button
+                        onClick={() => {
+                          const c = look.copies!;
+                          const full = [c.instagram, c.hashtags.join(" ")].filter(Boolean).join("\n\n");
+                          navigator.clipboard.writeText(full);
+                          toast.success("Legenda copiada.");
+                        }}
+                        className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-clay"
+                      >
+                        <Copy className="h-3 w-3" /> Copiar legenda
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </article>
             ))}

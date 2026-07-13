@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import type { GenerationType } from "@/types";
 
 export const Route = createFileRoute("/history")({
-  head: () => ({ meta: [{ title: "Histórico — StyleDesk" }] }),
+  head: () => ({ meta: [{ title: "Histórico — Vest IA" }] }),
   component: HistoryPage,
 });
 

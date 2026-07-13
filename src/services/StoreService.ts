@@ -4,7 +4,7 @@
 // um cache em memória hidratado pelas chamadas assíncronas (`getCurrentStore`,
 // `updateStore`). O cache é a fonte síncrona; o Supabase é a fonte de verdade.
 
-import type { Store } from "@/types";
+import type { Store, StoreSegment } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { mapStore } from "@/integrations/supabase/mappers";
@@ -16,6 +16,7 @@ const EMPTY_STORE: Store = {
   id: "",
   name: "",
   planId: "starter",
+  segment: "feminina",
   tokensBalance: 0,
   tokensUsedThisMonth: 0,
 };
@@ -67,6 +68,7 @@ export const StoreService = {
     instagram?: string | null;
     contactEmail?: string | null;
     contactPhone?: string | null;
+    segment?: StoreSegment;
   }): Promise<Store> {
     if (!cache.id) throw new Error("Nenhuma loja carregada para atualizar.");
 
@@ -81,6 +83,7 @@ export const StoreService = {
     if (patch.instagram !== undefined) row.instagram = patch.instagram;
     if (patch.contactEmail !== undefined) row.email = patch.contactEmail;
     if (patch.contactPhone !== undefined) row.phone = patch.contactPhone;
+    if (patch.segment !== undefined) row.segment = patch.segment;
 
     const { data, error } = await supabase
       .from("stores")

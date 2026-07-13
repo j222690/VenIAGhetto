@@ -1,5 +1,5 @@
 import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { Session } from "@/types";
+import type { Session, StoreSegment } from "@/types";
 import { AuthService } from "@/services/AuthService";
 import { TokenService } from "@/services/TokenService";
 import { StoreService } from "@/services/StoreService";
@@ -14,6 +14,7 @@ interface AuthContextValue {
     email: string;
     password: string;
     cnpj?: string;
+    segment?: StoreSegment;
   }) => Promise<void>;
   signOut: () => void;
   refresh: () => void;
@@ -72,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: string;
       password: string;
       cnpj?: string;
+      segment?: StoreSegment;
     }) => {
       const s = await AuthService.signUp(params);
       setSession(s);

@@ -1,18 +1,24 @@
 // StorageService — upload real de imagens no Supabase Storage.
 //
-// Buckets (ver migration 0005): `catalog` (fotos de peças) e `clients` (fotos
-// de clientes). Os arquivos são organizados por loja no caminho
+// Buckets (ver migration 0005): `catalog` (fotos de peças, PÚBLICO) e `clients`
+// (fotos de clientes, PRIVADO). Os arquivos são organizados por loja no caminho
 // `store_id/uuid.ext` e as policies de Storage garantem que uma loja só
 // escreve/altera/apaga dentro da própria pasta — isolamento por loja.
 //
-// Os buckets são públicos para leitura, então devolvemos a URL pública (estável,
-// não expira). Se um dia virarem privados, troca-se getPublicUrl por
-// createSignedUrl aqui — o resto do app não muda.
+// `catalog` é público (produto/marketing) → URL pública estável.
+// `clients` é PRIVADO (rostos de clientes) → devolvemos uma signed URL com
+// expiração (F2). Como a foto do cliente é usada logo em seguida na geração e
+// não é re-exibida depois, uma validade curta basta.
 
 import { supabase } from "@/integrations/supabase/client";
 import { StoreService } from "./StoreService";
 
 export type StorageBucket = "catalog" | "clients";
+
+// Buckets privados devolvem signed URL; públicos devolvem URL pública.
+const PRIVATE_BUCKETS: StorageBucket[] = ["clients"];
+// Validade da signed URL (24h) — cobre o tempo entre upload e geração.
+const SIGNED_URL_TTL = 60 * 60 * 24;
 
 // Limites de validação amigáveis.
 const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
@@ -56,6 +62,17 @@ export const StorageService = {
     });
     if (error) {
       throw new Error("Não foi possível enviar a imagem. Tente novamente.");
+    }
+
+    // Bucket privado (clients) → signed URL temporária; público → URL pública.
+    if (PRIVATE_BUCKETS.includes(bucket)) {
+      const { data, error: signErr } = await supabase.storage
+        .from(bucket)
+        .createSignedUrl(path, SIGNED_URL_TTL);
+      if (signErr || !data?.signedUrl) {
+        throw new Error("Não foi possível preparar a imagem enviada.");
+      }
+      return { url: data.signedUrl, path };
     }
 
     const { data } = supabase.storage.from(bucket).getPublicUrl(path);

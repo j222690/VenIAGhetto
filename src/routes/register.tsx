@@ -1,10 +1,23 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import type { StoreSegment } from "@/types";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
+const SEGMENT_OPTIONS: {
+  id: StoreSegment;
+  label: string;
+  hint: string;
+  dots: string[];
+}[] = [
+  { id: "feminina", label: "Feminino", hint: "Rosa & roxo", dots: ["var(--neon-pink)", "var(--neon-purple)"] },
+  { id: "masculina", label: "Masculino", hint: "Azul & verde", dots: ["var(--neon-blue)", "var(--neon-green)"] },
+  { id: "unissex", label: "Os dois", hint: "Roxo & azul", dots: ["var(--neon-purple)", "var(--neon-blue)"] },
+];
+
 export const Route = createFileRoute("/register")({
-  head: () => ({ meta: [{ title: "Criar conta — StyleDesk AI" }] }),
+  head: () => ({ meta: [{ title: "Criar conta — Vest IA" }] }),
   component: RegisterPage,
 });
 
@@ -16,18 +29,22 @@ function RegisterPage() {
   const [cnpj, setCnpj] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [segment, setSegment] = useState<StoreSegment>("feminina");
   const [busy, setBusy] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
     try {
+      // Aplica o tema escolhido imediatamente (o AppLayout mantém sincronizado).
+      document.documentElement.dataset.segment = segment;
       await signUp({
         storeName,
         ownerName: ownerName || undefined,
         email,
         password,
         cnpj: cnpj || undefined,
+        segment,
       });
       navigate({ to: "/plans" });
     } catch {
@@ -72,6 +89,48 @@ function RegisterPage() {
             placeholder="Atelier Marina"
           />
         </Field>
+        <Field label="Direcionamento da loja">
+          <p className="-mt-0.5 mb-1 text-xs text-muted-foreground">
+            Define as cores do app e o público das suas criações.
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {SEGMENT_OPTIONS.map((opt) => {
+              const active = opt.id === segment;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => {
+                    setSegment(opt.id);
+                    document.documentElement.dataset.segment = opt.id;
+                  }}
+                  aria-pressed={active}
+                  className={cn(
+                    "rounded-2xl border bg-card p-3 text-center transition",
+                    active
+                      ? "border-2 border-accent shadow-glow"
+                      : "border-border hover:border-accent/50",
+                  )}
+                >
+                  <span className="flex justify-center gap-1">
+                    {opt.dots.map((c) => (
+                      <span
+                        key={c}
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ background: c, boxShadow: `0 0 8px ${c}` }}
+                      />
+                    ))}
+                  </span>
+                  <span className="mt-2 block text-sm font-semibold text-foreground">
+                    {opt.label}
+                  </span>
+                  <span className="block text-[10px] text-muted-foreground">{opt.hint}</span>
+                </button>
+              );
+            })}
+          </div>
+        </Field>
+
         <Field label="CNPJ (opcional)">
           <input
             value={cnpj}

@@ -4,7 +4,7 @@ import { Sparkles, ScanLine, Shirt } from "@/lib/icons";
 export const Route = createFileRoute("/welcome")({
   head: () => ({
     meta: [
-      { title: "StyleDesk AI — Conteúdo de moda em segundos" },
+      { title: "Vest IA — Conteúdo de moda em segundos" },
       {
         name: "description",
         content:
@@ -20,7 +20,7 @@ function WelcomePage() {
     <div className="min-h-screen bg-background">
       <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pb-10 pt-14">
         <p className="text-[11px] uppercase tracking-[0.25em] text-clay">
-          StyleDesk · AI
+          Vest · IA
         </p>
         <h1 className="mt-4 font-display text-[2.5rem] leading-[1.05] font-semibold text-foreground">
           Conteúdo de moda profissional,

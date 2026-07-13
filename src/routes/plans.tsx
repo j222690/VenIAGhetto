@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import type { PlanId } from "@/types";
 
 export const Route = createFileRoute("/plans")({
-  head: () => ({ meta: [{ title: "Escolha seu plano — StyleDesk AI" }] }),
+  head: () => ({ meta: [{ title: "Escolha seu plano — Vest IA" }] }),
   component: PlansPage,
 });
 
@@ -16,6 +16,7 @@ function PlansPage() {
   const navigate = useNavigate();
   const router = useRouter();
   const [selected, setSelected] = useState<PlanId>("pro");
+  const [busy, setBusy] = useState(false);
 
   // Volta para a tela anterior real (cadastro no onboarding, ou Configurações
   // quando aberto por lá). Fallback: Início, caso não haja histórico.
@@ -25,9 +26,18 @@ function PlansPage() {
   };
 
   const start = async () => {
-    await PaymentService.startPlanCheckout(selected);
-    toast.success("Trial de 7 dias ativado.");
-    navigate({ to: "/onboarding" });
+    setBusy(true);
+    try {
+      const { url } = await PaymentService.startPlanCheckout(selected);
+      // Redireciona para o checkout do Stripe (assinatura com 7 dias de trial).
+      window.location.href = url;
+    } catch (e) {
+      // Stripe ainda não configurado: segue o onboarding para não travar o fluxo.
+      toast.error(e instanceof Error ? e.message : "Pagamento indisponível no momento.");
+      navigate({ to: "/onboarding" });
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -85,12 +95,13 @@ function PlansPage() {
 
       <button
         onClick={start}
-        className="mt-8 w-full rounded-full bg-clay px-6 py-4 text-base font-semibold text-clay-foreground shadow-soft"
+        disabled={busy}
+        className="mt-8 w-full rounded-full bg-clay px-6 py-4 text-base font-semibold text-clay-foreground shadow-soft disabled:opacity-60"
       >
-        Começar trial gratuito
+        {busy ? "Redirecionando…" : "Começar trial gratuito"}
       </button>
       <p className="mt-3 text-center text-xs text-muted-foreground">
-        Pagamentos via Mercado Pago / Stripe — em breve.
+        Pagamento seguro via Stripe · 7 dias grátis, cancele quando quiser.
       </p>
     </div>
   );
