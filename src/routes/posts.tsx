@@ -407,7 +407,7 @@ function PostsPage() {
 
         <button
           onClick={generate}
-          disabled={!lookUrl}
+          disabled={busy || !lookUrl}
           className="w-full rounded-full bg-clay px-6 py-4 text-base font-semibold text-clay-foreground shadow-soft disabled:opacity-60"
         >
           Gerar post · {cost} tokens
@@ -458,7 +458,7 @@ function ModelBankSheet({
   onSelect: (url: string) => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-end bg-foreground/30 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 grid items-end justify-items-center bg-foreground/30 backdrop-blur-sm">
       <div className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-background p-5 pb-8">
         <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-border" />
         <div className="flex items-center justify-between">

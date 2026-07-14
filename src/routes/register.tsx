@@ -1,7 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import type { StoreSegment } from "@/types";
+import { InviteService } from "@/services/InviteService";
+import { ROLE_LABEL } from "@/constants/permissions";
+import type { StoreSegment, UserRole } from "@/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -18,12 +20,17 @@ const SEGMENT_OPTIONS: {
 
 export const Route = createFileRoute("/register")({
   head: () => ({ meta: [{ title: "Criar conta — Vest IA" }] }),
+  // ?invite=<token> = veio de um link de convite de funcionário (ver InviteService).
+  validateSearch: (search: Record<string, unknown>): { invite?: string } => ({
+    invite: typeof search.invite === "string" ? search.invite : undefined,
+  }),
   component: RegisterPage,
 });
 
 function RegisterPage() {
   const { signUp } = useAuth();
   const navigate = useNavigate();
+  const { invite: inviteToken } = Route.useSearch();
   const [storeName, setStoreName] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [cnpj, setCnpj] = useState("");
@@ -31,6 +38,18 @@ function RegisterPage() {
   const [password, setPassword] = useState("");
   const [segment, setSegment] = useState<StoreSegment>("feminina");
   const [busy, setBusy] = useState(false);
+  const [invitePreview, setInvitePreview] = useState<{ storeName: string; role: UserRole } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!inviteToken) return;
+    InviteService.previewByToken(inviteToken)
+      .then(setInvitePreview)
+      .catch(() => setInvitePreview(null));
+  }, [inviteToken]);
+
+  const invited = !!invitePreview;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,8 +64,9 @@ function RegisterPage() {
         password,
         cnpj: cnpj || undefined,
         segment,
+        inviteToken,
       });
-      navigate({ to: "/plans" });
+      navigate({ to: invited ? "/home" : "/plans" });
     } catch {
       toast.error("Não foi possível criar a conta.");
     } finally {
@@ -60,15 +80,29 @@ function RegisterPage() {
         ← Voltar
       </Link>
       <h1 className="mt-6 font-display text-3xl font-semibold text-foreground">
-        Criar conta da loja
+        {invited ? "Entrar na equipe" : "Criar conta da loja"}
       </h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Comece com 7 dias de teste em qualquer plano.
-      </p>
-      <p className="mt-3 rounded-xl bg-secondary px-3 py-2 text-xs text-muted-foreground">
-        Recebeu um convite? Cadastre-se com o <strong>mesmo e-mail</strong> convidado para entrar
-        na loja existente como funcionário — neste caso o nome da loja é ignorado.
-      </p>
+      {invited ? (
+        <p className="mt-2 text-sm text-muted-foreground">
+          Complete seu cadastro para começar a usar o Vest IA.
+        </p>
+      ) : (
+        <p className="mt-2 text-sm text-muted-foreground">
+          Comece com 7 dias de teste em qualquer plano.
+        </p>
+      )}
+
+      {invitePreview ? (
+        <p className="mt-3 rounded-xl bg-secondary px-3 py-2 text-xs text-muted-foreground">
+          Convite de <strong>{invitePreview.storeName}</strong> — você vai entrar como{" "}
+          <strong>{ROLE_LABEL[invitePreview.role]}</strong>.
+        </p>
+      ) : (
+        <p className="mt-3 rounded-xl bg-secondary px-3 py-2 text-xs text-muted-foreground">
+          Recebeu um convite? Cadastre-se com o <strong>mesmo e-mail</strong> convidado para entrar
+          na loja existente como funcionário — neste caso o nome da loja é ignorado.
+        </p>
+      )}
 
       <form onSubmit={submit} className="mt-8 grid gap-4">
         <Field label="Seu nome">
@@ -80,65 +114,69 @@ function RegisterPage() {
             placeholder="Marina Souza"
           />
         </Field>
-        <Field label="Nome da loja">
-          <input
-            required
-            value={storeName}
-            onChange={(e) => setStoreName(e.target.value)}
-            className="w-full rounded-xl border border-input bg-card px-4 py-3 text-base outline-none focus:border-clay"
-            placeholder="Atelier Marina"
-          />
-        </Field>
-        <Field label="Direcionamento da loja">
-          <p className="-mt-0.5 mb-1 text-xs text-muted-foreground">
-            Define as cores do app e o público das suas criações.
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            {SEGMENT_OPTIONS.map((opt) => {
-              const active = opt.id === segment;
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => {
-                    setSegment(opt.id);
-                    document.documentElement.dataset.segment = opt.id;
-                  }}
-                  aria-pressed={active}
-                  className={cn(
-                    "rounded-2xl border bg-card p-3 text-center transition",
-                    active
-                      ? "border-2 border-accent shadow-glow"
-                      : "border-border hover:border-accent/50",
-                  )}
-                >
-                  <span className="flex justify-center gap-1">
-                    {opt.dots.map((c) => (
-                      <span
-                        key={c}
-                        className="h-2.5 w-2.5 rounded-full"
-                        style={{ background: c, boxShadow: `0 0 8px ${c}` }}
-                      />
-                    ))}
-                  </span>
-                  <span className="mt-2 block text-sm font-semibold text-foreground">
-                    {opt.label}
-                  </span>
-                  <span className="block text-[10px] text-muted-foreground">{opt.hint}</span>
-                </button>
-              );
-            })}
-          </div>
-        </Field>
+        {invited ? null : (
+          <>
+            <Field label="Nome da loja">
+              <input
+                required
+                value={storeName}
+                onChange={(e) => setStoreName(e.target.value)}
+                className="w-full rounded-xl border border-input bg-card px-4 py-3 text-base outline-none focus:border-clay"
+                placeholder="Atelier Marina"
+              />
+            </Field>
+            <Field label="Direcionamento da loja">
+              <p className="-mt-0.5 mb-1 text-xs text-muted-foreground">
+                Define as cores do app e o público das suas criações.
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {SEGMENT_OPTIONS.map((opt) => {
+                  const active = opt.id === segment;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        setSegment(opt.id);
+                        document.documentElement.dataset.segment = opt.id;
+                      }}
+                      aria-pressed={active}
+                      className={cn(
+                        "rounded-2xl border bg-card p-3 text-center transition",
+                        active
+                          ? "border-2 border-accent shadow-glow"
+                          : "border-border hover:border-accent/50",
+                      )}
+                    >
+                      <span className="flex justify-center gap-1">
+                        {opt.dots.map((c) => (
+                          <span
+                            key={c}
+                            className="h-2.5 w-2.5 rounded-full"
+                            style={{ background: c, boxShadow: `0 0 8px ${c}` }}
+                          />
+                        ))}
+                      </span>
+                      <span className="mt-2 block text-sm font-semibold text-foreground">
+                        {opt.label}
+                      </span>
+                      <span className="block text-[10px] text-muted-foreground">{opt.hint}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
 
-        <Field label="CNPJ (opcional)">
-          <input
-            value={cnpj}
-            onChange={(e) => setCnpj(e.target.value)}
-            className="w-full rounded-xl border border-input bg-card px-4 py-3 text-base outline-none focus:border-clay"
-            placeholder="00.000.000/0001-00"
-          />
-        </Field>
+            <Field label="CNPJ (opcional)">
+              <input
+                value={cnpj}
+                onChange={(e) => setCnpj(e.target.value)}
+                className="w-full rounded-xl border border-input bg-card px-4 py-3 text-base outline-none focus:border-clay"
+                placeholder="00.000.000/0001-00"
+              />
+            </Field>
+          </>
+        )}
         <Field label="E-mail">
           <input
             type="email"

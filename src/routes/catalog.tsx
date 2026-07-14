@@ -4,8 +4,9 @@ import { Globe, ImagePlus, Pencil, Plus, Search, Sparkles, Trash2 } from "@/lib/
 import { AppLayout } from "@/layouts/AppLayout";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
+import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
-import { CatalogService, CATALOG_CATEGORIES } from "@/services/CatalogService";
+import { CatalogService, categoriesForSegment } from "@/services/CatalogService";
 import { TokenService } from "@/services/TokenService";
 import type { CatalogItem } from "@/types";
 import { cn } from "@/lib/utils";
@@ -20,9 +21,6 @@ export const Route = createFileRoute("/catalog")({
   head: () => ({ meta: [{ title: "Catálogo — Vest IA" }] }),
   component: CatalogPage,
 });
-
-// Categorias sugeridas para o filtro/formulário.
-const CATEGORIES = [...CATALOG_CATEGORIES];
 
 interface ItemForm {
   name: string;
@@ -45,8 +43,13 @@ const EMPTY_FORM: ItemForm = {
 };
 
 function CatalogPage() {
+  const { session } = useAuth();
   const { can } = usePermissions();
   const canManage = can("catalog:manage");
+
+  // Categorias visíveis conforme o Direcionamento da loja (Configurações) —
+  // uma loja "masculina" não mostra Vestidos/Saias, por exemplo.
+  const CATEGORIES = categoriesForSegment(session?.store.segment ?? "feminina");
 
   const [items, setItems] = useState<CatalogItem[]>(CatalogService.list());
   const [loading, setLoading] = useState(true);

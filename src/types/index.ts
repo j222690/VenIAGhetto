@@ -15,12 +15,14 @@ export interface User {
 
 export type InviteStatus = "pending" | "accepted" | "revoked";
 
-// Convite de funcionário: o convidado só vira `User` quando se cadastrar com
-// o e-mail convidado (o trigger handle_new_user o liga à loja — ver 0003).
+// Convite de funcionário: o convidado vira `User` ao se cadastrar com o
+// e-mail convidado, OU ao entrar pelo link do convite (`token`) — ver 0003 e
+// 0015 (handle_new_user checa o token primeiro, depois o e-mail).
 export interface StoreInvite {
   id: string;
   storeId: string;
-  email: string;
+  email?: string;
+  token: string;
   role: UserRole;
   invitedBy?: string;
   status: InviteStatus;
@@ -33,9 +35,11 @@ export interface Client {
   id: string;
   storeId: string;
   name: string;
-  email?: string;
+  instagram?: string;
   phone?: string;
   notes?: string;
+  // Foto BASE do cliente (bucket `clients`) — pré-preenche o Provador.
+  photoUrl?: string;
   createdAt: string;
 }
 

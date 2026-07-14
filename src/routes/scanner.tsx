@@ -123,7 +123,7 @@ function ScannerPage() {
         />
         <button
           onClick={scan}
-          disabled={!imageUrl}
+          disabled={busy || !imageUrl}
           className="w-full rounded-full bg-clay px-6 py-4 text-base font-semibold text-clay-foreground shadow-soft disabled:opacity-60"
         >
           Analisar peça · 1 token

@@ -78,6 +78,11 @@ export const TokenService = {
   // Débito real por geração. Atômico e server-side via RPC `debit_tokens`
   // (SECURITY DEFINER): o cliente NÃO pode alterar o saldo direto (F1). Atualiza
   // o cache de forma otimista e sincroniza com o saldo real retornado pelo RPC.
+  //
+  // Se o RPC falhar (ex.: saldo insuficiente detectado no servidor por uma
+  // corrida entre duas gerações simultâneas, ou erro de rede), a cobrança NÃO
+  // foi efetivada — desfaz o otimismo local e RELANÇA o erro, para que
+  // GenerationService.generate() aborte e não entregue a geração de graça.
   async debit(amount: number, reason: string, refId?: string): Promise<void> {
     const store = StoreService.get();
     const optimistic = Math.max(0, store.tokensBalance - amount);
@@ -85,7 +90,8 @@ export const TokenService = {
       tokensBalance: optimistic,
       tokensUsedThisMonth: store.tokensUsedThisMonth + amount,
     });
-    txs = [localTx(store.id, -amount, reason), ...txs];
+    const tx = localTx(store.id, -amount, reason);
+    txs = [tx, ...txs];
     notify();
 
     try {
@@ -99,8 +105,15 @@ export const TokenService = {
         StoreService.update({ tokensBalance: data });
         notify();
       }
-    } catch {
-      // Mantém o estado otimista mesmo se a persistência falhar.
+    } catch (err) {
+      // Desfaz o débito otimista — a cobrança real não aconteceu.
+      StoreService.update({
+        tokensBalance: store.tokensBalance,
+        tokensUsedThisMonth: store.tokensUsedThisMonth,
+      });
+      txs = txs.filter((t) => t.id !== tx.id);
+      notify();
+      throw err;
     }
   },
 

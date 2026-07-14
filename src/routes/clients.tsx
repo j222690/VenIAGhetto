@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, BookImage, Mail, Pencil, Phone, Plus, Search, Trash2 } from "@/lib/icons";
+import { ArrowLeft, BookImage, Instagram, Pencil, Phone, Plus, Search, Trash2 } from "@/lib/icons";
 import { AppLayout } from "@/layouts/AppLayout";
+import { ImageUploadField } from "@/components/ImageUploadField";
 import { LookActions } from "@/components/LookActions";
 import { ClientService } from "@/services/ClientService";
 import type { Client, Generation } from "@/types";
@@ -18,12 +19,13 @@ export const Route = createFileRoute("/clients")({
 
 interface ClientForm {
   name: string;
-  email: string;
+  instagram: string;
   phone: string;
   notes: string;
+  photoUrl: string;
 }
 
-const EMPTY_FORM: ClientForm = { name: "", email: "", phone: "", notes: "" };
+const EMPTY_FORM: ClientForm = { name: "", instagram: "", phone: "", notes: "", photoUrl: "" };
 
 // Clientes = pessoas que a loja ATENDE e não fazem login. Toda a equipe da
 // loja administra (ver ClientService / RLS por loja na migration 0003).
@@ -74,7 +76,13 @@ function ClientsPage() {
   };
 
   const openEdit = (c: Client) => {
-    setForm({ name: c.name, email: c.email ?? "", phone: c.phone ?? "", notes: c.notes ?? "" });
+    setForm({
+      name: c.name,
+      instagram: c.instagram ?? "",
+      phone: c.phone ?? "",
+      notes: c.notes ?? "",
+      photoUrl: c.photoUrl ?? "",
+    });
     setEditing(c);
   };
 
@@ -89,9 +97,10 @@ function ClientsPage() {
     try {
       const input = {
         name: form.name,
-        email: form.email || null,
+        instagram: form.instagram || null,
         phone: form.phone || null,
         notes: form.notes || null,
+        photoUrl: form.photoUrl || null,
       };
       if (editing === "new") {
         await ClientService.addClient(input);
@@ -123,6 +132,16 @@ function ClientsPage() {
     return (
       <AppLayout title={editing === "new" ? "Novo cliente" : "Editar cliente"}>
         <form onSubmit={save} className="space-y-4">
+          <Field label="Foto do cliente">
+            <ImageUploadField
+              bucket="clients"
+              value={form.photoUrl || undefined}
+              onChange={(url) => setForm((f) => ({ ...f, photoUrl: url }))}
+              label="Foto base"
+              hint="Opcional · usada como ponto de partida no Provador"
+              aspectClassName="aspect-[4/3]"
+            />
+          </Field>
           <Field label="Nome">
             <Input
               value={form.name}
@@ -131,12 +150,11 @@ function ClientsPage() {
               placeholder="Nome do cliente"
             />
           </Field>
-          <Field label="E-mail">
+          <Field label="Instagram">
             <Input
-              type="email"
-              value={form.email}
-              onChange={set("email")}
-              placeholder="cliente@email.com"
+              value={form.instagram}
+              onChange={set("instagram")}
+              placeholder="@cliente"
             />
           </Field>
           <Field label="Telefone">
@@ -217,10 +235,21 @@ function ClientsPage() {
                 key={c.id}
                 className={
                   i > 0
-                    ? "grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-t border-border p-4"
-                    : "grid grid-cols-[minmax(0,1fr)_auto] gap-3 p-4"
+                    ? "grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3 border-t border-border p-4"
+                    : "grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3 p-4"
                 }
               >
+                {c.photoUrl ? (
+                  <img
+                    src={c.photoUrl}
+                    alt={c.name}
+                    className="h-11 w-11 shrink-0 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-secondary text-sm font-semibold text-secondary-foreground">
+                    {c.name[0]}
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => setViewing(c)}
@@ -233,9 +262,9 @@ function ClientsPage() {
                       <Phone className="h-3 w-3 shrink-0" /> {c.phone}
                     </p>
                   ) : null}
-                  {c.email ? (
+                  {c.instagram ? (
                     <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
-                      <Mail className="h-3 w-3 shrink-0" /> {c.email}
+                      <Instagram className="h-3 w-3 shrink-0" /> {c.instagram}
                     </p>
                   ) : null}
                   <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-clay">
@@ -297,10 +326,18 @@ function ClientFolder({ client, onBack }: { client: Client; onBack: () => void }
           <ArrowLeft className="h-4 w-4" /> Voltar aos clientes
         </button>
 
-        {client.phone || client.email || client.notes ? (
+        {client.photoUrl ? (
+          <img
+            src={client.photoUrl}
+            alt={client.name}
+            className="mx-auto h-28 w-28 rounded-full object-cover"
+          />
+        ) : null}
+
+        {client.phone || client.instagram || client.notes ? (
           <div className="rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
             {client.phone ? <p>{client.phone}</p> : null}
-            {client.email ? <p>{client.email}</p> : null}
+            {client.instagram ? <p>{client.instagram}</p> : null}
             {client.notes ? <p className="mt-1">{client.notes}</p> : null}
           </div>
         ) : null}

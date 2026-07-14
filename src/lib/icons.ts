@@ -50,6 +50,7 @@ export {
   UserPlus,
   LogOut,
   CreditCard,
+  Link2,
   // Store profile
   MapPin,
   Phone,

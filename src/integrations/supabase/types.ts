@@ -182,7 +182,8 @@ export interface Database {
         Row: {
           id: string;
           store_id: string;
-          email: string;
+          email: string | null;
+          token: string;
           role: UserRoleDb;
           invited_by: string | null;
           status: InviteStatusDb;
@@ -192,7 +193,8 @@ export interface Database {
         Insert: {
           id?: string;
           store_id: string;
-          email: string;
+          email?: string | null;
+          token?: string;
           role?: UserRoleDb;
           invited_by?: string | null;
           status?: InviteStatusDb;
@@ -202,7 +204,8 @@ export interface Database {
         Update: {
           id?: string;
           store_id?: string;
-          email?: string;
+          email?: string | null;
+          token?: string;
           role?: UserRoleDb;
           invited_by?: string | null;
           status?: InviteStatusDb;
@@ -256,8 +259,10 @@ export interface Database {
           store_id: string;
           name: string;
           email: string | null;
+          instagram: string | null;
           phone: string | null;
           notes: string | null;
+          photo_url: string | null;
           created_at: string;
         };
         Insert: {
@@ -265,8 +270,10 @@ export interface Database {
           store_id: string;
           name: string;
           email?: string | null;
+          instagram?: string | null;
           phone?: string | null;
           notes?: string | null;
+          photo_url?: string | null;
           created_at?: string;
         };
         Update: {
@@ -274,8 +281,10 @@ export interface Database {
           store_id?: string;
           name?: string;
           email?: string | null;
+          instagram?: string | null;
           phone?: string | null;
           notes?: string | null;
+          photo_url?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -379,6 +388,10 @@ export interface Database {
       credit_tokens: {
         Args: { p_amount: number; p_reason?: string | null };
         Returns: number;
+      };
+      get_invite_by_token: {
+        Args: { p_token: string };
+        Returns: { store_name: string; role: UserRoleDb }[];
       };
     };
     Enums: {

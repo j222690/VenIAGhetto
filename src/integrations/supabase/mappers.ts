@@ -128,7 +128,8 @@ export function mapInvite(row: StoreInviteRow): StoreInvite {
   return {
     id: row.id,
     storeId: row.store_id,
-    email: row.email,
+    email: row.email ?? undefined,
+    token: row.token,
     role: row.role,
     invitedBy: row.invited_by ?? undefined,
     status: row.status,
@@ -142,9 +143,10 @@ export function mapClient(row: ClientRow): Client {
     id: row.id,
     storeId: row.store_id,
     name: row.name,
-    email: row.email ?? undefined,
+    instagram: row.instagram ?? undefined,
     phone: row.phone ?? undefined,
     notes: row.notes ?? undefined,
+    photoUrl: row.photo_url ?? undefined,
     createdAt: row.created_at,
   };
 }

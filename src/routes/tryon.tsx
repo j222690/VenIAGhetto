@@ -40,6 +40,25 @@ const BACKGROUNDS: { id: string; label: string; emoji: string; desc: string }[] 
   { id: "cafe", label: "Café", emoji: "☕", desc: "em um café aconchegante, ambiente casual e acolhedor" },
 ];
 
+// Tamanho, caimento e comprimento do look — dão à IA o corte/silhueta certos.
+const SIZES = ["PP", "P", "M", "G", "GG", "G1", "G2", "G3"];
+
+const FITS: { id: string; label: string; desc: string }[] = [
+  { id: "skinny", label: "Skinny", desc: "caimento skinny, super justo ao corpo" },
+  { id: "slim", label: "Slim", desc: "caimento slim, ajustado ao corpo" },
+  { id: "regular", label: "Regular", desc: "caimento regular, nem justo nem largo" },
+  { id: "oversized", label: "Oversized", desc: "caimento oversized, propositalmente largo e solto" },
+  { id: "loose", label: "Loose", desc: "caimento loose, solto e confortável" },
+];
+
+const LENGTHS: { id: string; label: string; desc: string }[] = [
+  { id: "cropped", label: "Cropped", desc: "comprimento cropped, bem curto, acima da cintura" },
+  { id: "curto", label: "Curto", desc: "comprimento curto" },
+  { id: "medio", label: "Médio", desc: "comprimento médio" },
+  { id: "longo", label: "Longo", desc: "comprimento longo" },
+  { id: "maxi", label: "Maxi", desc: "comprimento maxi, até os pés" },
+];
+
 // Retoques de IA — presets prontos + campo livre.
 const RETOUCHES: { id: string; label: string; instruction: string }[] = [
   { id: "amassados", label: "Tirar amassados", instruction: "remova amassados e vincos da roupa deixando o tecido liso" },
@@ -55,6 +74,9 @@ function TryOnPage() {
   const [client, setClient] = useState<Client | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | undefined>();
   const [garments, setGarments] = useState<string[]>([]);
+  const [size, setSize] = useState<string | null>(null);
+  const [fit, setFit] = useState<string | null>(null);
+  const [length, setLength] = useState<string | null>(null);
   const [sceneOn, setSceneOn] = useState(true);
   const [background, setBackground] = useState<string>("estudio");
   const [bgCustom, setBgCustom] = useState("");
@@ -135,7 +157,19 @@ function TryOnPage() {
         "seguinte(s). Preserve fielmente o rosto, o corpo, o tom de pele e a identidade da pessoa.";
 
       const piecesPart = pieces ? ` Peças: ${pieces}.` : "";
-      const base = head + " Vista todas as peças juntas em um único look coerente, corpo inteiro." + piecesPart;
+      const specText = [
+        size ? `tamanho ${size}` : "",
+        fit ? FITS.find((f) => f.id === fit)?.desc : "",
+        length ? LENGTHS.find((l) => l.id === length)?.desc : "",
+      ]
+        .filter(Boolean)
+        .join(", ");
+      const specPart = specText ? ` Ajuste o look para: ${specText}.` : "";
+      const base =
+        head +
+        " Vista todas as peças juntas em um único look coerente, corpo inteiro." +
+        piecesPart +
+        specPart;
 
       let prompt: string;
       if (sceneOn) {
@@ -158,7 +192,7 @@ function TryOnPage() {
         type: "tryon",
         inputs: {
           clientPhotoUrl: photoUrl,
-          notes: `${background} ${bgCustom} ${retouchCustom}`.trim(),
+          notes: `${background} ${bgCustom} ${retouchCustom} ${size ?? ""} ${fit ?? ""} ${length ?? ""}`.trim(),
         },
         prompt,
         imageUrls,
@@ -292,6 +326,80 @@ function TryOnPage() {
           </p>
         ) : null}
 
+        {/* Tamanho, caimento e comprimento — opcionais, ajustam o look gerado */}
+        <section className="space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Tamanho e caimento</p>
+            <p className="text-xs text-muted-foreground">Opcional — ajusta o corte do look gerado.</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Tamanho
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {SIZES.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSize((cur) => (cur === s ? null : s))}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                    size === s
+                      ? "border-accent bg-accent text-accent-foreground shadow-glow"
+                      : "border-border bg-card text-foreground hover:border-accent/50",
+                  )}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Caimento
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {FITS.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setFit((cur) => (cur === f.id ? null : f.id))}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                    fit === f.id
+                      ? "border-accent bg-accent text-accent-foreground shadow-glow"
+                      : "border-border bg-card text-foreground hover:border-accent/50",
+                  )}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Comprimento
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {LENGTHS.map((l) => (
+                <button
+                  key={l.id}
+                  onClick={() => setLength((cur) => (cur === l.id ? null : l.id))}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                    length === l.id
+                      ? "border-accent bg-accent text-accent-foreground shadow-glow"
+                      : "border-border bg-card text-foreground hover:border-accent/50",
+                  )}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <div>
           <ImageUploadField
             bucket="clients"
@@ -399,7 +507,7 @@ function TryOnPage() {
 
         <button
           onClick={run}
-          disabled={garments.length === 0 || !photoUrl}
+          disabled={busy || garments.length === 0 || !photoUrl}
           className="w-full rounded-full bg-clay px-6 py-4 text-base font-semibold text-clay-foreground shadow-soft disabled:opacity-60"
         >
           Gerar look · {cost} tokens
@@ -411,6 +519,9 @@ function TryOnPage() {
           onClose={() => setSheet(null)}
           onSelect={(c) => {
             setClient(c);
+            // Foto cadastrada do cliente vira a BASE do Provador — o usuário
+            // ainda pode trocar enviando outra foto depois.
+            if (c?.photoUrl) setPhotoUrl(c.photoUrl);
             setSheet(null);
           }}
         />
@@ -443,7 +554,7 @@ function SheetShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-end bg-foreground/30 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 grid items-end justify-items-center bg-foreground/30 backdrop-blur-sm">
       <div className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-background p-5 pb-8">
         <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-border" />
         <div className="flex items-center justify-between">

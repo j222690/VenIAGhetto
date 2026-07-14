@@ -5,7 +5,7 @@
 // 0004 não roda (ou catálogo vazio), cai no seed de `_temp` só para visualizar
 // o layout — as mutações continuam funcionando localmente nesse modo.
 
-import type { CatalogItem } from "@/types";
+import type { CatalogItem, StoreSegment } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { mapCatalogItem } from "@/integrations/supabase/mappers";
 import { AIService } from "./AIService";
@@ -20,6 +20,18 @@ export const CATALOG_CATEGORIES = [
   "Casacos",
   "Acessórios",
 ] as const;
+
+// Categorias exclusivamente femininas — escondidas quando a loja é "masculina"
+// (o Direcionamento da loja, em Configurações, define o público das criações).
+const FEMININE_ONLY_CATEGORIES: readonly string[] = ["Vestidos", "Saias"];
+
+// Categorias visíveis no catálogo/filtro conforme o segmento da loja.
+export function categoriesForSegment(segment: StoreSegment): readonly string[] {
+  if (segment === "masculina") {
+    return CATALOG_CATEGORIES.filter((c) => !FEMININE_ONLY_CATEGORIES.includes(c));
+  }
+  return CATALOG_CATEGORIES;
+}
 
 export interface CatalogInput {
   name: string;

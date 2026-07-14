@@ -12,9 +12,10 @@ import { GenerationService } from "./GenerationService";
 
 export interface ClientInput {
   name: string;
-  email?: string | null;
+  instagram?: string | null;
   phone?: string | null;
   notes?: string | null;
+  photoUrl?: string | null;
 }
 
 let cache: Client[] = [];
@@ -52,9 +53,10 @@ export const ClientService = {
       .insert({
         store_id: storeId,
         name: input.name.trim(),
-        email: input.email || null,
+        instagram: input.instagram || null,
         phone: input.phone || null,
         notes: input.notes || null,
+        photo_url: input.photoUrl || null,
       })
       .select("*")
       .single();
@@ -70,9 +72,10 @@ export const ClientService = {
       .from("clients")
       .update({
         name: patch.name.trim(),
-        email: patch.email || null,
+        instagram: patch.instagram || null,
         phone: patch.phone || null,
         notes: patch.notes || null,
+        photo_url: patch.photoUrl || null,
       })
       .eq("id", id)
       .select("*")

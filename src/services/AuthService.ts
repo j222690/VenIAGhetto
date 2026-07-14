@@ -95,6 +95,10 @@ export const AuthService = {
   // Cadastro: store_name e cnpj viajam em options.data e são lidos pelo trigger
   // handle_new_user (que cria a loja e o usuário owner). Pode retornar null se o
   // projeto exigir confirmação de e-mail (sem sessão imediata).
+  //
+  // `inviteToken`: veio de um link de convite (/register?invite=<token>) — o
+  // trigger (migration 0015) entra o usuário na loja do convite como
+  // funcionário em vez de criar uma loja nova, IGNORANDO storeName/segment.
   async signUp(params: {
     storeName: string;
     ownerName?: string;
@@ -102,6 +106,7 @@ export const AuthService = {
     password: string;
     cnpj?: string;
     segment?: StoreSegment;
+    inviteToken?: string;
   }): Promise<Session | null> {
     const { error } = await supabase.auth.signUp({
       email: params.email,
@@ -114,6 +119,7 @@ export const AuthService = {
           cnpj: params.cnpj ?? null,
           // Direcionamento da loja → stores.segment (migrations 0006/0007).
           segment: params.segment ?? "feminina",
+          invite_token: params.inviteToken ?? null,
         },
       },
     });

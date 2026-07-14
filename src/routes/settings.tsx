@@ -190,7 +190,7 @@ function TokenPacksSheet({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-end bg-foreground/30 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 grid items-end justify-items-center bg-foreground/30 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-t-3xl bg-background p-5 pb-8">
         <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-border" />
         <div className="flex items-center justify-between">

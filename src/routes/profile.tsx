@@ -1,6 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Building2, Instagram, Mail, MapPin, Pencil, Phone, Trash2, UserPlus } from "@/lib/icons";
+import {
+  Building2,
+  Copy,
+  Instagram,
+  Link2,
+  Mail,
+  MapPin,
+  MessageCircle,
+  Pencil,
+  Phone,
+  Trash2,
+  UserPlus,
+} from "@/lib/icons";
 import { AppLayout } from "@/layouts/AppLayout";
 import { SectionTitle } from "@/components/SectionTitle";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,6 +20,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { StoreService } from "@/services/StoreService";
 import { UserService } from "@/services/UserService";
 import { InviteService } from "@/services/InviteService";
+import { ShareService } from "@/services/ShareService";
 import { ROLE_LABEL } from "@/constants/permissions";
 import type { StoreInvite, User, UserRole } from "@/types";
 import { toast } from "sonner";
@@ -232,6 +245,8 @@ function TeamSection({ currentUserId }: { currentUserId: string }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<UserRole>("seller");
   const [busy, setBusy] = useState(false);
+  const [linkRole, setLinkRole] = useState<UserRole>("seller");
+  const [linkBusy, setLinkBusy] = useState(false);
 
   useEffect(() => {
     if (!canManage) return;
@@ -265,6 +280,43 @@ function TeamSection({ currentUserId }: { currentUserId: string }) {
     } finally {
       setBusy(false);
     }
+  };
+
+  const createLink = async () => {
+    setLinkBusy(true);
+    try {
+      const invite = await InviteService.createLinkInvite(linkRole);
+      setInvites((prev) => [invite, ...prev]);
+      toast.success("Link de convite criado.");
+    } catch {
+      toast.error("Não foi possível criar o link.");
+    } finally {
+      setLinkBusy(false);
+    }
+  };
+
+  const copyLink = async (invite: StoreInvite) => {
+    try {
+      await navigator.clipboard.writeText(InviteService.linkFor(invite));
+      toast.success("Link copiado.");
+    } catch {
+      toast.error("Não foi possível copiar o link.");
+    }
+  };
+
+  const shareLinkWhatsApp = (invite: StoreInvite) => {
+    const text = `Você foi convidado(a) para a equipe da loja! Entre pelo link: ${InviteService.linkFor(invite)}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+  };
+
+  const shareLink = async (invite: StoreInvite) => {
+    const url = InviteService.linkFor(invite);
+    const result = await ShareService.share({
+      title: "Convite para a equipe",
+      text: "Você foi convidado(a) para a equipe da loja no Vest IA.",
+      url,
+    });
+    if (result === "copied") toast.success("Link copiado.");
   };
 
   const revoke = async (id: string) => {
@@ -334,6 +386,34 @@ function TeamSection({ currentUserId }: { currentUserId: string }) {
         </form>
       ) : null}
 
+      {canManage ? (
+        <div className="rounded-3xl border border-dashed border-border bg-card p-4">
+          <p className="text-sm font-medium text-foreground">Convidar por link</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Gere um link e mande por WhatsApp ou Instagram — quem abrir e se cadastrar já entra na
+            loja, sem precisar saber o e-mail antes.
+          </p>
+          <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+            <select
+              value={linkRole}
+              onChange={(e) => setLinkRole(e.target.value as UserRole)}
+              className="min-w-0 rounded-xl border border-input bg-card px-3 py-2.5 text-sm outline-none focus:border-clay"
+            >
+              <option value="seller">Vendedor</option>
+              <option value="manager">Gerente</option>
+            </select>
+            <button
+              type="button"
+              onClick={createLink}
+              disabled={linkBusy}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold text-secondary-foreground disabled:opacity-60"
+            >
+              <Link2 className="h-4 w-4" /> {linkBusy ? "Gerando…" : "Gerar link"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="overflow-hidden rounded-3xl border border-border bg-card">
         {members.map((u, i) => {
           const isSelf = u.id === currentUserId;
@@ -393,23 +473,55 @@ function TeamSection({ currentUserId }: { currentUserId: string }) {
             Convites pendentes
           </p>
           {invites.map((inv) => (
-            <div
-              key={inv.id}
-              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 p-4"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-foreground">{inv.email}</p>
-                <p className="text-xs text-muted-foreground">
-                  {ROLE_LABEL[inv.role]} · aguardando cadastro
-                </p>
+            <div key={inv.id} className="border-t border-border p-4 first:border-t-0">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="flex items-center gap-1.5 truncate text-sm font-medium text-foreground">
+                    {inv.email ?? (
+                      <>
+                        <Link2 className="h-3.5 w-3.5 shrink-0 text-clay" /> Convite por link
+                      </>
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {ROLE_LABEL[inv.role]} · aguardando cadastro
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => revoke(inv.id)}
+                  className="shrink-0 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:border-destructive hover:text-destructive"
+                >
+                  Revogar
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => revoke(inv.id)}
-                className="shrink-0 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:border-destructive hover:text-destructive"
-              >
-                Revogar
-              </button>
+              {inv.email ? null : (
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => copyLink(inv)}
+                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-foreground"
+                  >
+                    <Copy className="h-3.5 w-3.5" /> Copiar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => shareLinkWhatsApp(inv)}
+                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-foreground"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                  </button>
+                  {ShareService.canShare() ? (
+                    <button
+                      type="button"
+                      onClick={() => shareLink(inv)}
+                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-foreground"
+                    >
+                      <Instagram className="h-3.5 w-3.5" /> Compartilhar
+                    </button>
+                  ) : null}
+                </div>
+              )}
             </div>
           ))}
         </div>

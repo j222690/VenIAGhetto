@@ -15,6 +15,7 @@ interface AuthContextValue {
     password: string;
     cnpj?: string;
     segment?: StoreSegment;
+    inviteToken?: string;
   }) => Promise<void>;
   signOut: () => void;
   refresh: () => void;
