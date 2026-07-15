@@ -16,6 +16,9 @@ import { toast } from "sonner";
 import type { Client, Generation } from "@/types";
 import {
   GARMENT_FIDELITY_CLAUSE,
+  IDENTITY_LOCK_CLAUSE,
+  IDENTITY_RECAP_CLAUSE,
+  NATURAL_POSE_CLAUSE,
   PRESERVE_PHOTO_CLAUSE,
   REALISM_CLAUSE,
 } from "@/constants/prompts";
@@ -51,12 +54,14 @@ const FITS: { id: string; label: string; desc: string }[] = [
   { id: "loose", label: "Loose", desc: "caimento loose, solto e confortável" },
 ];
 
+// "Comprimento" = barra/bainha da peça (ex.: saia, vestido, blusa) — NUNCA a
+// manga. O texto deixa isso explícito para a IA não confundir os dois.
 const LENGTHS: { id: string; label: string; desc: string }[] = [
-  { id: "cropped", label: "Cropped", desc: "comprimento cropped, bem curto, acima da cintura" },
-  { id: "curto", label: "Curto", desc: "comprimento curto" },
-  { id: "medio", label: "Médio", desc: "comprimento médio" },
-  { id: "longo", label: "Longo", desc: "comprimento longo" },
-  { id: "maxi", label: "Maxi", desc: "comprimento maxi, até os pés" },
+  { id: "cropped", label: "Cropped", desc: "barra cropped, bem curta, acima da cintura" },
+  { id: "curto", label: "Curto", desc: "barra curta" },
+  { id: "medio", label: "Médio", desc: "barra média" },
+  { id: "longo", label: "Longo", desc: "barra longa" },
+  { id: "maxi", label: "Maxi", desc: "barra maxi, até os pés" },
 ];
 
 // Retoques de IA — presets prontos + campo livre.
@@ -77,9 +82,11 @@ function TryOnPage() {
   const [size, setSize] = useState<string | null>(null);
   const [fit, setFit] = useState<string | null>(null);
   const [length, setLength] = useState<string | null>(null);
-  const [sceneOn, setSceneOn] = useState(true);
+  // Independentes: dá pra mudar só o fundo, só refinar, os dois, ou nenhum.
+  const [changeSceneOn, setChangeSceneOn] = useState(true);
   const [background, setBackground] = useState<string>("estudio");
   const [bgCustom, setBgCustom] = useState("");
+  const [refineOn, setRefineOn] = useState(true);
   const [retouches, setRetouches] = useState<string[]>([]);
   const [retouchCustom, setRetouchCustom] = useState("");
   const [sheet, setSheet] = useState<Sheet>(null);
@@ -115,7 +122,8 @@ function TryOnPage() {
     }
     setBusy(true);
     try {
-      // 1) Visão (OpenAI) — descreve as peças para dar fidelidade ao look.
+      // 1) Visão (OpenAI) — descreve as peças para dar fidelidade ao look (reforço
+      //    em TEXTO, além das fotos reais que vão juntas na geração abaixo).
       setBusyLabel("Analisando as peças…");
       let pieces = "";
       try {
@@ -128,33 +136,22 @@ function TryOnPage() {
         /* segue sem descrição se a visão falhar */
       }
 
-      // 2) Se há VÁRIAS peças separadas, monta um FLAT-LAY único (passo interno,
-      //    sem persistir/gastar token) para depois vestir o cliente UMA vez —
-      //    evita gerar o cliente peça por peça.
-      let lookImages = garments;
-      if (garments.length >= 2) {
-        setBusyLabel("Montando o look…");
-        try {
-          const flat = await AIService.image(
-            "Crie uma imagem de moda no estilo FLAT-LAY (vista de cima), com TODAS as peças a " +
-              "seguir organizadas lado a lado de forma harmônica sobre um fundo liso e claro, como " +
-              "um catálogo de moda. NÃO inclua pessoas." +
-              (pieces ? ` Peças: ${pieces}.` : "") +
-              " " +
-              GARMENT_FIDELITY_CLAUSE,
-            { imageUrls: garments },
-          );
-          lookImages = [flat.url]; // usa o flat-lay como referência única do look
-        } catch {
-          lookImages = garments; // fallback: manda as peças direto
-        }
-      }
+      // 2) Veste o look no cliente/modelo em UMA ÚNICA geração, usando as fotos
+      //    REAIS de cada peça como referência (o Gemini aceita várias imagens
+      //    no mesmo pedido). NÃO passamos mais por um flat-lay intermediário:
+      //    cada geração de imagem é uma reinterpretação com perda, então um
+      //    passo extra (montar o flat-lay) degradava cor/textura/padrão da
+      //    peça real antes mesmo de vestir o cliente — a peça final nunca via
+      //    a foto original, só uma versão já "reimaginada" pela IA.
+      const lookImages = garments;
 
-      // 3) Veste o look no cliente/modelo (uma única geração persistida).
+      // Ordem do prompt é proposital: identidade TRAVADA primeiro (o modelo de
+      // IA tende a "recriar" a pessoa em vez de editar a foto se essa regra
+      // vier depois de outras instruções) e repetida no fechamento.
       setBusyLabel("Vestindo o look…");
-      const head =
-        "Vista a PESSOA da PRIMEIRA imagem com o LOOK COMPLETO mostrado na(s) imagem(ns) " +
-        "seguinte(s). Preserve fielmente o rosto, o corpo, o tom de pele e a identidade da pessoa.";
+      const swapInstruction =
+        "Troque a roupa da pessoa da PRIMEIRA imagem pelo LOOK COMPLETO mostrado na(s) imagem(ns) " +
+        "seguinte(s), em um único look coerente.";
 
       const piecesPart = pieces ? ` Peças: ${pieces}.` : "";
       const specText = [
@@ -164,35 +161,44 @@ function TryOnPage() {
       ]
         .filter(Boolean)
         .join(", ");
-      const specPart = specText ? ` Ajuste o look para: ${specText}.` : "";
-      const base =
-        head +
-        " Vista todas as peças juntas em um único look coerente, corpo inteiro." +
-        piecesPart +
-        specPart;
+      const specPart = specText
+        ? ` Ajuste o look para: ${specText} (comprimento = barra/bainha da peça, NÃO a manga).`
+        : "";
+      const base = IDENTITY_LOCK_CLAUSE + " " + swapInstruction + piecesPart + specPart;
 
-      let prompt: string;
-      if (sceneOn) {
-        // Com cenário/retoques: pode mudar o fundo, mas nunca as peças.
-        const retouchList = RETOUCHES.filter((r) => retouches.includes(r.id)).map((r) => r.instruction);
-        const retouchTxt = [...retouchList, retouchCustom.trim()].filter(Boolean).join("; ");
+      // Fundo/cenário e retoques são INDEPENDENTES: dá pra mudar só o fundo,
+      // só refinar, os dois juntos, ou nenhum (mantém a foto como está).
+      let prompt = base;
+      if (changeSceneOn) {
+        // Nova cena → corpo inteiro faz sentido aqui (só nesse caso, pra não
+        // contradizer o enquadramento original da foto quando ela é mantida).
         const bg = BACKGROUNDS.find((b) => b.id === background);
         const scenePart =
+          " Enquadramento de corpo inteiro." +
           (bg ? ` Cenário: ${bg.desc}.` : "") +
-          (bgCustom.trim() ? ` Detalhes do cenário: ${bgCustom.trim()}.` : "") +
-          (retouchTxt ? ` Retoques: ${retouchTxt}.` : "");
-        prompt = base + scenePart + " " + REALISM_CLAUSE + " " + GARMENT_FIDELITY_CLAUSE;
+          (bgCustom.trim() ? ` Detalhes do cenário: ${bgCustom.trim()}.` : "");
+        prompt += scenePart + " " + NATURAL_POSE_CLAUSE;
       } else {
-        // Sem mudança de cenário/refino: preserva a foto original, troca só o look.
-        prompt = base + " " + PRESERVE_PHOTO_CLAUSE + " " + GARMENT_FIDELITY_CLAUSE;
+        // Sem mudança de cenário: preserva o enquadramento ORIGINAL da foto
+        // (retrato, meio-corpo, corpo inteiro — o que já era). Forçar "corpo
+        // inteiro" aqui contradiria isso e obrigava a IA a inventar pernas/
+        // pose que não estavam na foto.
+        prompt += " " + PRESERVE_PHOTO_CLAUSE;
       }
+      if (refineOn) {
+        const retouchList = RETOUCHES.filter((r) => retouches.includes(r.id)).map((r) => r.instruction);
+        const retouchTxt = [...retouchList, retouchCustom.trim()].filter(Boolean).join("; ");
+        if (retouchTxt) prompt += ` Retoques: ${retouchTxt}.`;
+      }
+      prompt += " " + REALISM_CLAUSE + " " + GARMENT_FIDELITY_CLAUSE + " " + IDENTITY_RECAP_CLAUSE;
+
       const imageUrls = photoUrl ? [photoUrl, ...lookImages] : lookImages;
 
       const gen = await GenerationService.generate({
         type: "tryon",
         inputs: {
           clientPhotoUrl: photoUrl,
-          notes: `${background} ${bgCustom} ${retouchCustom} ${size ?? ""} ${fit ?? ""} ${length ?? ""}`.trim(),
+          notes: `${changeSceneOn ? `${background} ${bgCustom}` : ""} ${refineOn ? retouchCustom : ""} ${size ?? ""} ${fit ?? ""} ${length ?? ""}`.trim(),
         },
         prompt,
         imageUrls,
@@ -379,7 +385,7 @@ function TryOnPage() {
 
           <div className="space-y-1.5">
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              Comprimento
+              Comprimento (barra da peça — não a manga)
             </p>
             <div className="flex flex-wrap gap-2">
               {LENGTHS.map((l) => (
@@ -414,13 +420,13 @@ function TryOnPage() {
           </p>
         </div>
 
-        {/* Liga/desliga: mudar fundo e refinar (às vezes a foto já está boa) */}
+        {/* Liga/desliga INDEPENDENTES: mudar fundo e refinar não dependem um do outro */}
         <button
-          onClick={() => setSceneOn((v) => !v)}
+          onClick={() => setChangeSceneOn((v) => !v)}
           className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-left"
         >
           <span className="min-w-0">
-            <span className="block text-sm font-medium text-foreground">Mudar fundo e refinar</span>
+            <span className="block text-sm font-medium text-foreground">Mudar fundo/cenário</span>
             <span className="block text-xs text-muted-foreground">
               Desligue se a foto original já está do jeito que quer.
             </span>
@@ -428,81 +434,106 @@ function TryOnPage() {
           <span
             className={cn(
               "relative h-6 w-11 shrink-0 rounded-full transition-colors",
-              sceneOn ? "bg-clay" : "bg-secondary",
+              changeSceneOn ? "bg-clay" : "bg-secondary",
             )}
           >
             <span
               className={cn(
                 "absolute top-0.5 h-5 w-5 rounded-full bg-background transition-all",
-                sceneOn ? "left-[22px]" : "left-0.5",
+                changeSceneOn ? "left-[22px]" : "left-0.5",
               )}
             />
           </span>
         </button>
 
-        {sceneOn ? (
-        <>
-        <section className="space-y-3">
-          <div>
-            <p className="text-sm font-semibold text-foreground">Ocasião / cenário</p>
-            <p className="text-xs text-muted-foreground">
-              Onde o cliente vai usar? O fundo combina com o momento.
-            </p>
-          </div>
-          <div className="grid grid-cols-4 gap-2">
-            {BACKGROUNDS.map((b) => (
-              <button
-                key={b.id}
-                onClick={() => setBackground(b.id)}
-                className={cn(
-                  "flex flex-col items-center gap-1 rounded-2xl border px-1 py-2.5 transition",
-                  background === b.id
-                    ? "border-2 border-accent bg-card shadow-glow"
-                    : "border-border bg-card hover:border-accent/50",
-                )}
-              >
-                <span className="text-lg">{b.emoji}</span>
-                <span className="text-[10px] font-medium text-foreground">{b.label}</span>
-              </button>
-            ))}
-          </div>
-          <input
-            value={bgCustom}
-            onChange={(e) => setBgCustom(e.target.value)}
-            placeholder="Descreva outro cenário (opcional)…"
-            className="w-full rounded-xl border border-input bg-card px-4 py-2.5 text-sm outline-none focus:border-clay"
-          />
-        </section>
+        {changeSceneOn ? (
+          <section className="space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Ocasião / cenário</p>
+              <p className="text-xs text-muted-foreground">
+                Onde o cliente vai usar? O fundo combina com o momento.
+              </p>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {BACKGROUNDS.map((b) => (
+                <button
+                  key={b.id}
+                  onClick={() => setBackground(b.id)}
+                  className={cn(
+                    "flex flex-col items-center gap-1 rounded-2xl border px-1 py-2.5 transition",
+                    background === b.id
+                      ? "border-2 border-accent bg-card shadow-glow"
+                      : "border-border bg-card hover:border-accent/50",
+                  )}
+                >
+                  <span className="text-lg">{b.emoji}</span>
+                  <span className="text-[10px] font-medium text-foreground">{b.label}</span>
+                </button>
+              ))}
+            </div>
+            <input
+              value={bgCustom}
+              onChange={(e) => setBgCustom(e.target.value)}
+              placeholder="Descreva outro cenário (opcional)…"
+              className="w-full rounded-xl border border-input bg-card px-4 py-2.5 text-sm outline-none focus:border-clay"
+            />
+          </section>
+        ) : null}
 
-        <section className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-clay" />
-            <p className="text-sm font-semibold text-foreground">Retoques com IA</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {RETOUCHES.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => toggleRetouch(r.id)}
-                className={cn(
-                  "rounded-full border px-3 py-1.5 text-xs font-medium transition",
-                  retouches.includes(r.id)
-                    ? "border-accent bg-accent text-accent-foreground shadow-glow"
-                    : "border-border bg-card text-foreground hover:border-accent/50",
-                )}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
-          <input
-            value={retouchCustom}
-            onChange={(e) => setRetouchCustom(e.target.value)}
-            placeholder="Escreva o que quer mudar (ex.: trocar a cor da bolsa)…"
-            className="w-full rounded-xl border border-input bg-card px-4 py-2.5 text-sm outline-none focus:border-clay"
-          />
-        </section>
-        </>
+        <button
+          onClick={() => setRefineOn((v) => !v)}
+          className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-left"
+        >
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-foreground">Refinar com IA</span>
+            <span className="block text-xs text-muted-foreground">
+              Retoques como tirar amassados, melhorar luz, suavizar pele.
+            </span>
+          </span>
+          <span
+            className={cn(
+              "relative h-6 w-11 shrink-0 rounded-full transition-colors",
+              refineOn ? "bg-clay" : "bg-secondary",
+            )}
+          >
+            <span
+              className={cn(
+                "absolute top-0.5 h-5 w-5 rounded-full bg-background transition-all",
+                refineOn ? "left-[22px]" : "left-0.5",
+              )}
+            />
+          </span>
+        </button>
+
+        {refineOn ? (
+          <section className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-clay" />
+              <p className="text-sm font-semibold text-foreground">Retoques com IA</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {RETOUCHES.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => toggleRetouch(r.id)}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                    retouches.includes(r.id)
+                      ? "border-accent bg-accent text-accent-foreground shadow-glow"
+                      : "border-border bg-card text-foreground hover:border-accent/50",
+                  )}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            <input
+              value={retouchCustom}
+              onChange={(e) => setRetouchCustom(e.target.value)}
+              placeholder="Escreva o que quer mudar (ex.: trocar a cor da bolsa)…"
+              className="w-full rounded-xl border border-input bg-card px-4 py-2.5 text-sm outline-none focus:border-clay"
+            />
+          </section>
         ) : null}
 
         <button

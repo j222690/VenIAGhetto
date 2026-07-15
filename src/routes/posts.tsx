@@ -14,6 +14,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   GARMENT_FIDELITY_CLAUSE,
+  IDENTITY_LOCK_CLAUSE,
+  IDENTITY_RECAP_CLAUSE,
+  NATURAL_POSE_CLAUSE,
   PRESERVE_PHOTO_CLAUSE,
   REALISM_CLAUSE,
 } from "@/constants/prompts";
@@ -49,10 +52,12 @@ function PostsPage() {
   const [modelUrl, setModelUrl] = useState<string | undefined>();
   const [lookUrl, setLookUrl] = useState<string | undefined>();
   const [audience, setAudience] = useState<StoreSegment>(session?.store.segment ?? "feminina");
-  const [sceneOn, setSceneOn] = useState(true);
+  // Independentes: dá pra mudar só o fundo, só refinar, os dois, ou nenhum.
+  const [changeSceneOn, setChangeSceneOn] = useState(true);
   const [background, setBackground] = useState<string>("estudio");
   const [bgCustom, setBgCustom] = useState("");
-  const [refine, setRefine] = useState("");
+  const [refineOn, setRefineOn] = useState(true);
+  const [refineText, setRefineText] = useState("");
   const [aiCaption, setAiCaption] = useState(true);
   const [showModels, setShowModels] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -74,36 +79,47 @@ function PostsPage() {
     try {
       const modelDesc =
         audience === "masculina" ? "modelo masculino" : audience === "feminina" ? "modelo feminino" : "modelo";
+      // Com foto própria (modelUrl): é uma pessoa real, a identidade precisa
+      // ser TRAVADA (mesma ordem/lógica do Provador — ver constants/prompts.ts).
+      // Sem foto (modelo genérico do público-alvo): não há identidade a preservar.
       const head = modelUrl
-        ? "Crie uma foto de moda profissional para redes sociais com a PESSOA da primeira imagem " +
-          "vestindo a peça/look mostrado na imagem seguinte. Preserve a identidade da pessoa."
+        ? IDENTITY_LOCK_CLAUSE +
+          " Troque a roupa da pessoa da PRIMEIRA imagem pela peça/look mostrado na imagem seguinte, " +
+          "em uma composição de moda profissional para redes sociais."
         : `Crie uma foto de moda profissional para redes sociais de um(a) ${modelDesc} vestindo a ` +
           "peça/look mostrado na imagem.";
-      let prompt: string;
-      if (!sceneOn && modelUrl) {
-        // Usou uma foto pronta e não quer mudar nada: preserva a imagem original,
-        // troca só o look. Nunca altera as peças.
-        prompt = head + " " + PRESERVE_PHOTO_CLAUSE + " " + GARMENT_FIDELITY_CLAUSE;
-      } else {
-        const bg = sceneOn ? BACKGROUNDS.find((b) => b.id === background) : undefined;
-        const scenePart = sceneOn
-          ? (bg ? ` Cenário/fundo: ${bg.desc}.` : "") +
-            (bgCustom.trim() ? ` Detalhes do fundo: ${bgCustom.trim()}.` : "") +
-            (refine.trim() ? ` Ajustes: ${refine.trim()}.` : "")
-          : "";
-        prompt =
-          head +
-          scenePart +
-          " Composição vibrante e atraente, pronta para publicação, alta definição. " +
-          REALISM_CLAUSE +
-          " " +
-          GARMENT_FIDELITY_CLAUSE;
+      // Fundo/cenário e refino são INDEPENDENTES: dá pra mudar só o fundo, só
+      // refinar, os dois juntos, ou nenhum.
+      let prompt = head;
+      if (modelUrl && !changeSceneOn) {
+        // Foto própria e não quer mudar o cenário: preserva a foto original.
+        prompt += " " + PRESERVE_PHOTO_CLAUSE;
+      } else if (changeSceneOn) {
+        const bg = BACKGROUNDS.find((b) => b.id === background);
+        const scenePart =
+          (bg ? ` Cenário/fundo: ${bg.desc}.` : "") +
+          (bgCustom.trim() ? ` Detalhes do fundo: ${bgCustom.trim()}.` : "");
+        prompt += scenePart;
+        if (modelUrl) prompt += " " + NATURAL_POSE_CLAUSE;
       }
+      if (refineOn && refineText.trim()) {
+        prompt += ` Ajustes: ${refineText.trim()}.`;
+      }
+      prompt +=
+        " Composição vibrante e atraente, pronta para publicação, alta definição. " +
+        REALISM_CLAUSE +
+        " " +
+        GARMENT_FIDELITY_CLAUSE +
+        (modelUrl ? " " + IDENTITY_RECAP_CLAUSE : "");
+
       const imageUrls = modelUrl ? [modelUrl, lookUrl] : [lookUrl];
 
       const gen = await GenerationService.generate({
         type: "post",
-        inputs: { clientPhotoUrl: modelUrl, notes: refine.trim() || bgCustom.trim() || undefined },
+        inputs: {
+          clientPhotoUrl: modelUrl,
+          notes: (refineOn ? refineText.trim() : "") || bgCustom.trim() || undefined,
+        },
         prompt,
         imageUrls,
         audience,
@@ -282,13 +298,13 @@ function PostsPage() {
           </div>
         </div>
 
-        {/* Liga/desliga: mudar fundo e refinar */}
+        {/* Liga/desliga INDEPENDENTES: mudar fundo e refinar não dependem um do outro */}
         <button
-          onClick={() => setSceneOn((v) => !v)}
+          onClick={() => setChangeSceneOn((v) => !v)}
           className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-left"
         >
           <span className="min-w-0">
-            <span className="block text-sm font-medium text-foreground">Mudar fundo e refinar</span>
+            <span className="block text-sm font-medium text-foreground">Mudar fundo/cenário</span>
             <span className="block text-xs text-muted-foreground">
               Desligue se a imagem gerada já basta.
             </span>
@@ -296,62 +312,85 @@ function PostsPage() {
           <span
             className={cn(
               "relative h-6 w-11 shrink-0 rounded-full transition-colors",
-              sceneOn ? "bg-clay" : "bg-secondary",
+              changeSceneOn ? "bg-clay" : "bg-secondary",
             )}
           >
             <span
               className={cn(
                 "absolute top-0.5 h-5 w-5 rounded-full bg-background transition-all",
-                sceneOn ? "left-[22px]" : "left-0.5",
+                changeSceneOn ? "left-[22px]" : "left-0.5",
               )}
             />
           </span>
         </button>
 
-        {sceneOn ? (
-        <>
-        {/* Fundo / ocasião */}
-        <section className="space-y-3">
-          <p className="text-sm font-semibold text-foreground">Fundo / cenário</p>
-          <div className="grid grid-cols-4 gap-2">
-            {BACKGROUNDS.map((b) => (
-              <button
-                key={b.id}
-                onClick={() => setBackground(b.id)}
-                className={cn(
-                  "flex flex-col items-center gap-1 rounded-2xl border px-1 py-2.5 transition",
-                  background === b.id
-                    ? "border-2 border-accent bg-card shadow-glow"
-                    : "border-border bg-card hover:border-accent/50",
-                )}
-              >
-                <span className="text-lg">{b.emoji}</span>
-                <span className="text-[10px] font-medium text-foreground">{b.label}</span>
-              </button>
-            ))}
-          </div>
-          <input
-            value={bgCustom}
-            onChange={(e) => setBgCustom(e.target.value)}
-            placeholder="Descreva outro fundo (opcional)…"
-            className="w-full rounded-xl border border-input bg-card px-4 py-2.5 text-sm outline-none focus:border-clay"
-          />
-        </section>
+        {changeSceneOn ? (
+          <section className="space-y-3">
+            <p className="text-sm font-semibold text-foreground">Fundo / cenário</p>
+            <div className="grid grid-cols-4 gap-2">
+              {BACKGROUNDS.map((b) => (
+                <button
+                  key={b.id}
+                  onClick={() => setBackground(b.id)}
+                  className={cn(
+                    "flex flex-col items-center gap-1 rounded-2xl border px-1 py-2.5 transition",
+                    background === b.id
+                      ? "border-2 border-accent bg-card shadow-glow"
+                      : "border-border bg-card hover:border-accent/50",
+                  )}
+                >
+                  <span className="text-lg">{b.emoji}</span>
+                  <span className="text-[10px] font-medium text-foreground">{b.label}</span>
+                </button>
+              ))}
+            </div>
+            <input
+              value={bgCustom}
+              onChange={(e) => setBgCustom(e.target.value)}
+              placeholder="Descreva outro fundo (opcional)…"
+              className="w-full rounded-xl border border-input bg-card px-4 py-2.5 text-sm outline-none focus:border-clay"
+            />
+          </section>
+        ) : null}
 
-        {/* Refinar imagem */}
-        <section className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-clay" />
-            <p className="text-sm font-semibold text-foreground">Refinar imagem (opcional)</p>
-          </div>
-          <input
-            value={refine}
-            onChange={(e) => setRefine(e.target.value)}
-            placeholder="Ex.: melhorar a luz, remover o fundo, deixar mais vibrante…"
-            className="w-full rounded-xl border border-input bg-card px-4 py-2.5 text-sm outline-none focus:border-clay"
-          />
-        </section>
-        </>
+        <button
+          onClick={() => setRefineOn((v) => !v)}
+          className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-left"
+        >
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-foreground">Refinar imagem</span>
+            <span className="block text-xs text-muted-foreground">
+              Ajustes extras, ex.: melhorar a luz, deixar mais vibrante.
+            </span>
+          </span>
+          <span
+            className={cn(
+              "relative h-6 w-11 shrink-0 rounded-full transition-colors",
+              refineOn ? "bg-clay" : "bg-secondary",
+            )}
+          >
+            <span
+              className={cn(
+                "absolute top-0.5 h-5 w-5 rounded-full bg-background transition-all",
+                refineOn ? "left-[22px]" : "left-0.5",
+              )}
+            />
+          </span>
+        </button>
+
+        {refineOn ? (
+          <section className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-clay" />
+              <p className="text-sm font-semibold text-foreground">Refinar imagem (opcional)</p>
+            </div>
+            <input
+              value={refineText}
+              onChange={(e) => setRefineText(e.target.value)}
+              placeholder="Ex.: melhorar a luz, remover o fundo, deixar mais vibrante…"
+              className="w-full rounded-xl border border-input bg-card px-4 py-2.5 text-sm outline-none focus:border-clay"
+            />
+          </section>
         ) : null}
 
         {/* Público (dá contexto à legenda) */}

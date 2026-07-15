@@ -95,7 +95,9 @@ async function generatePostCopy(
 let generations: Generation[] = [];
 
 // Custo em tokens por operação — alinhado ao custo real de IA (ver relatório de
-// margens). Provador com VÁRIAS peças gera imagem extra (flat-lay) → custa mais.
+// margens). Provador com VÁRIAS peças processa mais imagens de referência na
+// mesma geração → custa um pouco mais (mas é UMA só chamada de IA — não gera
+// mais uma imagem extra; ver TryOnPage.run em tryon.tsx).
 const TOKEN_COST: Record<GenerationType, number> = {
   tryon: 5, // 1 peça
   post: 5,
