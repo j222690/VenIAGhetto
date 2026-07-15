@@ -86,6 +86,16 @@ export const InviteService = {
     return invite;
   },
 
+  // Dispara o e-mail de notificação pro convidado (Edge Function `send-invite-
+  // email` via Resend). Lança em falha — quem chama decide o aviso na tela; o
+  // convite em si já foi criado antes e continua válido mesmo se o e-mail falhar.
+  async sendInviteEmail(invite: StoreInvite): Promise<void> {
+    const { error } = await supabase.functions.invoke("send-invite-email", {
+      body: { inviteId: invite.id },
+    });
+    if (error) throw error;
+  },
+
   // URL completa do convite por link, pronta para compartilhar.
   linkFor(invite: StoreInvite): string {
     const origin = typeof window !== "undefined" ? window.location.origin : "";

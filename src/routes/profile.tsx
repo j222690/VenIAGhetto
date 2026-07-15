@@ -274,7 +274,14 @@ function TeamSection({ currentUserId }: { currentUserId: string }) {
       const invite = await InviteService.createInvite(value, role);
       setInvites((prev) => [invite, ...prev.filter((i) => i.email !== invite.email)]);
       setEmail("");
-      toast.success("Convite criado. O acesso é liberado quando essa pessoa se cadastrar.");
+      try {
+        await InviteService.sendInviteEmail(invite);
+        toast.success("Convite enviado por e-mail.");
+      } catch {
+        // Convite existe (a pessoa ainda consegue entrar) — só o aviso por
+        // e-mail falhou (ex.: domínio do Resend ainda não verificado).
+        toast.success("Convite criado — mas não consegui enviar o e-mail agora. Avise a pessoa por fora.");
+      }
     } catch {
       toast.error("Não foi possível criar o convite.");
     } finally {
