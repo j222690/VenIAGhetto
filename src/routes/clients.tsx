@@ -5,6 +5,7 @@ import { AppLayout } from "@/layouts/AppLayout";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { LookActions } from "@/components/LookActions";
 import { ClientService } from "@/services/ClientService";
+import { usePermissions } from "@/hooks/usePermissions";
 import type { Client, Generation } from "@/types";
 import { toast } from "sonner";
 
@@ -27,9 +28,12 @@ interface ClientForm {
 
 const EMPTY_FORM: ClientForm = { name: "", instagram: "", phone: "", notes: "", photoUrl: "" };
 
-// Clientes = pessoas que a loja ATENDE e não fazem login. Toda a equipe da
-// loja administra (ver ClientService / RLS por loja na migration 0003).
+// Clientes = pessoas que a loja ATENDE e não fazem login. Toda a equipe
+// adiciona/edita (ver ClientService / RLS por loja na migration 0003);
+// EXCLUIR é só do dono (permissão `clients:delete`, RLS na 0018).
 function ClientsPage() {
+  const { can } = usePermissions();
+  const canDelete = can("clients:delete");
   const { client: clientParam } = Route.useSearch();
   const navigate = Route.useNavigate();
   const [clients, setClients] = useState<Client[]>(ClientService.list());
@@ -281,14 +285,16 @@ function ClientsPage() {
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
-                  <button
-                    type="button"
-                    aria-label={`Remover ${c.name}`}
-                    onClick={() => remove(c)}
-                    className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  {canDelete ? (
+                    <button
+                      type="button"
+                      aria-label={`Remover ${c.name}`}
+                      onClick={() => remove(c)}
+                      className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  ) : null}
                 </div>
               </div>
             ))}

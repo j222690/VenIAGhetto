@@ -8,6 +8,9 @@ interface AuthContextValue {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  // Devolve a Session resultante — quem chama usa session.user.role pra saber
+  // se a conta virou DONA de loja nova (owner) ou FUNCIONÁRIA de uma loja já
+  // existente (convite por link/e-mail casou), e decidir a navegação certa.
   signUp: (params: {
     storeName: string;
     ownerName?: string;
@@ -16,7 +19,7 @@ interface AuthContextValue {
     cnpj?: string;
     segment?: StoreSegment;
     inviteToken?: string;
-  }) => Promise<void>;
+  }) => Promise<Session | null>;
   signOut: () => void;
   refresh: () => void;
 }
@@ -75,9 +78,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password: string;
       cnpj?: string;
       segment?: StoreSegment;
+      inviteToken?: string;
     }) => {
       const s = await AuthService.signUp(params);
       setSession(s);
+      return s;
     },
     [],
   );

@@ -172,7 +172,8 @@ export type Permission =
   | "catalog:manage"
   | "tokens:view"
   | "plan:change"
-  | "reports:view";
+  | "reports:view"
+  | "clients:delete";
 
 export interface Session {
   user: User;

@@ -97,6 +97,12 @@ function LoginPage() {
           Criar agora
         </Link>
       </p>
+      <p className="mt-2 text-center text-sm text-muted-foreground">
+        Foi convidado por uma loja?{" "}
+        <Link to="/register" search={{ mode: "invited" }} className="font-semibold text-clay">
+          Entrar com convite
+        </Link>
+      </p>
     </div>
   );
 }

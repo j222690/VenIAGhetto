@@ -50,6 +50,13 @@ function WelcomePage() {
           >
             Já tenho conta
           </Link>
+          <Link
+            to="/register"
+            search={{ mode: "invited" }}
+            className="mt-3 block w-full text-center text-sm font-medium text-clay"
+          >
+            Já faço parte de uma loja? Entrar com convite
+          </Link>
         </div>
       </div>
     </div>

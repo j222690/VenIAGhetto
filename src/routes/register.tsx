@@ -21,8 +21,12 @@ const SEGMENT_OPTIONS: {
 export const Route = createFileRoute("/register")({
   head: () => ({ meta: [{ title: "Criar conta — Vest IA" }] }),
   // ?invite=<token> = veio de um link de convite de funcionário (ver InviteService).
-  validateSearch: (search: Record<string, unknown>): { invite?: string } => ({
+  // ?mode=invited = clicou em "Entrar com convite" (convite por E-MAIL, sem
+  // token — o cadastro simplifica mas só liga à loja se o e-mail bater com
+  // um convite pendente; ver handle_new_user, migration 0003).
+  validateSearch: (search: Record<string, unknown>): { invite?: string; mode?: string } => ({
     invite: typeof search.invite === "string" ? search.invite : undefined,
+    mode: typeof search.mode === "string" ? search.mode : undefined,
   }),
   component: RegisterPage,
 });
@@ -30,7 +34,8 @@ export const Route = createFileRoute("/register")({
 function RegisterPage() {
   const { signUp } = useAuth();
   const navigate = useNavigate();
-  const { invite: inviteToken } = Route.useSearch();
+  const { invite: inviteToken, mode } = Route.useSearch();
+  const emailInviteMode = mode === "invited";
   const [storeName, setStoreName] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [cnpj, setCnpj] = useState("");
@@ -49,7 +54,7 @@ function RegisterPage() {
       .catch(() => setInvitePreview(null));
   }, [inviteToken]);
 
-  const invited = !!invitePreview;
+  const invited = !!invitePreview || emailInviteMode;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +62,7 @@ function RegisterPage() {
     try {
       // Aplica o tema escolhido imediatamente (o AppLayout mantém sincronizado).
       document.documentElement.dataset.segment = segment;
-      await signUp({
+      const result = await signUp({
         storeName,
         ownerName: ownerName || undefined,
         email,
@@ -66,7 +71,12 @@ function RegisterPage() {
         segment,
         inviteToken,
       });
-      navigate({ to: invited ? "/home" : "/plans" });
+      // Decide pela Session REAL devolvida (não por uma suposição de antes do
+      // envio): se o e-mail bateu com um convite (link OU e-mail), o trigger
+      // liga a conta como funcionária de uma loja já existente — role vem
+      // "manager"/"seller", não "owner". Só quem é owner de loja NOVA precisa
+      // escolher plano.
+      navigate({ to: result?.user.role === "owner" ? "/plans" : "/home" });
     } catch {
       toast.error("Não foi possível criar a conta.");
     } finally {
@@ -96,6 +106,11 @@ function RegisterPage() {
         <p className="mt-3 rounded-xl bg-secondary px-3 py-2 text-xs text-muted-foreground">
           Convite de <strong>{invitePreview.storeName}</strong> — você vai entrar como{" "}
           <strong>{ROLE_LABEL[invitePreview.role]}</strong>.
+        </p>
+      ) : emailInviteMode ? (
+        <p className="mt-3 rounded-xl bg-secondary px-3 py-2 text-xs text-muted-foreground">
+          Cadastre-se com o <strong>mesmo e-mail</strong> que sua loja convidou — você entra direto
+          na equipe dela, sem precisar criar uma loja nova.
         </p>
       ) : (
         <p className="mt-3 rounded-xl bg-secondary px-3 py-2 text-xs text-muted-foreground">
