@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { AuthService } from "@/services/AuthService";
+import { describeAuthError } from "@/lib/authErrors";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/reset-password")({
@@ -16,8 +17,8 @@ function ResetPasswordPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 8) {
-      toast.error("A senha precisa ter ao menos 8 caracteres.");
+    if (password.length < 6) {
+      toast.error("A senha precisa ter ao menos 6 caracteres.");
       return;
     }
     if (password !== confirm) {
@@ -30,8 +31,10 @@ function ResetPasswordPage() {
       await AuthService.updatePassword(password);
       toast.success("Senha atualizada. Entre com a nova senha.");
       navigate({ to: "/login" });
-    } catch {
-      toast.error("Link expirado ou inválido. Peça um novo e-mail de recuperação.");
+    } catch (err) {
+      toast.error(
+        describeAuthError(err, "Link expirado ou inválido. Peça um novo e-mail de recuperação."),
+      );
     } finally {
       setBusy(false);
     }
@@ -52,10 +55,11 @@ function ResetPasswordPage() {
           <input
             type="password"
             required
+            minLength={6}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full rounded-xl border border-input bg-card px-4 py-3 text-base outline-none focus:border-clay"
-            placeholder="Mínimo 8 caracteres"
+            placeholder="Mínimo 6 caracteres"
           />
         </label>
         <label className="grid gap-1.5">

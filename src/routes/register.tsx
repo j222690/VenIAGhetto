@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { InviteService } from "@/services/InviteService";
 import { ROLE_LABEL } from "@/constants/permissions";
+import { describeAuthError } from "@/lib/authErrors";
 import type { StoreSegment, UserRole } from "@/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -77,8 +78,8 @@ function RegisterPage() {
       // "manager"/"seller", não "owner". Só quem é owner de loja NOVA precisa
       // escolher plano.
       navigate({ to: result?.user.role === "owner" ? "/plans" : "/home" });
-    } catch {
-      toast.error("Não foi possível criar a conta.");
+    } catch (err) {
+      toast.error(describeAuthError(err, "Não foi possível criar a conta."));
     } finally {
       setBusy(false);
     }
@@ -206,10 +207,11 @@ function RegisterPage() {
           <input
             type="password"
             required
+            minLength={6}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full rounded-xl border border-input bg-card px-4 py-3 text-base outline-none focus:border-clay"
-            placeholder="Mínimo 8 caracteres"
+            placeholder="Mínimo 6 caracteres"
           />
         </Field>
 

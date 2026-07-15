@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthService } from "@/services/AuthService";
+import { describeAuthError } from "@/lib/authErrors";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
@@ -22,8 +23,8 @@ function LoginPage() {
     try {
       await signIn(email, password);
       navigate({ to: "/home" });
-    } catch {
-      toast.error("Não foi possível entrar.");
+    } catch (err) {
+      toast.error(describeAuthError(err, "Não foi possível entrar."));
     } finally {
       setBusy(false);
     }
@@ -74,8 +75,8 @@ function LoginPage() {
             try {
               await AuthService.requestPasswordReset(value);
               toast.success("Enviamos um link de recuperação para seu e-mail.");
-            } catch {
-              toast.error("Não foi possível enviar o e-mail. Tente novamente.");
+            } catch (err) {
+              toast.error(describeAuthError(err, "Não foi possível enviar o e-mail. Tente novamente."));
             }
           }}
           className="-mt-2 text-left text-sm text-muted-foreground hover:text-foreground"
