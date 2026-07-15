@@ -139,7 +139,8 @@ function ClientsPage() {
               onChange={(url) => setForm((f) => ({ ...f, photoUrl: url }))}
               label="Foto base"
               hint="Opcional · usada como ponto de partida no Provador"
-              aspectClassName="aspect-[4/3]"
+              aspectClassName="aspect-[3/4]"
+              fit="contain"
             />
           </Field>
           <Field label="Nome">

@@ -277,6 +277,7 @@ function PostsPage() {
               label="Modelo"
               hint="Opcional · sua foto"
               aspectClassName="aspect-square"
+              fit="contain"
             />
             <button
               onClick={() => setShowModels(true)}

@@ -413,7 +413,8 @@ function TryOnPage() {
             onChange={setPhotoUrl}
             label="Foto do cliente"
             hint="Obrigatória · galeria ou câmera"
-            aspectClassName="aspect-[4/3]"
+            aspectClassName="aspect-[3/4]"
+            fit="contain"
           />
           <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
             A peça será vestida nesta pessoa.

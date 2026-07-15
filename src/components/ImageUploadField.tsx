@@ -12,6 +12,13 @@ interface Props {
   hint?: string;
   /** Tailwind aspect ratio class. Default 3/4 (retrato). */
   aspectClassName?: string;
+  /**
+   * "cover" (padrão) preenche a caixa cortando o excesso — bom para
+   * miniaturas de produto. "contain" mostra a foto INTEIRA sem cortar (com
+   * barras se sobrar espaço) — use para fotos de pessoa (cliente/modelo),
+   * onde conferir a foto completa antes de gerar (e gastar tokens) importa.
+   */
+  fit?: "cover" | "contain";
 }
 
 // Seletor de imagem que sobe o arquivo real pro Supabase Storage (via
@@ -26,6 +33,7 @@ export function ImageUploadField({
   label,
   hint,
   aspectClassName = "aspect-[3/4]",
+  fit = "cover",
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -64,7 +72,14 @@ export function ImageUploadField({
         )}
       >
         {value ? (
-          <img src={value} alt={label} className="absolute inset-0 h-full w-full object-cover" />
+          <img
+            src={value}
+            alt={label}
+            className={cn(
+              "absolute inset-0 h-full w-full",
+              fit === "contain" ? "object-contain" : "object-cover",
+            )}
+          />
         ) : (
           <div className="flex flex-col items-center gap-2 px-4">
             <div className="grid h-12 w-12 place-items-center rounded-full bg-background">
