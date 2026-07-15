@@ -20,6 +20,35 @@ export const IDENTITY_LOCK_CLAUSE =
 export const IDENTITY_RECAP_CLAUSE =
   "Antes de gerar, confira: o rosto e o corpo continuam sendo os da PRIMEIRA imagem — só a roupa mudou.";
 
+// Proporção do corpo — ataca um bug observado: a IA distorcia a proporção
+// corpo/cabeça (cabeça grande demais, corpo esticado) ao vestir o look.
+export const ANATOMY_CLAUSE =
+  "Mantenha as PROPORÇÕES do corpo da pessoa IDÊNTICAS à primeira imagem — não aumente a cabeça nem " +
+  "encolha o corpo, mesma altura, mesma largura de ombros/tronco, mesmo comprimento de braços e " +
+  "pernas. NÃO dê zoom, reescale nem distorça a pessoa. O corpo deve parecer natural e " +
+  "anatomicamente igual ao da imagem original.";
+
+// Evita um bug real observado neste modelo de IA: em vez de vestir a peça na
+// pessoa, às vezes ele devolve uma colagem com a pessoa e as fotos de
+// referência das peças lado a lado (como um catálogo).
+export const NO_COLLAGE_CLAUSE =
+  "FORMATO DE SAÍDA (obrigatório): devolva UMA ÚNICA fotografia mostrando SÓ a pessoa, preenchendo o " +
+  "quadro como na primeira imagem. NUNCA devolva colagem, grade, montagem, tela dividida ou várias " +
+  "imagens lado a lado. NÃO inclua as fotos de referência das peças em nenhum canto do resultado — " +
+  "as peças só podem aparecer VESTIDAS na pessoa.";
+
+// Reforço específico contra inventar logo/estampa — mais direto que a regra
+// geral de fidelidade (GARMENT_FIDELITY_CLAUSE).
+export const NO_INVENT_CLAUSE =
+  "Não invente, adicione nem alucine nenhum logo, marca, símbolo, texto ou estampa que não esteja " +
+  "claramente visível na peça de referência. Se a peça for lisa, o resultado também é liso.";
+
+// Evita o caso em que a IA devolve a foto original sem de fato aplicar a
+// peça nova (fica "parecido demais" e a roupa não muda).
+export const MUST_APPLY_CLAUSE =
+  "O resultado PRECISA mostrar visivelmente a nova peça vestida na pessoa — nunca devolva a primeira " +
+  "imagem sem alteração nenhuma na roupa.";
+
 // Regra de REALISMO aplicada em toda geração/edição de imagem. Reforça um
 // resultado fotográfico profissional e evita "cara de IA", além de proibir
 // pessoas no fundo (só o modelo em primeiro plano).

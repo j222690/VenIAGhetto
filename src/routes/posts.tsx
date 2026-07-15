@@ -13,10 +13,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
+  ANATOMY_CLAUSE,
   GARMENT_FIDELITY_CLAUSE,
   IDENTITY_LOCK_CLAUSE,
   IDENTITY_RECAP_CLAUSE,
+  MUST_APPLY_CLAUSE,
   NATURAL_POSE_CLAUSE,
+  NO_COLLAGE_CLAUSE,
+  NO_INVENT_CLAUSE,
   PRESERVE_PHOTO_CLAUSE,
   REALISM_CLAUSE,
 } from "@/constants/prompts";
@@ -84,6 +88,8 @@ function PostsPage() {
       // Sem foto (modelo genérico do público-alvo): não há identidade a preservar.
       const head = modelUrl
         ? IDENTITY_LOCK_CLAUSE +
+          " " +
+          ANATOMY_CLAUSE +
           " Troque a roupa da pessoa da PRIMEIRA imagem pela peça/look mostrado na imagem seguinte, " +
           "em uma composição de moda profissional para redes sociais."
         : `Crie uma foto de moda profissional para redes sociais de um(a) ${modelDesc} vestindo a ` +
@@ -110,7 +116,11 @@ function PostsPage() {
         REALISM_CLAUSE +
         " " +
         GARMENT_FIDELITY_CLAUSE +
-        (modelUrl ? " " + IDENTITY_RECAP_CLAUSE : "");
+        " " +
+        NO_INVENT_CLAUSE +
+        (modelUrl
+          ? " " + NO_COLLAGE_CLAUSE + " " + MUST_APPLY_CLAUSE + " " + IDENTITY_RECAP_CLAUSE
+          : "");
 
       const imageUrls = modelUrl ? [modelUrl, lookUrl] : [lookUrl];
 

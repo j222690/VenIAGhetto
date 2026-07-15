@@ -222,6 +222,7 @@ export interface Database {
           category: string | null;
           price: number | null;
           image_url: string | null;
+          clean_image_url: string | null;
           description: string | null;
           sku: string | null;
           active: boolean;
@@ -234,6 +235,7 @@ export interface Database {
           category?: string | null;
           price?: number | null;
           image_url?: string | null;
+          clean_image_url?: string | null;
           description?: string | null;
           sku?: string | null;
           active?: boolean;
@@ -246,6 +248,7 @@ export interface Database {
           category?: string | null;
           price?: number | null;
           image_url?: string | null;
+          clean_image_url?: string | null;
           description?: string | null;
           sku?: string | null;
           active?: boolean;

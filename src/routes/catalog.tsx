@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Globe, ImagePlus, Pencil, Plus, Search, Sparkles, Trash2 } from "@/lib/icons";
+import { Check, Globe, ImagePlus, Pencil, Plus, Search, Sparkles, Trash2, Wand2 } from "@/lib/icons";
 import { AppLayout } from "@/layouts/AppLayout";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
@@ -16,6 +16,8 @@ import { toast } from "sonner";
 // cobrir a leitura da página mesmo em importações pequenas.
 const IMPORT_TOKEN_PER_ITEM = 1;
 const IMPORT_URL_MIN_TOKENS = 5;
+// "Limpar peça" (opcional) — isola a peça da foto (remove fundo/modelo).
+const CLEAN_IMAGE_COST = 1;
 
 export const Route = createFileRoute("/catalog")({
   head: () => ({ meta: [{ title: "Catálogo — Vest IA" }] }),
@@ -27,6 +29,7 @@ interface ItemForm {
   category: string;
   price: string;
   imageUrl: string;
+  cleanImageUrl: string;
   description: string;
   sku: string;
   active: boolean;
@@ -37,6 +40,7 @@ const EMPTY_FORM: ItemForm = {
   category: "",
   price: "",
   imageUrl: "",
+  cleanImageUrl: "",
   description: "",
   sku: "",
   active: true,
@@ -59,6 +63,7 @@ function CatalogPage() {
   const [editing, setEditing] = useState<CatalogItem | "new" | "import" | null>(null);
   const [form, setForm] = useState<ItemForm>(EMPTY_FORM);
   const [busy, setBusy] = useState(false);
+  const [cleaningImage, setCleaningImage] = useState(false);
 
   // Importação por foto (IA) e por link.
   const [importPhotos, setImportPhotos] = useState<string[]>([]);
@@ -96,11 +101,34 @@ function CatalogPage() {
       category: it.category ?? "",
       price: it.price != null ? String(it.price) : "",
       imageUrl: it.imageUrl ?? "",
+      cleanImageUrl: it.cleanImageUrl ?? "",
       description: it.description ?? "",
       sku: it.sku ?? "",
       active: it.active,
     });
     setEditing(it);
+  };
+
+  // "Limpar peça" (opcional, cobra token): gera uma versão isolada da foto —
+  // remove fundo e, se houver, a pessoa/modelo que estiver vestindo a peça na
+  // referência. Só roda quando o lojista pede (nunca automático).
+  const cleanPiece = async () => {
+    if (!form.imageUrl) return;
+    if (!TokenService.hasBalance(CLEAN_IMAGE_COST)) {
+      toast.error(`São necessários ${CLEAN_IMAGE_COST} token(s) para limpar a peça.`);
+      return;
+    }
+    setCleaningImage(true);
+    try {
+      const cleanUrl = await CatalogService.cleanPieceImage(form.imageUrl);
+      setForm((f) => ({ ...f, cleanImageUrl: cleanUrl }));
+      await TokenService.debit(CLEAN_IMAGE_COST, "Limpeza de peça (catálogo)");
+      toast.success("Peça limpa — isso melhora o resultado no Provador.");
+    } catch {
+      toast.error("Não foi possível limpar a peça.");
+    } finally {
+      setCleaningImage(false);
+    }
   };
 
   const openImport = () => {
@@ -216,6 +244,7 @@ function CatalogPage() {
         category: form.category || null,
         price: form.price ? Number(form.price) : null,
         imageUrl: form.imageUrl || null,
+        cleanImageUrl: form.cleanImageUrl || null,
         description: form.description || null,
         sku: form.sku || null,
         active: form.active,
@@ -348,8 +377,27 @@ function CatalogPage() {
               label="Enviar foto da peça"
               hint="Galeria ou câmera"
               value={form.imageUrl || undefined}
-              onChange={(url) => setForm((f) => ({ ...f, imageUrl: url }))}
+              onChange={(url) => setForm((f) => ({ ...f, imageUrl: url, cleanImageUrl: "" }))}
             />
+            {form.imageUrl ? (
+              form.cleanImageUrl ? (
+                <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-clay">
+                  <Check className="h-3.5 w-3.5" /> Peça limpa — melhora o resultado no Provador
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={cleanPiece}
+                  disabled={cleaningImage}
+                  className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium text-clay disabled:opacity-60"
+                >
+                  <Wand2 className="h-3.5 w-3.5" />
+                  {cleaningImage
+                    ? "Limpando…"
+                    : `Limpar peça? (melhora a geração) · ${CLEAN_IMAGE_COST} token`}
+                </button>
+              )
+            ) : null}
           </Field>
           <Field label="Nome *">
             <Input
@@ -386,7 +434,9 @@ function CatalogPage() {
             {/* Alternativa ao upload: colar uma URL externa direto. */}
             <Input
               value={form.imageUrl}
-              onChange={set(setForm, "imageUrl")}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, imageUrl: e.target.value, cleanImageUrl: "" }))
+              }
               placeholder="https://…"
             />
           </Field>

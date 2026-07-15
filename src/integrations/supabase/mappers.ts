@@ -117,6 +117,7 @@ export function mapCatalogItem(row: CatalogItemRow): CatalogItem {
     category: row.category ?? undefined,
     price: row.price ?? undefined,
     imageUrl: row.image_url ?? undefined,
+    cleanImageUrl: row.clean_image_url ?? undefined,
     description: row.description ?? undefined,
     sku: row.sku ?? undefined,
     active: row.active,

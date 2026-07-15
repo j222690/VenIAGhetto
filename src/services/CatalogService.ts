@@ -38,10 +38,25 @@ export interface CatalogInput {
   category?: string | null;
   price?: number | null;
   imageUrl?: string | null;
+  cleanImageUrl?: string | null;
   description?: string | null;
   sku?: string | null;
   active?: boolean;
 }
+
+// Prompt da limpeza de peça — extrai a peça isolada mesmo que a foto de
+// referência mostre uma pessoa/modelo vestindo (ação manual e opcional do
+// lojista, "Limpar peça"; ver catalog.tsx). Custa 1 token — só roda quando
+// pedido, nunca automático.
+const GARMENT_ISOLATION_PROMPT =
+  "Você é um retocador de fotos de produto para catálogo de moda. A imagem de referência mostra uma " +
+  "peça de roupa, calçado ou acessório — sozinha OU vestida por uma pessoa/modelo. TAREFA: extraia " +
+  "APENAS a peça e produza uma foto de catálogo limpa: fundo branco liso, peça de frente/centralizada, " +
+  "bem iluminada, nítida. Se a referência mostrar uma pessoa vestindo a peça, REMOVA COMPLETAMENTE " +
+  "essa pessoa (rosto, pele, cabelo, corpo, outras roupas) — o resultado mostra SÓ esta peça, sem " +
+  "ninguém vestindo-a, sem manequim, sem cabide (a menos que a própria peça já estivesse assim " +
+  "isolada). Preserve EXATAMENTE a mesma cor, tecido, textura, estampa, corte e detalhes — não " +
+  "invente, altere nem estilize nada. Não é uma peça nova, é a MESMA peça, só isolada.";
 
 let cache: CatalogItem[] = [];
 let loaded = false;
@@ -54,6 +69,7 @@ function localItem(input: CatalogInput): CatalogItem {
     category: input.category || undefined,
     price: input.price ?? undefined,
     imageUrl: input.imageUrl || undefined,
+    cleanImageUrl: input.cleanImageUrl || undefined,
     description: input.description || undefined,
     sku: input.sku || undefined,
     active: input.active ?? true,
@@ -111,6 +127,7 @@ export const CatalogService = {
           category: input.category || null,
           price: input.price ?? null,
           image_url: input.imageUrl || null,
+          clean_image_url: input.cleanImageUrl || null,
           description: input.description || null,
           sku: input.sku || null,
           active: input.active ?? true,
@@ -135,6 +152,7 @@ export const CatalogService = {
       category: patch.category || null,
       price: patch.price ?? null,
       image_url: patch.imageUrl || null,
+      clean_image_url: patch.cleanImageUrl || null,
       description: patch.description || null,
       sku: patch.sku || null,
       active: patch.active ?? true,
@@ -185,6 +203,15 @@ export const CatalogService = {
     } catch {
       return { name: "Peça sem nome", category: "", price: null };
     }
+  },
+
+  // Limpeza de peça (ação manual/opcional do lojista, ver catalog.tsx): gera
+  // uma versão isolada da foto (fundo e eventual modelo removidos), mesmo
+  // que a foto original mostre alguém vestindo a peça. Não persiste nem
+  // cobra token aqui — quem chama decide (form ainda não salvo) e debita.
+  async cleanPieceImage(imageUrl: string): Promise<string> {
+    const { url } = await AIService.image(GARMENT_ISOLATION_PROMPT, { imageUrls: [imageUrl] });
+    return url;
   },
 
   // Importa o catálogo a partir de um LINK (e-commerce, Instagram, etc.). A
@@ -248,6 +275,7 @@ function mergeLocal(list: CatalogItem[], id: string, patch: CatalogInput): Catal
     category: patch.category || undefined,
     price: patch.price ?? undefined,
     imageUrl: patch.imageUrl || undefined,
+    cleanImageUrl: patch.cleanImageUrl || undefined,
     description: patch.description || undefined,
     sku: patch.sku || undefined,
     active: patch.active ?? true,

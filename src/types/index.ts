@@ -121,6 +121,10 @@ export interface CatalogItem {
   category?: string;
   price?: number;
   imageUrl?: string;
+  // Versão isolada da foto (peça sozinha, sem fundo/modelo) — gerada por IA,
+  // ação manual e opcional do lojista ("Limpar peça"). Usada de preferência
+  // no Provador quando disponível.
+  cleanImageUrl?: string;
   description?: string;
   sku?: string;
   active: boolean;

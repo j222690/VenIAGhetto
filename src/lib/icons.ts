@@ -27,6 +27,7 @@ export {
   Search,
   Upload,
   ImagePlus,
+  Wand2,
   // Actions
   Check,
   Copy,
