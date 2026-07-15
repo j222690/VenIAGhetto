@@ -254,6 +254,18 @@ export const GenerationService = {
     return generations.filter((g) => g.isFavorite);
   },
 
+  // Exclui uma foto gerada (Álbum/Histórico/pasta do cliente) — RLS por loja
+  // cobre (generations_all_same_store, migration 0001). Não exclui o cliente,
+  // só o registro da geração/imagem.
+  async remove(id: string): Promise<void> {
+    try {
+      await supabase.from("generations").delete().eq("id", id);
+    } catch {
+      // item de seed/local — remove do cache mesmo assim.
+    }
+    generations = generations.filter((g) => g.id !== id);
+  },
+
   // Busca no banco as gerações de um cliente (filtrando por client_id, sob o
   // RLS por loja). É a fonte de verdade da "pasta do cliente": reflete na hora
   // os looks salvos no Provador. Faz fallback para o cache se o banco falhar.

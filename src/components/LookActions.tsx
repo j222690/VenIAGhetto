@@ -4,10 +4,11 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Download, Heart, Instagram, MessageCircle, Save, Share2 } from "@/lib/icons";
+import { Download, Heart, Instagram, MessageCircle, Save, Share2, Trash2 } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import type { Generation } from "@/types";
 import { FavoritesService } from "@/services/FavoritesService";
+import { GenerationService } from "@/services/GenerationService";
 import { ShareService } from "@/services/ShareService";
 import { AssetService } from "@/services/AssetService";
 import { ClientService } from "@/services/ClientService";
@@ -18,7 +19,8 @@ export type LookAction =
   | "share"
   | "download"
   | "instagram"
-  | "whatsapp";
+  | "whatsapp"
+  | "delete";
 
 interface Props {
   look: Generation;
@@ -27,6 +29,9 @@ interface Props {
   variant?: "overlay" | "bar";
   className?: string;
   onFavoriteChange?: (favorite: boolean) => void;
+  // Chamado após excluir com sucesso — quem usa tira o item da lista exibida
+  // (o service já removeu do cache; isso só avisa a tela pra re-renderizar).
+  onDeleted?: (id: string) => void;
 }
 
 export function LookActions({
@@ -35,10 +40,12 @@ export function LookActions({
   variant = "overlay",
   className,
   onFavoriteChange,
+  onDeleted,
 }: Props) {
   const [favorite, setFavorite] = useState(look.isFavorite);
   const [busy, setBusy] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const lookLabel = `Look · ${new Date(look.createdAt).toLocaleDateString("pt-BR")}`;
 
@@ -95,6 +102,21 @@ export function LookActions({
       toast.error("Não foi possível baixar a imagem.");
     } finally {
       setDownloading(false);
+    }
+  };
+
+  // Exclui a FOTO gerada (não o cliente). Sem confirmação — mesma convenção
+  // já usada em outras telas do app (excluir cliente/peça é direto também).
+  const remove = async () => {
+    setDeleting(true);
+    try {
+      await GenerationService.remove(look.id);
+      toast.success("Foto excluída.");
+      onDeleted?.(look.id);
+    } catch {
+      toast.error("Não foi possível excluir a foto.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -205,6 +227,19 @@ export function LookActions({
         >
           <MessageCircle className="h-4 w-4" />
           {!isOverlay ? <span>WhatsApp</span> : null}
+        </button>
+      ) : null}
+
+      {actions.includes("delete") ? (
+        <button
+          type="button"
+          aria-label="Excluir foto"
+          disabled={deleting}
+          onClick={remove}
+          className={cn(btnBase, deleting && "opacity-60", "hover:text-destructive")}
+        >
+          <Trash2 className="h-4 w-4" />
+          {!isOverlay ? <span>{deleting ? "Excluindo…" : "Excluir"}</span> : null}
         </button>
       ) : null}
     </div>

@@ -5,6 +5,7 @@ import type {
   Asset,
   CatalogItem,
   Client,
+  ClientPhoto,
   Generation,
   Store,
   StoreInvite,
@@ -14,6 +15,7 @@ import type {
 import type {
   AssetRow,
   CatalogItemRow,
+  ClientPhotoRow,
   ClientRow,
   GenerationRow,
   StoreInviteRow,
@@ -148,6 +150,15 @@ export function mapClient(row: ClientRow): Client {
     phone: row.phone ?? undefined,
     notes: row.notes ?? undefined,
     photoUrl: row.photo_url ?? undefined,
+    createdAt: row.created_at,
+  };
+}
+
+export function mapClientPhoto(row: ClientPhotoRow): ClientPhoto {
+  return {
+    id: row.id,
+    clientId: row.client_id,
+    url: row.url,
     createdAt: row.created_at,
   };
 }

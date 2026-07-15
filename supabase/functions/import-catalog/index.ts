@@ -4,8 +4,13 @@
 // CORS) e usa o Gemini para extrair a lista de produtos. Exige usuário
 // autenticado. A cobrança de tokens é feita no app após o retorno.
 //
-// Limitações honestas: páginas 100% dinâmicas (SPA) ou o Instagram (muro de
-// login) podem devolver pouco conteúdo — extraímos o que estiver no HTML.
+// Limitações honestas (ainda existem após o aumento do limite de HTML):
+//   • Páginas 100% dinâmicas (SPA que carrega produtos via JS/fetch depois do
+//     carregamento inicial) ou o Instagram (muro de login) podem devolver
+//     pouco conteúdo — só extraímos o que já vem pronto no HTML da resposta,
+//     não executamos JavaScript nem esperamos a página "montar".
+//   • Catálogo paginado (?page=2, "carregar mais"): só a página do LINK
+//     enviado é lida — não segue paginação automaticamente.
 // -----------------------------------------------------------------------------
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -92,18 +97,21 @@ Deno.serve(async (req) => {
       return json({ error: "Não foi possível acessar o link. Verifique o endereço." }, 502);
     }
 
-    // Limita o tamanho para caber no contexto do modelo.
-    const clipped = html.slice(0, 200_000);
+    // Limita o tamanho para caber no contexto do modelo (Gemini 2.5 Flash
+    // aguenta ~1M tokens — 900k caracteres de HTML cabe folgado). Era 200k
+    // antes, o que cortava páginas de catálogo reais no meio da lista de
+    // produtos (o resto nunca chegava a ser visto pela IA).
+    const clipped = html.slice(0, 900_000);
     const origin = new URL(url).origin;
 
     const prompt =
       "Você extrai catálogos de moda de páginas web. A seguir está o HTML de uma página " +
-      `(origem: ${origin}). Extraia os PRODUTOS de moda encontrados e responda APENAS um JSON ` +
-      "array válido (sem markdown, sem crases) de objetos com as chaves: " +
+      `(origem: ${origin}). Extraia TODOS os PRODUTOS de moda encontrados (não pule nenhum) e ` +
+      "responda APENAS um JSON array válido (sem markdown, sem crases) de objetos com as chaves: " +
       '"name" (nome do produto), "category" (categoria ou ""), "price" (número em reais ou null), ' +
       '"imageUrl" (URL ABSOLUTA da imagem do produto ou ""). Converta URLs relativas em absolutas ' +
       "usando a origem. Use SOMENTE dados presentes no HTML — não invente. Se não houver produtos, " +
-      "responda []. Máximo 60 itens.\n\nHTML:\n" +
+      "responda []. Máximo 200 itens.\n\nHTML:\n" +
       clipped;
 
     const gRes = await fetch(`${GENAI}/${TEXT_MODEL}:generateContent`, {

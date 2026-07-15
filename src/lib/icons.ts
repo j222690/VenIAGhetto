@@ -39,6 +39,7 @@ export {
   Pencil,
   Trash2,
   MoreVertical,
+  X,
   // Status / feedback
   AlertTriangle,
   Bell,

@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Copy, Heart } from "@/lib/icons";
 import { AppLayout } from "@/layouts/AppLayout";
 import { LookActions } from "@/components/LookActions";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { GenerationService } from "@/services/GenerationService";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -22,8 +23,11 @@ function AlbumPage() {
   // Hoje os looks vêm do seed (via GenerationService). Quando a geração real
   // existir, GenerationService passa a ler da tabela `generations` e esta tela
   // não muda — segue consumindo history()/favorites().
-  const all = GenerationService.history();
+  // Cópia local (não só leitura direta do service) para excluir refletir na
+  // hora sem precisar navegar pra fora e voltar.
+  const [all, setAll] = useState(GenerationService.history());
   const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const [viewingUrl, setViewingUrl] = useState<string | null>(null);
 
   // `onlyFavorites` recalcula a partir do estado atual do service ao alternar.
   const looks = useMemo(
@@ -58,14 +62,22 @@ function AlbumPage() {
                 className="overflow-hidden rounded-2xl border border-border bg-card"
               >
                 <div className="relative aspect-[3/4] w-full overflow-hidden bg-secondary">
-                  <img
-                    src={look.resultUrl}
-                    alt={TYPE_LABEL[look.type] ?? "Look"}
-                    className="h-full w-full object-cover"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setViewingUrl(look.resultUrl)}
+                    aria-label="Ver foto completa"
+                    className="block h-full w-full"
+                  >
+                    <img
+                      src={look.resultUrl}
+                      alt={TYPE_LABEL[look.type] ?? "Look"}
+                      className="h-full w-full object-cover"
+                    />
+                  </button>
                   <LookActions
                     look={look}
-                    actions={["favorite", "download"]}
+                    actions={["favorite", "download", "delete"]}
+                    onDeleted={(id) => setAll((prev) => prev.filter((g) => g.id !== id))}
                     className="absolute right-2 top-2"
                   />
                 </div>
@@ -100,6 +112,7 @@ function AlbumPage() {
           </div>
         )}
       </div>
+      <PhotoLightbox url={viewingUrl} onClose={() => setViewingUrl(null)} />
     </AppLayout>
   );
 }

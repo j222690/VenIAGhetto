@@ -1,12 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, BookImage, Instagram, Pencil, Phone, Plus, Search, Trash2 } from "@/lib/icons";
+import {
+  ArrowLeft,
+  BookImage,
+  Check,
+  Instagram,
+  Pencil,
+  Phone,
+  Plus,
+  Search,
+  Trash2,
+} from "@/lib/icons";
 import { AppLayout } from "@/layouts/AppLayout";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { LookActions } from "@/components/LookActions";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { ClientService } from "@/services/ClientService";
 import { usePermissions } from "@/hooks/usePermissions";
-import type { Client, Generation } from "@/types";
+import type { Client, ClientPhoto, Generation } from "@/types";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/clients")({
@@ -308,9 +319,12 @@ function ClientsPage() {
 // Pasta do cliente: perfil + galeria "Looks gerados" buscada do banco
 // (ClientService.listClientGenerations → generations filtradas por client_id,
 // sob o RLS por loja). Reaproveita o grid/LookActions do álbum.
-function ClientFolder({ client, onBack }: { client: Client; onBack: () => void }) {
+function ClientFolder({ client: initialClient, onBack }: { client: Client; onBack: () => void }) {
+  const [client, setClient] = useState(initialClient);
   const [looks, setLooks] = useState<Generation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewingUrl, setViewingUrl] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<ClientPhoto[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -318,10 +332,43 @@ function ClientFolder({ client, onBack }: { client: Client; onBack: () => void }
       .then((list) => active && setLooks(list))
       .catch(() => active && setLooks([]))
       .finally(() => active && setLoading(false));
+    ClientService.listPhotos(client.id)
+      .then((list) => active && setPhotos(list))
+      .catch(() => {
+        // migration 0021 pode não ter rodado ainda — segue sem a galeria.
+      });
     return () => {
       active = false;
     };
   }, [client.id]);
+
+  const addPhoto = async (url: string) => {
+    try {
+      const photo = await ClientService.addPhoto(client.id, url);
+      setPhotos((prev) => [photo, ...prev]);
+    } catch {
+      toast.error("Não foi possível adicionar a foto.");
+    }
+  };
+
+  const removePhoto = async (photo: ClientPhoto) => {
+    try {
+      await ClientService.removePhoto(photo.id);
+      setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+    } catch {
+      toast.error("Não foi possível remover a foto.");
+    }
+  };
+
+  const applyAsBasePhoto = async (url: string) => {
+    try {
+      const updated = await ClientService.setBasePhoto(client.id, url);
+      setClient(updated);
+      toast.success("Definida como foto-base do Provador.");
+    } catch {
+      toast.error("Não foi possível definir a foto-base.");
+    }
+  };
 
   return (
     <AppLayout title={client.name} subtitle="Pasta do cliente">
@@ -349,6 +396,53 @@ function ClientFolder({ client, onBack }: { client: Client; onBack: () => void }
           </div>
         ) : null}
 
+        <div className="space-y-3">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Fotos do cliente
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Toque numa foto pra usar como base do Provador — a com <Check className="inline h-3 w-3" /> é a atual.
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {photos.map((p) => {
+              const isBase = client.photoUrl === p.url;
+              return (
+                <div key={p.id} className="relative overflow-hidden rounded-2xl border border-border">
+                  <button
+                    type="button"
+                    onClick={() => applyAsBasePhoto(p.url)}
+                    className="block aspect-square w-full"
+                  >
+                    <img src={p.url} alt="Foto do cliente" className="h-full w-full object-cover" />
+                  </button>
+                  {isBase ? (
+                    <span className="absolute left-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-clay text-clay-foreground shadow-soft">
+                      <Check className="h-3.5 w-3.5" />
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    aria-label="Remover foto"
+                    onClick={() => removePhoto(p)}
+                    className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-background/85 text-foreground shadow-soft backdrop-blur"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+            <ImageUploadField
+              bucket="clients"
+              onChange={addPhoto}
+              label="Adicionar"
+              hint="Galeria/câmera"
+              aspectClassName="aspect-square"
+            />
+          </div>
+        </div>
+
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Looks gerados
         </p>
@@ -367,14 +461,22 @@ function ClientFolder({ client, onBack }: { client: Client; onBack: () => void }
                 className="overflow-hidden rounded-2xl border border-border bg-card"
               >
                 <div className="relative aspect-[3/4] w-full overflow-hidden bg-secondary">
-                  <img
-                    src={g.resultUrl}
-                    alt="Look do cliente"
-                    className="h-full w-full object-cover"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setViewingUrl(g.resultUrl)}
+                    aria-label="Ver foto completa"
+                    className="block h-full w-full"
+                  >
+                    <img
+                      src={g.resultUrl}
+                      alt="Look do cliente"
+                      className="h-full w-full object-cover"
+                    />
+                  </button>
                   <LookActions
                     look={g}
-                    actions={["favorite", "download", "share"]}
+                    actions={["favorite", "download", "share", "delete"]}
+                    onDeleted={(id) => setLooks((prev) => prev.filter((l) => l.id !== id))}
                     className="absolute right-2 top-2"
                   />
                 </div>
@@ -388,6 +490,7 @@ function ClientFolder({ client, onBack }: { client: Client; onBack: () => void }
           </div>
         )}
       </div>
+      <PhotoLightbox url={viewingUrl} onClose={() => setViewingUrl(null)} />
     </AppLayout>
   );
 }

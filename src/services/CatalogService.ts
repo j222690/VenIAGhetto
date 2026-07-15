@@ -25,12 +25,20 @@ export const CATALOG_CATEGORIES = [
 // (o Direcionamento da loja, em Configurações, define o público das criações).
 const FEMININE_ONLY_CATEGORIES: readonly string[] = ["Vestidos", "Saias"];
 
-// Categorias visíveis no catálogo/filtro conforme o segmento da loja.
+// Categorias CRIADAS PELA LOJA (tabela catalog_categories) — somadas à lista
+// fixa acima. Carregadas sob demanda (loadCategories), não no bootstrap.
+let customCategories: string[] = [];
+
+// Categorias visíveis no catálogo/filtro: lista fixa (filtrada por segmento)
+// + as que a própria loja criou. Não filtra as customizadas por segmento —
+// foi a loja que escolheu criar, então ficam sempre visíveis.
 export function categoriesForSegment(segment: StoreSegment): readonly string[] {
-  if (segment === "masculina") {
-    return CATALOG_CATEGORIES.filter((c) => !FEMININE_ONLY_CATEGORIES.includes(c));
-  }
-  return CATALOG_CATEGORIES;
+  const base =
+    segment === "masculina"
+      ? CATALOG_CATEGORIES.filter((c) => !FEMININE_ONLY_CATEGORIES.includes(c))
+      : CATALOG_CATEGORIES;
+  const extra = customCategories.filter((c) => !(base as readonly string[]).includes(c));
+  return [...base, ...extra];
 }
 
 export interface CatalogInput {
@@ -80,6 +88,46 @@ function localItem(input: CatalogInput): CatalogItem {
 export const CatalogService = {
   list(): CatalogItem[] {
     return cache;
+  },
+
+  // Carrega as categorias que a loja criou (soma à lista fixa via
+  // categoriesForSegment). Não lança — sem elas, o catálogo segue com a lista
+  // fixa normalmente.
+  async loadCategories(): Promise<string[]> {
+    try {
+      const { data, error } = await supabase
+        .from("catalog_categories")
+        .select("name")
+        .order("name");
+      if (error) throw error;
+      customCategories = (data ?? []).map((r) => r.name);
+    } catch {
+      customCategories = [];
+    }
+    return customCategories;
+  },
+
+  // Cria uma categoria nova pra loja (ação do lojista — "o dono pode criar
+  // novas categorias" — na prática qualquer papel com `catalog:manage`,
+  // igual ao resto do catálogo). Idempotente: já existindo, só garante que
+  // está no cache local.
+  async addCategory(name: string): Promise<string> {
+    const trimmed = name.trim();
+    if (!trimmed) throw new Error("Nome da categoria não pode ser vazio.");
+    const storeId = StoreService.get().id;
+    if (!storeId) throw new Error("Nenhuma loja carregada.");
+
+    const { error } = await supabase
+      .from("catalog_categories")
+      .insert({ store_id: storeId, name: trimmed });
+    // Categoria repetida (unique store_id+name) não é erro de verdade aqui —
+    // só significa que já existe, seguimos normalmente.
+    if (error && !/duplicate|unique/i.test(error.message)) throw error;
+
+    if (!customCategories.includes(trimmed)) {
+      customCategories = [...customCategories, trimmed].sort((a, b) => a.localeCompare(b));
+    }
+    return trimmed;
   },
 
   // Só peças ativas — usado pelo Provador.
@@ -259,6 +307,7 @@ export const CatalogService = {
   reset(): void {
     cache = [];
     loaded = false;
+    customCategories = [];
   },
 
   isLoaded(): boolean {

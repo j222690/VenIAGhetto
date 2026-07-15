@@ -7,9 +7,9 @@ import {
   Link2,
   Mail,
   MapPin,
-  MessageCircle,
   Pencil,
   Phone,
+  Share2,
   Trash2,
   UserPlus,
 } from "@/lib/icons";
@@ -311,11 +311,11 @@ function TeamSection({ currentUserId }: { currentUserId: string }) {
     }
   };
 
-  const shareLinkWhatsApp = (invite: StoreInvite) => {
-    const text = `Você foi convidado(a) para a equipe da loja! Entre pelo link: ${InviteService.linkFor(invite)}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
-  };
-
+  // Menu nativo de compartilhar do aparelho (Web Share API) — no celular deixa
+  // escolher WhatsApp, Instagram, o que for, já com o link pronto pra ENVIAR.
+  // Um link "wa.me" direto (testado antes) só abre a página genérica do
+  // WhatsApp quando não há sessão do WhatsApp Web ativa — não funciona bem
+  // em desktop, por isso foi removido.
   const shareLink = async (invite: StoreInvite) => {
     const url = InviteService.linkFor(invite);
     const result = await ShareService.share({
@@ -509,14 +509,7 @@ function TeamSection({ currentUserId }: { currentUserId: string }) {
                     onClick={() => copyLink(inv)}
                     className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-foreground"
                   >
-                    <Copy className="h-3.5 w-3.5" /> Copiar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => shareLinkWhatsApp(inv)}
-                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-foreground"
-                  >
-                    <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                    <Copy className="h-3.5 w-3.5" /> Copiar link
                   </button>
                   {ShareService.canShare() ? (
                     <button
@@ -524,7 +517,7 @@ function TeamSection({ currentUserId }: { currentUserId: string }) {
                       onClick={() => shareLink(inv)}
                       className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-foreground"
                     >
-                      <Instagram className="h-3.5 w-3.5" /> Compartilhar
+                      <Share2 className="h-3.5 w-3.5" /> Compartilhar
                     </button>
                   ) : null}
                 </div>

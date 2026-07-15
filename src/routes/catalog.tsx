@@ -64,6 +64,11 @@ function CatalogPage() {
   const [form, setForm] = useState<ItemForm>(EMPTY_FORM);
   const [busy, setBusy] = useState(false);
   const [cleaningImage, setCleaningImage] = useState(false);
+  // categoriesForSegment lê um cache mutável (customCategories); esse contador
+  // só existe pra forçar o React a re-renderizar quando ele muda.
+  const [, setCatVersion] = useState(0);
+  const [newCategoryMode, setNewCategoryMode] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
 
   // Importação por foto (IA) e por link.
   const [importPhotos, setImportPhotos] = useState<string[]>([]);
@@ -75,10 +80,30 @@ function CatalogPage() {
     CatalogService.load()
       .then((list) => active && setItems(list))
       .finally(() => active && setLoading(false));
+    CatalogService.loadCategories()
+      .then(() => active && setCatVersion((n) => n + 1))
+      .catch(() => {
+        // migration 0020 pode não ter rodado ainda — segue só com a lista fixa.
+      });
     return () => {
       active = false;
     };
   }, []);
+
+  const createCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    try {
+      await CatalogService.addCategory(name);
+      setCatVersion((n) => n + 1);
+      setForm((f) => ({ ...f, category: name }));
+      setNewCategoryMode(false);
+      setNewCategoryName("");
+      toast.success("Categoria criada.");
+    } catch {
+      toast.error("Não foi possível criar a categoria.");
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -408,18 +433,54 @@ function CatalogPage() {
             />
           </Field>
           <Field label="Categoria *">
-            <select
-              value={form.category}
-              onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-              className="w-full rounded-xl border border-input bg-card px-4 py-3 text-base outline-none focus:border-clay"
-            >
-              <option value="">Selecione a categoria…</option>
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+            {newCategoryMode ? (
+              <div className="flex gap-2">
+                <Input
+                  autoFocus
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="Nome da nova categoria"
+                />
+                <button
+                  type="button"
+                  onClick={createCategory}
+                  disabled={!newCategoryName.trim()}
+                  className="shrink-0 rounded-xl bg-clay px-4 py-3 text-sm font-semibold text-clay-foreground disabled:opacity-60"
+                >
+                  Criar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewCategoryMode(false);
+                    setNewCategoryName("");
+                  }}
+                  className="shrink-0 rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground"
+                >
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <select
+                value={form.category}
+                onChange={(e) => {
+                  if (e.target.value === "__new__") {
+                    setNewCategoryMode(true);
+                    return;
+                  }
+                  setForm((f) => ({ ...f, category: e.target.value }));
+                }}
+                className="w-full rounded-xl border border-input bg-card px-4 py-3 text-base outline-none focus:border-clay"
+              >
+                <option value="">Selecione a categoria…</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+                <option value="__new__">+ Criar nova categoria…</option>
+              </select>
+            )}
           </Field>
           <Field label="Preço (R$)">
             <Input

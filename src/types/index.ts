@@ -43,6 +43,15 @@ export interface Client {
   createdAt: string;
 }
 
+// Foto adicional da galeria do cliente (além da foto-base) — subida depois
+// que o cliente já foi cadastrado, na pasta do cliente.
+export interface ClientPhoto {
+  id: string;
+  clientId: string;
+  url: string;
+  createdAt: string;
+}
+
 export type PlanId = "starter" | "pro" | "business";
 
 // Segmento da loja — define o esquema de cores neon do app.

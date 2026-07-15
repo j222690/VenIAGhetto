@@ -256,6 +256,27 @@ export interface Database {
         };
         Relationships: [];
       };
+      catalog_categories: {
+        Row: {
+          id: string;
+          store_id: string;
+          name: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          store_id: string;
+          name: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          store_id?: string;
+          name?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       clients: {
         Row: {
           id: string;
@@ -288,6 +309,30 @@ export interface Database {
           phone?: string | null;
           notes?: string | null;
           photo_url?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      client_photos: {
+        Row: {
+          id: string;
+          store_id: string;
+          client_id: string;
+          url: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          store_id: string;
+          client_id: string;
+          url: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          store_id?: string;
+          client_id?: string;
+          url?: string;
           created_at?: string;
         };
         Relationships: [];
@@ -423,5 +468,9 @@ export type SubscriptionRow =
 export type StoreInviteRow =
   Database["public"]["Tables"]["store_invites"]["Row"];
 export type ClientRow = Database["public"]["Tables"]["clients"]["Row"];
+export type ClientPhotoRow =
+  Database["public"]["Tables"]["client_photos"]["Row"];
 export type CatalogItemRow =
   Database["public"]["Tables"]["catalog_items"]["Row"];
+export type CatalogCategoryRow =
+  Database["public"]["Tables"]["catalog_categories"]["Row"];

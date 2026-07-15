@@ -4,9 +4,9 @@
 // RLS isola por loja; toda a equipe da loja (qualquer papel) administra. O
 // carregamento é sob demanda na tela.
 
-import type { Client, Generation } from "@/types";
+import type { Client, ClientPhoto, Generation } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
-import { mapClient } from "@/integrations/supabase/mappers";
+import { mapClient, mapClientPhoto } from "@/integrations/supabase/mappers";
 import { StoreService } from "./StoreService";
 import { GenerationService } from "./GenerationService";
 
@@ -100,6 +100,49 @@ export const ClientService = {
     const { error } = await supabase.from("clients").delete().eq("id", id);
     if (error) throw error;
     cache = cache.filter((c) => c.id !== id);
+  },
+
+  // Galeria de fotos ADICIONAIS do cliente (além da foto-base) — subidas
+  // depois que o cliente já foi cadastrado, na pasta do cliente (migration 0021).
+  async listPhotos(clientId: string): Promise<ClientPhoto[]> {
+    const { data, error } = await supabase
+      .from("client_photos")
+      .select("*")
+      .eq("client_id", clientId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map(mapClientPhoto);
+  },
+
+  async addPhoto(clientId: string, url: string): Promise<ClientPhoto> {
+    const storeId = StoreService.get().id;
+    if (!storeId) throw new Error("Nenhuma loja carregada.");
+    const { data, error } = await supabase
+      .from("client_photos")
+      .insert({ store_id: storeId, client_id: clientId, url })
+      .select("*")
+      .single();
+    if (error) throw error;
+    return mapClientPhoto(data);
+  },
+
+  async removePhoto(id: string): Promise<void> {
+    const { error } = await supabase.from("client_photos").delete().eq("id", id);
+    if (error) throw error;
+  },
+
+  // Promove uma foto da galeria a foto-BASE (a que pré-preenche o Provador).
+  async setBasePhoto(id: string, photoUrl: string): Promise<Client> {
+    const { data, error } = await supabase
+      .from("clients")
+      .update({ photo_url: photoUrl })
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) throw error;
+    const client = mapClient(data);
+    cache = cache.map((c) => (c.id === id ? client : c));
+    return client;
   },
 
   reset(): void {
