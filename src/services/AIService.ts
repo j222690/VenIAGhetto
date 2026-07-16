@@ -11,6 +11,9 @@ export interface ImageRefs {
   imageUrls?: string[];
   // Ou imagens inline (base64) quando ainda não foram para o Storage.
   images?: { mimeType: string; data: string }[];
+  // Formato de saída (ex.: "3:4" pra foto de pessoa) — sem isso o Gemini usa
+  // um formato padrão dele, podendo espremer/cortar a pessoa da referência.
+  aspectRatio?: string;
 }
 
 async function invoke<T>(body: Record<string, unknown>): Promise<T> {
@@ -42,6 +45,7 @@ export const AIService = {
       prompt,
       imageUrls: refs?.imageUrls,
       images: refs?.images,
+      aspectRatio: refs?.aspectRatio,
     });
   },
 
@@ -62,5 +66,29 @@ export const AIService = {
   async describe(prompt: string, imageUrls: string[]): Promise<string> {
     const { text } = await invoke<{ text: string }>({ mode: "vision", prompt, imageUrls });
     return text;
+  },
+
+  // Avalia se a FOTO da peça é boa para a prova virtual. A IA reconstrói a peça,
+  // então detalhe escondido (fecho/braguilha) ou peça dobrada saem infiéis.
+  // Retorna um aviso curto em pt-BR se a foto for ruim, ou "" se estiver boa.
+  async garmentPhotoTip(imageUrl: string): Promise<string> {
+    const prompt =
+      "Você avalia se a FOTO desta peça de roupa serve como referência para uma prova " +
+      "virtual (a IA precisa VER a peça inteira e reta para reproduzi-la fiel). " +
+      "Responda com UMA frase curta em pt-BR APENAS se a foto for RUIM para isso — " +
+      "por exemplo: peça dobrada/amassada/torta escondendo o corte; fecho, botão, " +
+      "braguilha, zíper ou bolso não aparentes; foto de ângulo/lado, borrada, escura " +
+      "ou cortando a peça. Ex.: \"O fecho da calça não está aparente o suficiente, isso " +
+      "pode deixar a geração infiel à realidade.\" Se a foto estiver BOA (peça reta, de " +
+      "frente, detalhes visíveis), responda EXATAMENTE com: OK";
+    let text = "";
+    try {
+      text = await this.describe(prompt, [imageUrl]);
+    } catch {
+      return ""; // se a visão falhar, não atrapalha o fluxo
+    }
+    const t = (text || "").trim();
+    if (!t || /^ok\b/i.test(t) || t.toUpperCase() === "OK") return "";
+    return t.replace(/^["']|["']$/g, "");
   },
 };

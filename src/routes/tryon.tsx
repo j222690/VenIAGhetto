@@ -15,14 +15,18 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import type { Client, Generation } from "@/types";
 import {
-  ANATOMY_CLAUSE,
-  GARMENT_FIDELITY_CLAUSE,
-  IDENTITY_LOCK_CLAUSE,
-  NATURAL_POSE_CLAUSE,
-  NO_COLLAGE_CLAUSE,
+  buildSequentialStepClause,
+  COLOR_LIGHT_INDEPENDENCE_CLAUSE,
+  fitExceptionClause,
+  POSE_LOCK_CLAUSE,
   PRESERVE_PHOTO_CLAUSE,
   REALISM_CLAUSE,
+  REF_APP_ANATOMY_CLAUSE,
+  REF_APP_NO_COLLAGE_CLAUSE,
+  REF_APP_NO_INVENT_CLAUSE,
+  REF_APP_FIDELITY_CLOSING_CLAUSE,
 } from "@/constants/prompts";
+import { BACKGROUNDS, FITS, LENGTHS, SIZES } from "@/constants/lookOptions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/tryon")({
@@ -31,39 +35,6 @@ export const Route = createFileRoute("/tryon")({
 });
 
 type Sheet = "client" | "item" | null;
-
-// Cenários por ocasião — o look combina com o momento do cliente.
-const BACKGROUNDS: { id: string; label: string; emoji: string; desc: string }[] = [
-  { id: "praia", label: "Praia", emoji: "🏖️", desc: "em uma praia ensolarada, mar e areia ao fundo, luz natural quente" },
-  { id: "estudio", label: "Estúdio", emoji: "📸", desc: "fundo de estúdio neutro e limpo, iluminação editorial de moda" },
-  { id: "urbano", label: "Urbano", emoji: "🏙️", desc: "em uma rua urbana moderna, arquitetura ao fundo, luz de fim de tarde" },
-  { id: "festa", label: "Festa", emoji: "🎉", desc: "em um ambiente de festa noturna com luzes coloridas e clima vibrante" },
-  { id: "natureza", label: "Natureza", emoji: "🌳", desc: "em um parque verde ao ar livre, vegetação e luz do dia" },
-  { id: "trabalho", label: "Trabalho", emoji: "💼", desc: "em um escritório corporativo elegante e bem iluminado" },
-  { id: "casamento", label: "Evento", emoji: "🥂", desc: "em um evento formal sofisticado, ambiente elegante" },
-  { id: "cafe", label: "Café", emoji: "☕", desc: "em um café aconchegante, ambiente casual e acolhedor" },
-];
-
-// Tamanho, caimento e comprimento do look — dão à IA o corte/silhueta certos.
-const SIZES = ["PP", "P", "M", "G", "GG", "G1", "G2", "G3"];
-
-const FITS: { id: string; label: string; desc: string }[] = [
-  { id: "skinny", label: "Skinny", desc: "caimento skinny, super justo ao corpo" },
-  { id: "slim", label: "Slim", desc: "caimento slim, ajustado ao corpo" },
-  { id: "regular", label: "Regular", desc: "caimento regular, nem justo nem largo" },
-  { id: "oversized", label: "Oversized", desc: "caimento oversized, propositalmente largo e solto" },
-  { id: "loose", label: "Loose", desc: "caimento loose, solto e confortável" },
-];
-
-// "Comprimento" = barra/bainha da peça (ex.: saia, vestido, blusa) — NUNCA a
-// manga. O texto deixa isso explícito para a IA não confundir os dois.
-const LENGTHS: { id: string; label: string; desc: string }[] = [
-  { id: "cropped", label: "Cropped", desc: "barra cropped, bem curta, acima da cintura" },
-  { id: "curto", label: "Curto", desc: "barra curta" },
-  { id: "medio", label: "Médio", desc: "barra média" },
-  { id: "longo", label: "Longo", desc: "barra longa" },
-  { id: "maxi", label: "Maxi", desc: "barra maxi, até os pés" },
-];
 
 // Retoques de IA — presets prontos + campo livre.
 const RETOUCHES: { id: string; label: string; instruction: string }[] = [
@@ -103,7 +74,20 @@ function TryOnPage() {
   // Custo varia: 1 peça = 5 tokens; várias peças (flat-lay + vestir) = 8.
   const cost = GenerationService.tryonCost(garments.length);
 
-  const addGarment = (url: string) => setGarments((g) => [...g, url]);
+  const addGarment = (url: string) => {
+    setGarments((g) => [...g, url]);
+    // Checa (em 2º plano) se a foto da peça é boa pra prova; avisa o lojista se não for.
+    void AIService.garmentPhotoTip(url)
+      .then((tip) => {
+        if (tip) {
+          toast.warning(tip, {
+            duration: 9000,
+            description: "Dica: fotografe a peça esticada e de frente, com o fecho e os detalhes bem visíveis.",
+          });
+        }
+      })
+      .catch(() => {});
+  };
   const removeGarment = (i: number) => setGarments((g) => g.filter((_, idx) => idx !== i));
   const toggleRetouch = (id: string) =>
     setRetouches((prev) => (prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]));
@@ -129,32 +113,22 @@ function TryOnPage() {
       let pieces = "";
       try {
         pieces = await AIService.describe(
-          "Analise as imagens a seguir. Para cada peça de roupa ou calçado, escreva uma linha " +
-            "em pt-BR com tipo, cor e tecido/estilo. Seja objetivo, sem introdução.",
+          "Analise as imagens a seguir. Para cada peça de roupa ou calçado, escreva uma linha em " +
+            "pt-BR com: tipo, cor, tecido/estilo, MODELO/CORTE (ex.: calça reta/skinny/jogger/social, " +
+            "camisa slim/oversized) e DETALHES CONSTRUTIVOS visíveis (posição do fechamento/braguilha " +
+            "— reto e centralizado, ou lateral, com botão ou zíper; bolsos; costuras; tipo de bainha). " +
+            "Seja objetivo, sem introdução.",
           garments.slice(0, 6),
         );
       } catch {
         /* segue sem descrição se a visão falhar */
       }
 
-      // 2) Veste o look no cliente/modelo em UMA ÚNICA geração, usando as fotos
-      //    REAIS de cada peça como referência (o Gemini aceita várias imagens
-      //    no mesmo pedido). NÃO passamos mais por um flat-lay intermediário:
-      //    cada geração de imagem é uma reinterpretação com perda, então um
-      //    passo extra (montar o flat-lay) degradava cor/textura/padrão da
-      //    peça real antes mesmo de vestir o cliente — a peça final nunca via
-      //    a foto original, só uma versão já "reimaginada" pela IA.
-      const lookImages = garments;
-
-      // Ordem do prompt é proposital: identidade TRAVADA primeiro (o modelo de
-      // IA tende a "recriar" a pessoa em vez de editar a foto se essa regra
-      // vier depois de outras instruções) e repetida no fechamento.
-      setBusyLabel("Vestindo o look…");
-      const swapInstruction =
-        "Troque a roupa da pessoa da PRIMEIRA imagem pelo LOOK COMPLETO mostrado na(s) imagem(ns) " +
-        "seguinte(s), em um único look coerente.";
-
-      const piecesPart = pieces ? ` Peças: ${pieces}.` : "";
+      // 2) Veste UMA PEÇA POR VEZ, encadeando o resultado (bug real observado:
+      //    mandar várias peças numa ÚNICA chamada faz o modelo aplicar só uma
+      //    e ignorar as outras). Cada passo usa o resultado do anterior como
+      //    nova "pessoa" de entrada — ver buildSequentialStepClause.
+      const piecesPart = pieces ? ` Look completo (contexto): ${pieces}.` : "";
       const specText = [
         size ? `tamanho ${size}` : "",
         fit ? FITS.find((f) => f.id === fit)?.desc : "",
@@ -162,39 +136,61 @@ function TryOnPage() {
       ]
         .filter(Boolean)
         .join(", ");
-      const specPart = specText
-        ? ` Ajuste o look para: ${specText} (comprimento = barra/bainha da peça, NÃO a manga).`
-        : "";
-      const base =
-        IDENTITY_LOCK_CLAUSE + " " + ANATOMY_CLAUSE + " " + swapInstruction + piecesPart + specPart;
+      const specPart = specText ? fitExceptionClause(specText) : "";
 
-      // Fundo/cenário e retoques são INDEPENDENTES: dá pra mudar só o fundo,
-      // só refinar, os dois juntos, ou nenhum (mantém a foto como está).
-      let prompt = base;
-      if (changeSceneOn) {
-        // Nova cena → corpo inteiro faz sentido aqui (só nesse caso, pra não
-        // contradizer o enquadramento original da foto quando ela é mantida).
-        const bg = BACKGROUNDS.find((b) => b.id === background);
-        const scenePart =
-          " Enquadramento de corpo inteiro." +
-          (bg ? ` Cenário: ${bg.desc}.` : "") +
-          (bgCustom.trim() ? ` Detalhes do cenário: ${bgCustom.trim()}.` : "");
-        prompt += scenePart + " " + NATURAL_POSE_CLAUSE;
-      } else {
-        // Sem mudança de cenário: preserva o enquadramento ORIGINAL da foto
-        // (retrato, meio-corpo, corpo inteiro — o que já era). Forçar "corpo
-        // inteiro" aqui contradiria isso e obrigava a IA a inventar pernas/
-        // pose que não estavam na foto.
-        prompt += " " + PRESERVE_PHOTO_CLAUSE;
-      }
-      if (refineOn) {
-        const retouchList = RETOUCHES.filter((r) => retouches.includes(r.id)).map((r) => r.instruction);
-        const retouchTxt = [...retouchList, retouchCustom.trim()].filter(Boolean).join("; ");
-        if (retouchTxt) prompt += ` Retoques: ${retouchTxt}.`;
-      }
-      prompt += " " + REALISM_CLAUSE + " " + GARMENT_FIDELITY_CLAUSE + " " + NO_COLLAGE_CLAUSE;
+      let currentUrl = photoUrl;
+      for (let i = 0; i < garments.length; i++) {
+        const isLast = i === garments.length - 1;
+        setBusyLabel(
+          garments.length > 1 ? `Vestindo peça ${i + 1} de ${garments.length}…` : "Vestindo o look…",
+        );
 
-      const imageUrls = photoUrl ? [photoUrl, ...lookImages] : lookImages;
+        let stepPrompt =
+          buildSequentialStepClause(i) +
+          (specPart ? " " + specPart : "") +
+          " " +
+          REF_APP_ANATOMY_CLAUSE +
+          " " +
+          REF_APP_NO_COLLAGE_CLAUSE +
+          " " +
+          REF_APP_NO_INVENT_CLAUSE +
+          piecesPart;
+
+        if (isLast) {
+          // Fundo/cenário e retoques são INDEPENDENTES: dá pra mudar só o
+          // fundo, só refinar, os dois juntos, ou nenhum. Só entram no ÚLTIMO
+          // passo — nos passos intermediários o cenário ainda não importa.
+          if (changeSceneOn) {
+            const bg = BACKGROUNDS.find((b) => b.id === background);
+            const scenePart =
+              " Enquadramento de corpo inteiro." +
+              (bg ? ` Cenário: ${bg.desc}.` : "") +
+              (bgCustom.trim() ? ` Detalhes do cenário: ${bgCustom.trim()}.` : "");
+            stepPrompt += scenePart + " " + POSE_LOCK_CLAUSE + " " + COLOR_LIGHT_INDEPENDENCE_CLAUSE;
+          } else {
+            stepPrompt += " " + PRESERVE_PHOTO_CLAUSE;
+          }
+          if (refineOn) {
+            const retouchList = RETOUCHES.filter((r) => retouches.includes(r.id)).map((r) => r.instruction);
+            const retouchTxt = [...retouchList, retouchCustom.trim()].filter(Boolean).join("; ");
+            if (retouchTxt) stepPrompt += ` Retoques: ${retouchTxt}.`;
+          }
+          stepPrompt += " " + REALISM_CLAUSE;
+        } else {
+          // Passo intermediário: mantém tudo (cenário incluso) estável — o
+          // acabamento final só é decidido no último passo.
+          stepPrompt += " " + PRESERVE_PHOTO_CLAUSE;
+        }
+
+        // FIDELIDADE por ÚLTIMO (recência): neutraliza o "embelezar" do REALISM_CLAUSE,
+        // que fazia o modelo re-renderizar a peça (mudando fecho/textura/modelo).
+        stepPrompt += " " + REF_APP_FIDELITY_CLOSING_CLAUSE;
+
+        const { url } = await AIService.image(stepPrompt, {
+          imageUrls: [currentUrl, garments[i]],
+        });
+        currentUrl = url;
+      }
 
       const gen = await GenerationService.generate({
         type: "tryon",
@@ -202,8 +198,7 @@ function TryOnPage() {
           clientPhotoUrl: photoUrl,
           notes: `${changeSceneOn ? `${background} ${bgCustom}` : ""} ${refineOn ? retouchCustom : ""} ${size ?? ""} ${fit ?? ""} ${length ?? ""}`.trim(),
         },
-        prompt,
-        imageUrls,
+        resultUrl: currentUrl,
         tokenCost: cost,
         userId: session.user.id,
         storeId: session.store.id,
@@ -299,6 +294,11 @@ function TryOnPage() {
               Envie 1 peça, ou várias fotos separadas — a IA junta tudo no mesmo look.
             </p>
           </div>
+          <p className="rounded-2xl border border-clay/25 bg-clay/5 px-4 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+            💡 <span className="font-semibold text-foreground">Para a prova ficar fiel:</span> fotografe a peça
+            {" "}<span className="text-foreground">esticada e de frente</span>, com boa luz e os detalhes visíveis
+            (fecho, botão, braguilha, bolsos). Peça dobrada ou de lado faz a IA "inventar" o que ficou escondido.
+          </p>
           <div className="grid grid-cols-3 gap-2">
             {garments.map((url, i) => (
               <div key={url} className="relative overflow-hidden rounded-2xl border border-border">

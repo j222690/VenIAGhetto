@@ -63,14 +63,25 @@ export const REALISM_CLAUSE =
   "tecido e pele, sombras e reflexos condizentes. Evite aparência artificial, plástica ou de " +
   "renderização 3D. O fundo/cenário não deve conter nenhuma pessoa além do modelo em primeiro plano.";
 
-// Adapta a POSE ao novo cenário — usada só quando o fundo/cenário MUDA. Sem
-// isso, a IA copia a pose literal da foto original (ex.: braço erguido
-// segurando celular de selfie de espelho) para um cenário onde ela não faz
-// sentido nenhum (estúdio sem espelho) — o gesto fica sem propósito na cena.
+// OBSOLETA — mantida só de referência. Antes, ao mudar de cenário, pedia pra
+// IA adaptar a pose (tirar celular da mão de selfie etc.), porque uma pose
+// de "tirando foto no espelho" não faz sentido num fundo gerado do zero. O
+// usuário pediu explicitamente pra pose NUNCA mudar, nem trocando o fundo —
+// ver POSE_LOCK_CLAUSE, que faz o oposto (trava a pose sempre).
 export const NATURAL_POSE_CLAUSE =
   "Adapte a pose para ficar natural no NOVO cenário — a pessoa não está mais se fotografando: " +
   "remova o celular da mão e qualquer gesto que só fizesse sentido na foto original (ex.: pose de " +
   "selfie de espelho), e substitua por uma pose de pé natural e confiante, como em um still de moda.";
+
+// Pedido explícito do usuário: ao mudar SÓ o fundo/cenário, a pose (e
+// qualquer objeto na mão, ex.: celular de selfie) tem que continuar
+// EXATAMENTE igual à foto original — mesmo que não faça muito sentido no
+// fundo novo. Só o fundo/roupa mudam, nada do gesto da pessoa.
+export const POSE_LOCK_CLAUSE =
+  "POSE LOCK (mandatory): even though the background/scene is changing, the person's POSE, body " +
+  "position and any object in their hand (e.g. a phone) must stay EXACTLY as in the original photo — " +
+  "do not adapt, naturalize or change the pose or gesture just because the background is different. " +
+  "Only the background/scene and the clothing change; the person's pose is untouched.";
 
 // Preservação do ENQUADRAMENTO original — usada quando o usuário NÃO pede
 // mudança de fundo nem refino: mantém foto, ângulo e cenário intactos,
@@ -78,3 +89,134 @@ export const NATURAL_POSE_CLAUSE =
 export const PRESERVE_PHOTO_CLAUSE =
   "Mantenha o mesmo enquadramento, proporção, ângulo, fundo/cenário e iluminação da foto original — " +
   "não reenquadre, não corte nem amplie a imagem.";
+
+// ---------------------------------------------------------------------------
+// TESTE LOCAL (NÃO COMMITAR) — cópia literal do prompt do app de referência
+// (repositorioghetto, função tryon-enqueue, Gemini direto), em inglês, sem
+// tradução. O usuário confirmou que essa versão funciona bem lá. Objetivo:
+// isolar se o problema de fidelidade de cor/textura é a REDAÇÃO do prompt
+// (idioma/estrutura) e não o conteúdo das regras, que já é equivalente ao
+// nosso. Ordem de uso é a mesma do original: TASK + ANATOMY + NO_COLLAGE +
+// NO_INVENT, sempre nessa sequência.
+// ---------------------------------------------------------------------------
+export const REF_APP_TASK_CLAUSE =
+  "You are a virtual try-on engine. IMAGE 1 = a real person. The following image(s) = clothing item(s). " +
+  "TASK: produce a NEW photo of the SAME person now WEARING the garment(s) from the following image(s). " +
+  "This is a CLOTHING SWAP: the new garment(s) must VISIBLY REPLACE the clothing the person currently " +
+  "wears in that area — their current/old clothing must be GONE and replaced by the new item(s). " +
+  "The output MUST clearly differ from IMAGE 1 in the clothing — do NOT simply return image 1 " +
+  "unchanged. Keep ONLY the person's face, hair, skin tone, body shape, pose and background the same; " +
+  "fit the new garment(s) naturally with realistic folds, lighting and shadows. Output only the final " +
+  "edited image.";
+
+export const REF_APP_ANATOMY_CLAUSE =
+  "CRITICAL ANATOMY & PROPORTIONS: Keep the person's body proportions IDENTICAL to the first image. " +
+  "Do NOT enlarge the head or shrink the body. Keep the EXACT head-to-body ratio, the same height, the " +
+  "same shoulder/torso width and the same arm/leg length. Do NOT zoom, rescale or distort the person. " +
+  "Keep the same camera framing, crop and aspect ratio. The body must look natural and anatomically the " +
+  "same as the input.";
+
+export const REF_APP_NO_COLLAGE_CLAUSE =
+  "OUTPUT FORMAT (mandatory): return ONE single photograph showing ONLY the person, filling the frame " +
+  "EXACTLY like IMAGE 1. NEVER output a collage, grid, montage, split-screen, side-by-side or " +
+  "multi-panel image. Do NOT include the separate garment photos, product images, swatches or any " +
+  "extra panel anywhere in the result. The garment(s) must appear ONLY as real clothing worn on the " +
+  "person's body — never shown as separate items beside, around or behind them.";
+
+// Reforço de detalhes CONSTRUTIVOS (não só cor/textura) — bug real observado:
+// a braguilha/fechamento de uma calça saiu fora do centro (a peça real tem o
+// fechamento reto no meio; o resultado colocou torto/deslocado). A cláusula
+// original só cita "shape" de forma vaga, sem falar da POSIÇÃO de botão/
+// zíper/bolsos/costuras — que é exatamente o que escapou.
+// Cláusula de FECHAMENTO (sempre a ÚLTIMA do prompt). Bug real: o REALISM_CLAUSE
+// no fim empurrava o modelo a "embelezar" e RE-RENDERIZAR a peça (mudando fecho/
+// textura/modelo). Por recência, a última instrução ganha peso — então a última
+// tem que ser FIDELIDADE, não estética. Neutraliza explicitamente o "melhorar".
+export const REF_APP_FIDELITY_CLOSING_CLAUSE =
+  "FINAL AND MOST IMPORTANT INSTRUCTION (overrides any earlier request to make the photo look nicer or " +
+  "more professional): this is a REAL product that will be sold — the garment(s) must remain 100% " +
+  "IDENTICAL to the reference image in model/cut, fabric texture, exact color, seams and closure " +
+  "(fly, button and zipper in the EXACT same position and size). Do NOT redraw, re-model, beautify, " +
+  "smooth out, simplify or 'upgrade' the garment; do NOT turn one pants model into another; keep every " +
+  "construction detail exactly as photographed. Only the person is being dressed — the garment itself " +
+  "is copied unchanged. Garment fidelity ALWAYS wins over the beauty or polish of the image.";
+
+export const REF_APP_NO_INVENT_CLAUSE =
+  "FAITHFUL GARMENTS (mandatory): reproduce each garment EXACTLY as shown in its reference image — " +
+  "same color, knit, pattern and shape. This includes ALL construction details in their EXACT original " +
+  "position: button/zipper fly centered exactly where it is in the reference (do not shift it sideways), " +
+  "pockets, seams, stitching lines, collar and cuffs in the same place and style as shown. Do NOT " +
+  "invent, add, draw or hallucinate ANY logo, brand mark, emblem, badge, symbol, icon, text, lettering, " +
+  "monogram, print or graphic that is not clearly visible on the garment. If a garment is plain/solid, " +
+  "keep it completely plain — absolutely no added marks, chest logos or decorations of any kind.";
+
+// TESTE LOCAL (NÃO COMMITAR) — aplicação SEQUENCIAL de peças: bug real
+// observado quando várias peças vão numa ÚNICA chamada ("veste o look
+// completo") — o modelo aplica só uma e ignora as outras. O app de
+// referência NUNCA manda várias peças de uma vez: aplica uma peça por vez,
+// usando o resultado do passo anterior como nova "pessoa" de entrada
+// (PROMPT_MULTI_TOP → PROMPT_MULTI_BOTTOM encadeados). stepIndex 0 = a
+// PRIMEIRA peça aplicada nesta geração (edita a foto original — mesmo texto
+// de REF_APP_TASK_CLAUSE). stepIndex > 0 = peça seguinte, aplicada sobre o
+// resultado do passo anterior (que JÁ tem outra(s) peça(s) vestida(s) — essas
+// precisam ficar intactas, só a região da peça nova pode mudar).
+export function buildSequentialStepClause(stepIndex: number): string {
+  if (stepIndex === 0) return REF_APP_TASK_CLAUSE + " " + CLOTHING_FULL_REARRANGE_CLAUSE;
+  return (
+    "You are a virtual try-on engine continuing a MULTI-STEP look. IMAGE 1 = the person ALREADY " +
+    "wearing a look applied in a previous step — that look (all garments already on the person) must " +
+    "stay EXACTLY as shown, unchanged. The following image = ONE NEW garment to ADD to the look. " +
+    "TASK: add this new garment to the person, replacing ONLY the clothing in the body region this " +
+    "garment belongs to (e.g. a pants image replaces only the current bottom-body clothing) — do NOT " +
+    "remove, alter or replace any other already-applied garment. The output MUST clearly show this new " +
+    "garment on the person — do not simply return IMAGE 1 unchanged. Keep the person's face, hair, " +
+    "skin tone, body shape, pose, camera framing and background identical. Fit the new garment " +
+    "naturally with realistic folds, lighting and shadows. Output only the final edited image. " +
+    CLOTHING_FULL_REARRANGE_CLAUSE
+  );
+}
+
+// Pedido explícito do usuário: a única coisa que vem da foto original nessa
+// REGIÃO DO CORPO (a região da peça sendo trocada) é rosto/fisionomia — o
+// resto da roupa NAQUELA região deve ser rearrumado do zero conforme a peça
+// nova, sem preservar remanescente da peça antiga ali (ex.: bermuda por
+// baixo da calça nova). BUG REAL que essa cláusula causou numa versão
+// anterior mais ampla: dizia "estilize com um look COMPLETAMENTE NOVO", e ao
+// mandar só a calça, a IA reinventou a camisa também (que não devia ter sido
+// tocada). Agora é explícito: só a região da peça enviada é livre — todo o
+// RESTO do look (peças não enviadas nesta geração) fica 100% como na foto.
+export const CLOTHING_FULL_REARRANGE_CLAUSE =
+  "CLOTHING SCOPE (mandatory, narrow): this rule applies ONLY to the body region covered by the NEW " +
+  "garment provided in this step (e.g. if the new garment is pants, this applies ONLY to the " +
+  "lower-body region). In that specific region, nothing from the original photo is anchored except " +
+  "the person's face/body physiognomy — fully replace whatever was there (old garment, old layering) " +
+  "with the new garment, from scratch. EVERY OTHER garment the person is already wearing that is NOT " +
+  "being replaced in this step (e.g. their top/shirt, shoes, accessories) is OUTSIDE this rule and " +
+  "must stay 100% pixel-identical to the original photo — do not redesign, restyle or invent a new " +
+  "outfit for any region other than the one the new garment covers.";
+
+// Bug real observado: ao mudar o cenário/fundo (praia, festa, etc.), a luz
+// ambiente "vazava" pro tecido e mudava a cor da peça (calça azul saindo
+// clara/lavada). Esta cláusula separa explicitamente SOMBRA/BRILHO (pode
+// variar com a cena) de COR BASE (não pode variar nunca) — só entra no
+// prompt quando o cenário é alterado.
+export const COLOR_LIGHT_INDEPENDENCE_CLAUSE =
+  "LIGHTING VS COLOR (mandatory): the new scene's lighting must NEVER shift the garment's base hue or " +
+  "color. Apply realistic brightness and shadow variation from the new lighting/environment, but the " +
+  "garment's intrinsic color must stay visually identical to its reference photo — do not tint, warm " +
+  "up, cool down, wash out or desaturate the garment to match the ambient light color. Only the " +
+  "light/dark shading may change with the scene, never the underlying color itself.";
+
+// TESTE LOCAL (NÃO COMMITAR) — resolve uma contradição real: REF_APP_NO_INVENT_CLAUSE
+// manda manter o "shape" da peça EXATAMENTE igual à referência, o que cancela
+// qualquer pedido de caimento/comprimento (ex.: "mais justo"). Esta cláusula
+// abre uma exceção EXPLÍCITA, deixando claro que ajustar caimento não é
+// "inventar" a peça — só entra no prompt quando o usuário realmente pediu
+// tamanho/caimento/comprimento.
+export function fitExceptionClause(specText: string): string {
+  return (
+    `FIT EXCEPTION (allowed and required, overrides shape-fidelity above): keep the garment's color, ` +
+    `pattern and fabric identical to the reference, but adjust its CUT/FIT as requested: ${specText}. ` +
+    `This is an intentional silhouette change, not "inventing" the garment.`
+  );
+}

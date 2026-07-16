@@ -13,7 +13,9 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 // Refinar gera uma nova imagem — custa tokens como as demais gerações.
-const REFINE_COST = 4;
+// Recalibrado junto com o Provador/Posts após a troca pro Gemini 3 Pro Image
+// (custo real por imagem ~3,4x maior que o modelo antigo) — ver GenerationService.ts.
+const REFINE_COST = 10;
 
 const BACKGROUNDS: { id: string; label: string; emoji: string; desc: string }[] = [
   { id: "estudio", label: "Estúdio", emoji: "📸", desc: "fundo de estúdio neutro e limpo, iluminação editorial" },

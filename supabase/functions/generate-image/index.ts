@@ -4,7 +4,10 @@
 // e NUNCA vai para o frontend. Exige um usuário Supabase autenticado (verify_jwt).
 //
 // Modos:
-//   • mode "image" (padrão): gera/edita imagem com gemini-2.5-flash-image.
+//   • mode "image" (padrão): gera/edita imagem com Gemini 3 Pro Image (Nano
+//       Banana Pro) — modelo topo de linha, melhor fidelidade de detalhe do
+//       que o gemini-2.5-flash-image (que o Google vai desligar em
+//       02/10/2026). Faz fallback pro modelo antigo se a chamada Pro falhar.
 //       body: { prompt: string, images?: { mimeType, data(base64) }[] }
 //       Faz upload do PNG no bucket `generated` e devolve { url }.
 //   • mode "text": texto com gemini-2.5-flash. body: { prompt, images? } → { text }
@@ -17,7 +20,13 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const IMAGE_MODEL = "gemini-2.5-flash-image";
+// Nano Banana Pro primeiro (melhor qualidade); se falhar (preview pode ser
+// instável), cai pro modelo anterior — nunca deixa a geração quebrar de vez.
+// OBS: modelos 3.x tendem a RECONSTRUIR a peça no try-on — a fidelidade
+// (fecho/botão/costura/modelo) é garantida pela redação do PROMPT (cláusula de
+// fidelidade no INÍCIO e no FIM), não pela escolha do modelo.
+const IMAGE_MODEL = "gemini-3-pro-image-preview";
+const IMAGE_MODEL_FALLBACK = "gemini-2.5-flash-image";
 const TEXT_MODEL = "gemini-2.5-flash";
 const GENAI = "https://generativelanguage.googleapis.com/v1beta/models";
 const OPENAI_VISION_MODEL = "gpt-4o";
@@ -38,6 +47,77 @@ const json = (body: unknown, status = 200) =>
 interface InputImage {
   mimeType: string;
   data: string;
+  width?: number;
+  height?: number;
+}
+
+// Lê width/height direto dos bytes (sem lib externa) pra pedir ao Gemini o
+// aspect ratio de saída mais parecido com o da foto ENVIADA — sem isso o
+// modelo usa o formato padrão dele (~quadrado), forçando a pessoa a ser
+// espremida/cortada pra caber, o que distorcia a fisionomia. Cobre JPEG e
+// PNG (o grosso de fotos de câmera/celular e prints).
+function sniffImageDimensions(buf: Uint8Array): { width: number; height: number } | null {
+  // PNG: assinatura de 8 bytes + chunk IHDR (width @16, height @20, u32 BE).
+  if (buf.length > 24 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
+    const width = (buf[16] << 24) | (buf[17] << 16) | (buf[18] << 8) | buf[19];
+    const height = (buf[20] << 24) | (buf[21] << 16) | (buf[22] << 8) | buf[23];
+    return { width: width >>> 0, height: height >>> 0 };
+  }
+  // JPEG: percorre os marcadores até achar um SOFn (0xC0–0xCF, exceto
+  // 0xC4/0xC8/0xCC, que não são "start of frame").
+  if (buf.length > 4 && buf[0] === 0xff && buf[1] === 0xd8) {
+    let offset = 2;
+    while (offset + 9 < buf.length) {
+      if (buf[offset] !== 0xff) {
+        offset++;
+        continue;
+      }
+      const marker = buf[offset + 1];
+      if (marker === 0xd8 || marker === 0xd9 || (marker >= 0xd0 && marker <= 0xd7)) {
+        offset += 2;
+        continue;
+      }
+      const segLen = (buf[offset + 2] << 8) | buf[offset + 3];
+      const isSOF = marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
+      if (isSOF) {
+        const height = (buf[offset + 5] << 8) | buf[offset + 6];
+        const width = (buf[offset + 7] << 8) | buf[offset + 8];
+        return { width, height };
+      }
+      offset += 2 + segLen;
+    }
+  }
+  return null;
+}
+
+// O Gemini só aceita um conjunto FIXO de aspect ratios — não dá pra pedir o
+// tamanho exato em pixels, então escolhe o suportado mais PRÓXIMO da foto
+// enviada (comparação em escala log, pra não enviesar retrato vs paisagem).
+const SUPPORTED_ASPECT_RATIOS: { label: string; value: number }[] = [
+  { label: "1:1", value: 1 },
+  { label: "2:3", value: 2 / 3 },
+  { label: "3:2", value: 3 / 2 },
+  { label: "3:4", value: 3 / 4 },
+  { label: "4:3", value: 4 / 3 },
+  { label: "4:5", value: 4 / 5 },
+  { label: "5:4", value: 5 / 4 },
+  { label: "9:16", value: 9 / 16 },
+  { label: "16:9", value: 16 / 9 },
+  { label: "21:9", value: 21 / 9 },
+];
+
+function nearestAspectRatio(width: number, height: number): string {
+  const ratio = width / height;
+  let best = SUPPORTED_ASPECT_RATIOS[0];
+  let bestDiff = Infinity;
+  for (const r of SUPPORTED_ASPECT_RATIOS) {
+    const diff = Math.abs(Math.log(ratio) - Math.log(r.value));
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = r;
+    }
+  }
+  return best.label;
 }
 
 // Anti-SSRF: só aceitamos imagens hospedadas no PRÓPRIO Storage do projeto
@@ -73,7 +153,8 @@ async function urlToInline(url: string): Promise<InputImage> {
   const buf = new Uint8Array(await res.arrayBuffer());
   let bin = "";
   for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-  return { mimeType, data: btoa(bin) };
+  const dims = sniffImageDimensions(buf);
+  return { mimeType, data: btoa(bin), width: dims?.width, height: dims?.height };
 }
 
 async function resolveImages(images?: InputImage[], imageUrls?: string[]): Promise<InputImage[]> {
@@ -90,19 +171,48 @@ function buildParts(prompt: string, images: InputImage[]) {
   return parts;
 }
 
-async function geminiImage(prompt: string, images: InputImage[]) {
-  const res = await fetch(`${GENAI}/${IMAGE_MODEL}:generateContent`, {
+async function callImageModel(
+  model: string,
+  prompt: string,
+  images: InputImage[],
+  imageOpts?: { imageSize?: "1K" | "2K" | "4K"; aspectRatio?: string },
+) {
+  const generationConfig: Record<string, unknown> = { responseModalities: ["TEXT", "IMAGE"] };
+  if (imageOpts?.imageSize || imageOpts?.aspectRatio) {
+    generationConfig.imageConfig = {
+      ...(imageOpts.imageSize ? { imageSize: imageOpts.imageSize } : {}),
+      ...(imageOpts.aspectRatio ? { aspectRatio: imageOpts.aspectRatio } : {}),
+    };
+  }
+  const res = await fetch(`${GENAI}/${model}:generateContent`, {
     method: "POST",
     headers: { "x-goog-api-key": GEMINI_KEY, "Content-Type": "application/json" },
-    body: JSON.stringify({ contents: [{ parts: buildParts(prompt, images) }] }),
+    body: JSON.stringify({
+      contents: [{ parts: buildParts(prompt, images) }],
+      generationConfig,
+    }),
   });
   const j = await res.json();
-  if (j.error) throw new Error(j.error.message ?? "Gemini image error");
+  if (j.error) throw new Error(j.error.message ?? `${model} image error`);
   const parts = j.candidates?.[0]?.content?.parts ?? [];
   const imgPart = parts.find((p: any) => p.inlineData ?? p.inline_data);
   const d = imgPart?.inlineData ?? imgPart?.inline_data;
-  if (!d?.data) throw new Error("O modelo não retornou uma imagem.");
+  if (!d?.data) throw new Error(`${model} não retornou uma imagem.`);
   return { mimeType: d.mimeType ?? d.mime_type ?? "image/png", data: d.data as string };
+}
+
+async function geminiImage(prompt: string, images: InputImage[], aspectRatio?: string) {
+  try {
+    // 2K: mais detalhe fino pro modelo preservar (ex.: posição de fecho/
+    // costura) do que a resolução padrão. aspectRatio: sem isso o modelo usa
+    // um formato padrão dele (~quadrado) em vez do formato da foto original,
+    // forçando a pessoa a ser espremida/cortada — distorcia a fisionomia. Só
+    // no modelo Pro — o fallback (gemini-2.5-flash-image) não usa imageConfig.
+    return await callImageModel(IMAGE_MODEL, prompt, images, { imageSize: "2K", aspectRatio });
+  } catch (err) {
+    console.warn(`[generate-image] ${IMAGE_MODEL} falhou, caindo pro fallback:`, (err as Error)?.message);
+    return await callImageModel(IMAGE_MODEL_FALLBACK, prompt, images);
+  }
 }
 
 // Visão via OpenAI (gpt-4o): descreve peças/looks a partir das URLs públicas.
@@ -178,8 +288,15 @@ Deno.serve(async (req) => {
       return json({ text });
     }
 
-    // mode === "image"
-    const { mimeType, data } = await geminiImage(prompt, inputImages);
+    // mode === "image" — aspectRatio explícito (body.aspectRatio) vence; sem
+    // isso, detecta pelo tamanho REAL da 1ª imagem de referência (a foto
+    // base sendo editada) e pede ao Gemini o formato suportado mais próximo.
+    let aspectRatio: string | undefined = body.aspectRatio;
+    if (!aspectRatio) {
+      const base = inputImages[0];
+      if (base?.width && base?.height) aspectRatio = nearestAspectRatio(base.width, base.height);
+    }
+    const { mimeType, data } = await geminiImage(prompt, inputImages, aspectRatio);
     const ext = mimeType.includes("png") ? "png" : mimeType.includes("webp") ? "webp" : "jpg";
     const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
 

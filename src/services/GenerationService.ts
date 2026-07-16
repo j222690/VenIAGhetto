@@ -94,16 +94,20 @@ async function generatePostCopy(
 // gerações reais da loja carregadas por `load()`.
 let generations: Generation[] = [];
 
-// Custo em tokens por operação — alinhado ao custo real de IA (ver relatório de
-// margens). Provador com VÁRIAS peças processa mais imagens de referência na
-// mesma geração → custa um pouco mais (mas é UMA só chamada de IA — não gera
-// mais uma imagem extra; ver TryOnPage.run em tryon.tsx).
+// Custo em tokens por operação — alinhado ao custo real de IA. Recalculado
+// depois da troca pro Gemini 3 Pro Image (Nano Banana Pro, ~3,4x mais caro
+// por imagem que o modelo antigo) e da aplicação SEQUENCIAL de peças (2+
+// peças agora são N chamadas de IA, uma por peça, em vez de 1 chamada só —
+// ver TryOnPage.run/PostsPage.generate). Valores calibrados pra manter a
+// margem perto da faixa original (~85-90%): 1 peça ≈ R$0,75-0,80 de custo
+// real → 12 tokens; 2+ peças ≈ R$1,45-1,50 de custo real → 22 tokens.
 const TOKEN_COST: Record<GenerationType, number> = {
-  tryon: 5, // 1 peça
-  post: 5,
+  tryon: 12, // 1 peça
+  post: 12,
   scanner: 1,
 };
-const TRYON_MULTI_COST = 8; // provador com 2+ peças
+const TRYON_MULTI_COST = 22; // provador com 2+ peças (N chamadas sequenciais)
+const POST_MULTI_COST = 22; // post com 2+ peças (N chamadas sequenciais)
 
 export const GenerationService = {
   history(): Generation[] {
@@ -113,6 +117,11 @@ export const GenerationService = {
   // Custo do Provador conforme o nº de peças (várias peças = flat-lay + vestir).
   tryonCost(pieceCount: number): number {
     return pieceCount >= 2 ? TRYON_MULTI_COST : TOKEN_COST.tryon;
+  },
+
+  // Custo do Post conforme o nº de peças (mesma lógica do Provador).
+  postCost(pieceCount: number): number {
+    return pieceCount >= 2 ? POST_MULTI_COST : TOKEN_COST.post;
   },
 
   filter(type?: GenerationType): Generation[] {

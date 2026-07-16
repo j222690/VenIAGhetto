@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Copy, Download, Instagram, MessageCircle, Sparkles } from "@/lib/icons";
+import { Copy, Download, Instagram, MessageCircle, Sparkles, Trash2 } from "@/lib/icons";
 import { AppLayout } from "@/layouts/AppLayout";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { RefinePanel } from "@/components/RefinePanel";
+import { AIService } from "@/services/AIService";
 import { GenerationService } from "@/services/GenerationService";
 import { ShareService } from "@/services/ShareService";
 import { TokenService } from "@/services/TokenService";
@@ -13,14 +14,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
-  ANATOMY_CLAUSE,
+  buildSequentialStepClause,
+  COLOR_LIGHT_INDEPENDENCE_CLAUSE,
+  fitExceptionClause,
   GARMENT_FIDELITY_CLAUSE,
-  IDENTITY_LOCK_CLAUSE,
-  NATURAL_POSE_CLAUSE,
-  NO_COLLAGE_CLAUSE,
+  POSE_LOCK_CLAUSE,
   PRESERVE_PHOTO_CLAUSE,
   REALISM_CLAUSE,
+  REF_APP_ANATOMY_CLAUSE,
+  REF_APP_FIDELITY_CLOSING_CLAUSE,
+  REF_APP_NO_COLLAGE_CLAUSE,
+  REF_APP_NO_INVENT_CLAUSE,
 } from "@/constants/prompts";
+import { BACKGROUNDS, FITS, LENGTHS, SIZES } from "@/constants/lookOptions";
 import type { Generation, StoreSegment } from "@/types";
 
 export const Route = createFileRoute("/posts")({
@@ -36,22 +42,13 @@ const AUDIENCES: { id: StoreSegment; label: string }[] = [
   { id: "unissex", label: "Os dois" },
 ];
 
-// Cenários por ocasião (mesmos do Provador).
-const BACKGROUNDS: { id: string; label: string; emoji: string; desc: string }[] = [
-  { id: "estudio", label: "Estúdio", emoji: "📸", desc: "fundo de estúdio neutro e limpo, iluminação editorial de moda" },
-  { id: "praia", label: "Praia", emoji: "🏖️", desc: "em uma praia ensolarada, mar e areia ao fundo, luz natural quente" },
-  { id: "urbano", label: "Urbano", emoji: "🏙️", desc: "em uma rua urbana moderna, arquitetura ao fundo, luz de fim de tarde" },
-  { id: "festa", label: "Festa", emoji: "🎉", desc: "em um ambiente de festa noturna com luzes coloridas e clima vibrante" },
-  { id: "natureza", label: "Natureza", emoji: "🌳", desc: "em um parque verde ao ar livre, vegetação e luz do dia" },
-  { id: "trabalho", label: "Trabalho", emoji: "💼", desc: "em um escritório corporativo elegante e bem iluminado" },
-  { id: "casamento", label: "Evento", emoji: "🥂", desc: "em um evento formal sofisticado, ambiente elegante" },
-  { id: "cafe", label: "Café", emoji: "☕", desc: "em um café aconchegante, ambiente casual e acolhedor" },
-];
-
 function PostsPage() {
   const { session } = useAuth();
   const [modelUrl, setModelUrl] = useState<string | undefined>();
-  const [lookUrl, setLookUrl] = useState<string | undefined>();
+  const [garments, setGarments] = useState<string[]>([]);
+  const [size, setSize] = useState<string | null>(null);
+  const [fit, setFit] = useState<string | null>(null);
+  const [length, setLength] = useState<string | null>(null);
   const [audience, setAudience] = useState<StoreSegment>(session?.store.segment ?? "feminina");
   // Independentes: dá pra mudar só o fundo, só refinar, os dois, ou nenhum.
   const [changeSceneOn, setChangeSceneOn] = useState(true);
@@ -62,14 +59,19 @@ function PostsPage() {
   const [aiCaption, setAiCaption] = useState(true);
   const [showModels, setShowModels] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [busyLabel, setBusyLabel] = useState("Criando imagem…");
   const [result, setResult] = useState<Generation | null>(null);
   const [channel, setChannel] = useState<Channel>("instagram");
 
-  const cost = GenerationService.costFor("post");
+  // Custo varia: 1 peça = 5 tokens; várias peças = 8 (mesma lógica do Provador).
+  const cost = GenerationService.postCost(garments.length);
+
+  const addGarment = (url: string) => setGarments((g) => [...g, url]);
+  const removeGarment = (i: number) => setGarments((g) => g.filter((_, idx) => idx !== i));
 
   const generate = async () => {
-    if (!lookUrl || !session) {
-      toast.error("Envie a peça/look do post.");
+    if (garments.length === 0 || !session) {
+      toast.error("Envie ao menos uma peça/look do post.");
       return;
     }
     if (!TokenService.hasBalance(cost)) {
@@ -78,44 +80,118 @@ function PostsPage() {
     }
     setBusy(true);
     try {
+      // Visão (OpenAI) — descreve as peças para dar fidelidade ao look, mesma
+      // etapa usada no Provador (reforço em TEXTO além das fotos reais).
+      setBusyLabel("Analisando as peças…");
+      let pieces = "";
+      try {
+        pieces = await AIService.describe(
+          "Analise as imagens a seguir. Para cada peça de roupa ou calçado, escreva uma linha em " +
+            "pt-BR com: tipo, cor, tecido/estilo, MODELO/CORTE (ex.: calça reta/skinny/jogger/social, " +
+            "camisa slim/oversized) e DETALHES CONSTRUTIVOS visíveis (posição do fechamento/braguilha " +
+            "— reto e centralizado, ou lateral, com botão ou zíper; bolsos; costuras; tipo de bainha). " +
+            "Seja objetivo, sem introdução.",
+          garments.slice(0, 6),
+        );
+      } catch {
+        /* segue sem descrição se a visão falhar */
+      }
+
       const modelDesc =
         audience === "masculina" ? "modelo masculino" : audience === "feminina" ? "modelo feminino" : "modelo";
-      // Com foto própria (modelUrl): é uma pessoa real, a identidade precisa
-      // ser TRAVADA (mesma ordem/lógica do Provador — ver constants/prompts.ts).
-      // Sem foto (modelo genérico do público-alvo): não há identidade a preservar.
-      const head = modelUrl
-        ? IDENTITY_LOCK_CLAUSE +
-          " " +
-          ANATOMY_CLAUSE +
-          " A peça/look mostrado na imagem seguinte é a nova roupa, em uma composição de moda " +
-          "profissional para redes sociais."
-        : `Crie uma foto de moda profissional para redes sociais de um(a) ${modelDesc} vestindo a ` +
-          "peça/look mostrado na imagem.";
-      // Fundo/cenário e refino são INDEPENDENTES: dá pra mudar só o fundo, só
-      // refinar, os dois juntos, ou nenhum.
-      let prompt = head;
-      if (modelUrl && !changeSceneOn) {
-        // Foto própria e não quer mudar o cenário: preserva a foto original.
-        prompt += " " + PRESERVE_PHOTO_CLAUSE;
-      } else if (changeSceneOn) {
-        const bg = BACKGROUNDS.find((b) => b.id === background);
-        const scenePart =
-          (bg ? ` Cenário/fundo: ${bg.desc}.` : "") +
-          (bgCustom.trim() ? ` Detalhes do fundo: ${bgCustom.trim()}.` : "");
-        prompt += scenePart;
-        if (modelUrl) prompt += " " + NATURAL_POSE_CLAUSE;
-      }
-      if (refineOn && refineText.trim()) {
-        prompt += ` Ajustes: ${refineText.trim()}.`;
-      }
-      prompt +=
-        " Composição vibrante e atraente, pronta para publicação, alta definição. " +
-        REALISM_CLAUSE +
-        " " +
-        GARMENT_FIDELITY_CLAUSE +
-        (modelUrl ? " " + NO_COLLAGE_CLAUSE : "");
+      const piecesPart = pieces ? ` Look completo (contexto): ${pieces}.` : "";
+      const specText = [
+        size ? `tamanho ${size}` : "",
+        fit ? FITS.find((f) => f.id === fit)?.desc : "",
+        length ? LENGTHS.find((l) => l.id === length)?.desc : "",
+      ]
+        .filter(Boolean)
+        .join(", ");
+      const specPart = specText ? fitExceptionClause(specText) : "";
 
-      const imageUrls = modelUrl ? [modelUrl, lookUrl] : [lookUrl];
+      // Veste UMA PEÇA POR VEZ, encadeando o resultado (mesmo motivo do
+      // Provador — mandar várias peças numa chamada só faz o modelo aplicar
+      // só uma). Com foto própria (modelUrl): edita a foto real, identidade
+      // TRAVADA. Sem foto: o 1º passo CRIA um modelo genérico do zero
+      // vestindo a 1ª peça; os passos seguintes editam esse resultado normal.
+      let currentUrl: string | undefined = modelUrl;
+      for (let i = 0; i < garments.length; i++) {
+        const isFirst = i === 0;
+        const isLast = i === garments.length - 1;
+        setBusyLabel(
+          garments.length > 1
+            ? `Vestindo peça ${i + 1} de ${garments.length}…`
+            : aiCaption
+              ? "Criando imagem e legenda…"
+              : "Criando imagem…",
+        );
+
+        let stepPrompt: string;
+        let imgs: string[];
+        // Aspect ratio: sem foto própria, a 1ª imagem é a PEÇA (não a
+        // pessoa) — detectar pelo formato dela daria um resultado errado
+        // (ex.: peça em foto quadrada geraria pessoa "quadrada"). Força
+        // retrato explícito só nesse caso; com foto real, deixa a Edge
+        // Function detectar pelo tamanho de verdade da foto da pessoa.
+        let stepAspectRatio: string | undefined;
+        if (currentUrl) {
+          // Editando uma foto real (própria, ou já gerada num passo anterior).
+          stepPrompt =
+            buildSequentialStepClause(isFirst ? 0 : 1) +
+            (specPart ? " " + specPart : "") +
+            " " +
+            REF_APP_ANATOMY_CLAUSE +
+            " " +
+            REF_APP_NO_COLLAGE_CLAUSE +
+            " " +
+            REF_APP_NO_INVENT_CLAUSE +
+            piecesPart;
+          imgs = [currentUrl, garments[i]];
+        } else {
+          // Sem foto própria: cria o modelo genérico do zero vestindo a 1ª peça.
+          stepPrompt =
+            `Crie uma foto de moda profissional para redes sociais de um(a) ${modelDesc} vestindo a ` +
+            "peça mostrada na imagem." +
+            (specPart ? " " + specPart : "") +
+            piecesPart;
+          imgs = [garments[i]];
+          stepAspectRatio = "3:4";
+        }
+
+        if (isLast) {
+          // Fundo/cenário e refino são INDEPENDENTES — só entram no ÚLTIMO
+          // passo, depois que todas as peças já foram aplicadas.
+          if (currentUrl && !changeSceneOn) {
+            stepPrompt += " " + PRESERVE_PHOTO_CLAUSE;
+          } else if (changeSceneOn) {
+            const bg = BACKGROUNDS.find((b) => b.id === background);
+            const scenePart =
+              (bg ? ` Cenário/fundo: ${bg.desc}.` : "") +
+              (bgCustom.trim() ? ` Detalhes do fundo: ${bgCustom.trim()}.` : "");
+            stepPrompt += scenePart + " " + COLOR_LIGHT_INDEPENDENCE_CLAUSE;
+            if (currentUrl) stepPrompt += " " + POSE_LOCK_CLAUSE;
+          }
+          if (refineOn && refineText.trim()) {
+            stepPrompt += ` Ajustes: ${refineText.trim()}.`;
+          }
+          stepPrompt +=
+            " Composição vibrante e atraente, pronta para publicação, alta definição. " +
+            REALISM_CLAUSE +
+            (currentUrl ? "" : " " + GARMENT_FIDELITY_CLAUSE);
+        } else if (currentUrl) {
+          stepPrompt += " " + PRESERVE_PHOTO_CLAUSE;
+        }
+
+        // FIDELIDADE por ÚLTIMO (recência): neutraliza o "embelezar" do REALISM_CLAUSE,
+        // que fazia o modelo re-renderizar a peça (mudando fecho/textura/modelo).
+        stepPrompt += " " + REF_APP_FIDELITY_CLOSING_CLAUSE;
+
+        const { url } = await AIService.image(stepPrompt, {
+          imageUrls: imgs,
+          aspectRatio: stepAspectRatio,
+        });
+        currentUrl = url;
+      }
 
       const gen = await GenerationService.generate({
         type: "post",
@@ -123,10 +199,10 @@ function PostsPage() {
           clientPhotoUrl: modelUrl,
           notes: (refineOn ? refineText.trim() : "") || bgCustom.trim() || undefined,
         },
-        prompt,
-        imageUrls,
+        resultUrl: currentUrl,
         audience,
         withCopy: aiCaption,
+        tokenCost: cost,
         userId: session.user.id,
         storeId: session.store.id,
       });
@@ -271,36 +347,128 @@ function PostsPage() {
   return (
     <AppLayout title="Criador de Posts" subtitle="Imagem + copy em segundos">
       <div className="space-y-6">
-        <div className="grid grid-cols-2 gap-3">
+        <div>
+          <ImageUploadField
+            bucket="clients"
+            value={modelUrl}
+            onChange={setModelUrl}
+            label="Modelo"
+            hint="Opcional · sua foto"
+            aspectClassName="aspect-square"
+            fit="contain"
+          />
+          <button
+            onClick={() => setShowModels(true)}
+            className="mt-1.5 w-full text-center text-[11px] font-medium text-clay"
+          >
+            usar modelo do banco
+          </button>
+        </div>
+
+        {/* Peças do look — uma ou várias (fotos separadas viram um look só) */}
+        <section className="space-y-3">
           <div>
-            <ImageUploadField
-              bucket="clients"
-              value={modelUrl}
-              onChange={setModelUrl}
-              label="Modelo"
-              hint="Opcional · sua foto"
-              aspectClassName="aspect-square"
-              fit="contain"
-            />
-            <button
-              onClick={() => setShowModels(true)}
-              className="mt-1.5 w-full text-center text-[11px] font-medium text-clay"
-            >
-              usar modelo do banco
-            </button>
+            <p className="text-sm font-semibold text-foreground">Peças do look</p>
+            <p className="text-xs text-muted-foreground">
+              Envie 1 peça, ou várias fotos separadas — a IA junta tudo no mesmo look.
+            </p>
           </div>
-          <div>
+          <div className="grid grid-cols-3 gap-2">
+            {garments.map((url, i) => (
+              <div key={url} className="relative overflow-hidden rounded-2xl border border-border">
+                <img src={url} alt={`Peça ${i + 1}`} className="aspect-square w-full object-cover" />
+                <button
+                  onClick={() => removeGarment(i)}
+                  aria-label="Remover peça"
+                  className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-background/85 text-foreground shadow-soft backdrop-blur"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
             <ImageUploadField
               bucket="catalog"
-              value={lookUrl}
-              onChange={setLookUrl}
-              label="Peça / look"
-              hint="Foto da peça"
+              onChange={addGarment}
+              label={garments.length ? "Adicionar" : "Adicionar peça"}
+              hint="Galeria/câmera"
               aspectClassName="aspect-square"
             />
-            <p className="mt-1.5 text-center text-[11px] text-muted-foreground">Obrigatório</p>
           </div>
-        </div>
+        </section>
+
+        {/* Tamanho, caimento e comprimento — opcionais, ajustam o look gerado */}
+        <section className="space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Tamanho e caimento</p>
+            <p className="text-xs text-muted-foreground">Opcional — ajusta o corte do look gerado.</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Tamanho
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {SIZES.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSize((cur) => (cur === s ? null : s))}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                    size === s
+                      ? "border-accent bg-accent text-accent-foreground shadow-glow"
+                      : "border-border bg-card text-foreground hover:border-accent/50",
+                  )}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Caimento
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {FITS.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setFit((cur) => (cur === f.id ? null : f.id))}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                    fit === f.id
+                      ? "border-accent bg-accent text-accent-foreground shadow-glow"
+                      : "border-border bg-card text-foreground hover:border-accent/50",
+                  )}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Comprimento (barra da peça — não a manga)
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {LENGTHS.map((l) => (
+                <button
+                  key={l.id}
+                  onClick={() => setLength((cur) => (cur === l.id ? null : l.id))}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                    length === l.id
+                      ? "border-accent bg-accent text-accent-foreground shadow-glow"
+                      : "border-border bg-card text-foreground hover:border-accent/50",
+                  )}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
 
         {/* Liga/desliga INDEPENDENTES: mudar fundo e refinar não dependem um do outro */}
         <button
@@ -450,7 +618,7 @@ function PostsPage() {
 
         <button
           onClick={generate}
-          disabled={busy || !lookUrl}
+          disabled={busy || garments.length === 0}
           className="w-full rounded-full bg-clay px-6 py-4 text-base font-semibold text-clay-foreground shadow-soft disabled:opacity-60"
         >
           Gerar post · {cost} tokens
@@ -467,7 +635,7 @@ function PostsPage() {
         />
       ) : null}
 
-      {busy ? <LoadingOverlay label={aiCaption ? "Criando imagem e legenda…" : "Criando imagem…"} /> : null}
+      {busy ? <LoadingOverlay label={busyLabel} /> : null}
     </AppLayout>
   );
 }

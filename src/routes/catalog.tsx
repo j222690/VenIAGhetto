@@ -17,7 +17,9 @@ import { toast } from "sonner";
 const IMPORT_TOKEN_PER_ITEM = 1;
 const IMPORT_URL_MIN_TOKENS = 5;
 // "Limpar peça" (opcional) — isola a peça da foto (remove fundo/modelo).
-const CLEAN_IMAGE_COST = 1;
+// Recalibrado após a troca pro Gemini 3 Pro Image: 1 token (R$0,44) tinha
+// ficado ABAIXO do custo real da chamada (~R$0,69) — ver GenerationService.ts.
+const CLEAN_IMAGE_COST = 10;
 
 export const Route = createFileRoute("/catalog")({
   head: () => ({ meta: [{ title: "Catálogo — Vest IA" }] }),
