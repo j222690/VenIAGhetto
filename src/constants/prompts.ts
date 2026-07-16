@@ -1,44 +1,38 @@
 // Trechos de prompt reutilizados na geração de imagem (Provador, Posts, Refino).
 //
-// Ordem importa nestes modelos: a instrução mais crítica (identidade da
-// pessoa) vem PRIMEIRO (efeito de primazia) e é repetida no fechamento
-// (efeito de recência) — ver IDENTITY_LOCK_CLAUSE/IDENTITY_RECAP_CLAUSE. Um
-// prompt único e comprido, sem essa ordenação, faz o modelo tratar o pedido
+// Prompt enxuto > prompt comprido: um texto com muitas regras empilhadas
+// dilui a atenção do modelo entre elas — cada regra "compete" com as outras
+// por peso. O motor de referência que comprovadamente funciona bem usa só
+// ~4 blocos de instrução, diretos e sem repetir a mesma ideia em textos
+// diferentes. Por isso aqui cada cláusula cobre UM problema real observado,
+// sem sobrepor conteúdo com as outras — cláusulas fundidas (ex.: identidade +
+// troca de roupa) valem mais que cláusulas separadas dizendo coisas parecidas.
+//
+// Ordem importa: a instrução mais crítica (identidade + troca de roupa) vem
+// PRIMEIRO (efeito de primazia). Sem isso, o modelo tende a tratar o pedido
 // como "gerar uma pessoa nova" em vez de "editar esta foto".
 
-// Regra #1, sempre a PRIMEIRA cláusula do prompt: trava a identidade da
-// pessoa da foto de referência. Sem isso o modelo tende a "recriar" o rosto
-// em vez de editar a foto original (rosto/pose saindo diferentes do cliente).
+// Regra #1, sempre a PRIMEIRA cláusula do prompt: identidade travada + troca
+// de roupa como uma coisa só. Funde 3 problemas reais observados que antes
+// eram 3 cláusulas separadas (identidade, "a peça antiga precisa sumir",
+// "não devolva a foto sem alteração") — juntos em um parágrafo só, na ordem
+// em que o modelo precisa aplicá-los, em vez de regras soltas repetindo a
+// mesma ideia com palavras diferentes.
 export const IDENTITY_LOCK_CLAUSE =
-  "Isto é uma EDIÇÃO de uma foto real, não a criação de uma pessoa nova. Mantenha EXATAMENTE o " +
-  "mesmo rosto, mesmas feições, mesmo tom de pele, mesmo cabelo, mesmo corpo e mesma pose da " +
-  "PRIMEIRA imagem enviada — como um editor de fotos trocando só a roupa, nunca reimaginando a " +
-  "pessoa. NÃO troque a pessoa por outra, NÃO altere o rosto.";
-
-// Fechamento curto — repete a regra de identidade no FIM do prompt (recência),
-// depois de todas as instruções de roupa/cenário, para reforçar prioridade.
-export const IDENTITY_RECAP_CLAUSE =
-  "Antes de gerar, confira: o rosto e o corpo continuam sendo os da PRIMEIRA imagem — só a roupa mudou.";
-
-// Bug real observado: a pessoa da foto original já está com uma peça na
-// mesma região (ex.: bermuda) e a IA vestia a peça NOVA (calça) por cima ou
-// junto da antiga, em vez de substituir — resultado com duas peças
-// sobrepostas sem sentido. "Troque" sozinho não é instrução forte o
-// suficiente; precisa dizer explicitamente que a peça antiga SOME.
-export const GARMENT_REPLACE_CLAUSE =
-  "TROCA DE ROUPA, não sobreposição: a peça que a pessoa já está usando naquela região do corpo na " +
-  "PRIMEIRA imagem precisa DESAPARECER por completo — nunca fica visível por baixo, por cima, ao " +
-  "lado ou combinada com a peça nova. Exemplo: se a pessoa está de bermuda/shorts e o novo look é " +
-  "uma calça, a bermuda SOME inteira — só a calça nova aparece, nunca as duas juntas. O resultado " +
-  "PRECISA mostrar apenas a roupa NOVA nessa região, claramente diferente da roupa original.";
+  "Isto é uma EDIÇÃO de uma foto real, não a criação de uma pessoa nova — mantenha EXATAMENTE o mesmo " +
+  "rosto, tom de pele, cabelo, corpo e pose da PRIMEIRA imagem, como um editor de fotos trocando só a " +
+  "roupa. É uma TROCA DE ROUPA: a peça que a pessoa já está usando naquela região do corpo precisa " +
+  "DESAPARECER por completo — nunca fica visível por baixo, por cima, ao lado ou misturada com a peça " +
+  "nova (ex.: se a pessoa está de bermuda e o novo look é uma calça, a bermuda some inteira, só a " +
+  "calça aparece). O resultado PRECISA mostrar uma roupa claramente diferente da original — nunca " +
+  "devolva a primeira imagem sem alteração na roupa.";
 
 // Proporção do corpo — ataca um bug observado: a IA distorcia a proporção
 // corpo/cabeça (cabeça grande demais, corpo esticado) ao vestir o look.
 export const ANATOMY_CLAUSE =
   "Mantenha as PROPORÇÕES do corpo da pessoa IDÊNTICAS à primeira imagem — não aumente a cabeça nem " +
   "encolha o corpo, mesma altura, mesma largura de ombros/tronco, mesmo comprimento de braços e " +
-  "pernas. NÃO dê zoom, reescale nem distorça a pessoa. O corpo deve parecer natural e " +
-  "anatomicamente igual ao da imagem original.";
+  "pernas. NÃO dê zoom, reescale nem distorça a pessoa.";
 
 // Evita um bug real observado neste modelo de IA: em vez de vestir a peça na
 // pessoa, às vezes ele devolve uma colagem com a pessoa e as fotos de
@@ -46,20 +40,20 @@ export const ANATOMY_CLAUSE =
 export const NO_COLLAGE_CLAUSE =
   "FORMATO DE SAÍDA (obrigatório): devolva UMA ÚNICA fotografia mostrando SÓ a pessoa, preenchendo o " +
   "quadro como na primeira imagem. NUNCA devolva colagem, grade, montagem, tela dividida ou várias " +
-  "imagens lado a lado. NÃO inclua as fotos de referência das peças em nenhum canto do resultado — " +
-  "as peças só podem aparecer VESTIDAS na pessoa.";
+  "imagens lado a lado, e NÃO inclua as fotos de referência das peças em nenhum canto do resultado.";
 
-// Reforço específico contra inventar logo/estampa — mais direto que a regra
-// geral de fidelidade (GARMENT_FIDELITY_CLAUSE).
-export const NO_INVENT_CLAUSE =
-  "Não invente, adicione nem alucine nenhum logo, marca, símbolo, texto ou estampa que não esteja " +
-  "claramente visível na peça de referência. Se a peça for lisa, o resultado também é liso.";
-
-// Evita o caso em que a IA devolve a foto original sem de fato aplicar a
-// peça nova (fica "parecido demais" e a roupa não muda).
-export const MUST_APPLY_CLAUSE =
-  "O resultado PRECISA mostrar visivelmente a nova peça vestida na pessoa — nunca devolva a primeira " +
-  "imagem sem alteração nenhuma na roupa.";
+// Fidelidade das PEÇAS — vale para TODA geração/edição. Funde a regra geral
+// de fidelidade (cor/estampa/corte/comprimento) com a proibição de inventar
+// logo/marca, que antes eram 2 cláusulas dizendo praticamente a mesma coisa
+// ("reproduza exatamente") de dois jeitos diferentes. Cita mangas
+// explicitamente porque é uma falha observada: a IA encurtava manga longa
+// para manga curta mesmo com a regra genérica de "comprimento".
+export const GARMENT_FIDELITY_CLAUSE =
+  "Reproduza cada peça de roupa/calçado/acessório EXATAMENTE como nas imagens de referência — mesma " +
+  "cor, estampa, textura, corte e comprimento (mangas incluídas: manga longa continua longa, manga " +
+  "curta continua curta). Não invente, adicione nem troque nenhum logo, marca, símbolo ou estampa que " +
+  "não esteja visível na peça de referência; se ela for lisa, o resultado também é liso. É o produto " +
+  "real que será vendido — fidelidade da peça tem prioridade sobre estética.";
 
 // Regra de REALISMO aplicada em toda geração/edição de imagem. Reforça um
 // resultado fotográfico profissional e evita "cara de IA", além de proibir
@@ -68,17 +62,6 @@ export const REALISM_CLAUSE =
   "A imagem precisa ser fotográfica e profissional — iluminação natural coerente, texturas reais de " +
   "tecido e pele, sombras e reflexos condizentes. Evite aparência artificial, plástica ou de " +
   "renderização 3D. O fundo/cenário não deve conter nenhuma pessoa além do modelo em primeiro plano.";
-
-// Fidelidade das PEÇAS — vale para TODA geração/edição. O que aparece é o que a
-// loja vende, então as roupas não podem ser inventadas nem alteradas. Cita
-// mangas explicitamente porque é uma falha observada: a IA encurtava manga
-// longa para manga curta mesmo com a regra genérica de "comprimento".
-export const GARMENT_FIDELITY_CLAUSE =
-  "Reproduza cada peça de roupa/calçado/acessório EXATAMENTE como nas imagens de referência — mesma " +
-  "cor, estampa, textura, corte, comprimento e detalhes, sem inventar, remover nem trocar nenhuma " +
-  "peça. Preste atenção especial ao COMPRIMENTO DAS MANGAS: se a peça de referência tem manga longa, " +
-  "o resultado tem manga longa; se tem manga curta, o resultado tem manga curta — NUNCA encurte nem " +
-  "alongue mangas. É o produto real que será vendido.";
 
 // Adapta a POSE ao novo cenário — usada só quando o fundo/cenário MUDA. Sem
 // isso, a IA copia a pose literal da foto original (ex.: braço erguido

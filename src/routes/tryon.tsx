@@ -17,13 +17,9 @@ import type { Client, Generation } from "@/types";
 import {
   ANATOMY_CLAUSE,
   GARMENT_FIDELITY_CLAUSE,
-  GARMENT_REPLACE_CLAUSE,
   IDENTITY_LOCK_CLAUSE,
-  IDENTITY_RECAP_CLAUSE,
-  MUST_APPLY_CLAUSE,
   NATURAL_POSE_CLAUSE,
   NO_COLLAGE_CLAUSE,
-  NO_INVENT_CLAUSE,
   PRESERVE_PHOTO_CLAUSE,
   REALISM_CLAUSE,
 } from "@/constants/prompts";
@@ -170,15 +166,7 @@ function TryOnPage() {
         ? ` Ajuste o look para: ${specText} (comprimento = barra/bainha da peça, NÃO a manga).`
         : "";
       const base =
-        IDENTITY_LOCK_CLAUSE +
-        " " +
-        ANATOMY_CLAUSE +
-        " " +
-        GARMENT_REPLACE_CLAUSE +
-        " " +
-        swapInstruction +
-        piecesPart +
-        specPart;
+        IDENTITY_LOCK_CLAUSE + " " + ANATOMY_CLAUSE + " " + swapInstruction + piecesPart + specPart;
 
       // Fundo/cenário e retoques são INDEPENDENTES: dá pra mudar só o fundo,
       // só refinar, os dois juntos, ou nenhum (mantém a foto como está).
@@ -204,19 +192,7 @@ function TryOnPage() {
         const retouchTxt = [...retouchList, retouchCustom.trim()].filter(Boolean).join("; ");
         if (retouchTxt) prompt += ` Retoques: ${retouchTxt}.`;
       }
-      prompt +=
-        " " +
-        REALISM_CLAUSE +
-        " " +
-        GARMENT_FIDELITY_CLAUSE +
-        " " +
-        NO_INVENT_CLAUSE +
-        " " +
-        NO_COLLAGE_CLAUSE +
-        " " +
-        MUST_APPLY_CLAUSE +
-        " " +
-        IDENTITY_RECAP_CLAUSE;
+      prompt += " " + REALISM_CLAUSE + " " + GARMENT_FIDELITY_CLAUSE + " " + NO_COLLAGE_CLAUSE;
 
       const imageUrls = photoUrl ? [photoUrl, ...lookImages] : lookImages;
 

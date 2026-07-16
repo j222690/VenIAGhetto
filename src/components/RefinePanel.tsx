@@ -8,7 +8,7 @@ import { useState } from "react";
 import { RotateCw, Sparkles } from "@/lib/icons";
 import { AIService } from "@/services/AIService";
 import { TokenService } from "@/services/TokenService";
-import { GARMENT_FIDELITY_CLAUSE, IDENTITY_RECAP_CLAUSE, REALISM_CLAUSE } from "@/constants/prompts";
+import { GARMENT_FIDELITY_CLAUSE, REALISM_CLAUSE } from "@/constants/prompts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -58,9 +58,7 @@ export function RefinePanel({ imageUrl, onRefined }: Props) {
         " Mantenha o mesmo enquadramento e proporção da imagem original. " +
         REALISM_CLAUSE +
         " " +
-        GARMENT_FIDELITY_CLAUSE +
-        " " +
-        IDENTITY_RECAP_CLAUSE;
+        GARMENT_FIDELITY_CLAUSE;
       const { url } = await AIService.image(prompt, { imageUrls: [imageUrl] });
       await TokenService.debit(REFINE_COST, "Refinar imagem");
       onRefined(url);
