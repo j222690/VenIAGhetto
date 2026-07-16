@@ -17,6 +17,7 @@ import type { Client, Generation } from "@/types";
 import {
   ANATOMY_CLAUSE,
   GARMENT_FIDELITY_CLAUSE,
+  GARMENT_REPLACE_CLAUSE,
   IDENTITY_LOCK_CLAUSE,
   IDENTITY_RECAP_CLAUSE,
   MUST_APPLY_CLAUSE,
@@ -169,7 +170,15 @@ function TryOnPage() {
         ? ` Ajuste o look para: ${specText} (comprimento = barra/bainha da peça, NÃO a manga).`
         : "";
       const base =
-        IDENTITY_LOCK_CLAUSE + " " + ANATOMY_CLAUSE + " " + swapInstruction + piecesPart + specPart;
+        IDENTITY_LOCK_CLAUSE +
+        " " +
+        ANATOMY_CLAUSE +
+        " " +
+        GARMENT_REPLACE_CLAUSE +
+        " " +
+        swapInstruction +
+        piecesPart +
+        specPart;
 
       // Fundo/cenário e retoques são INDEPENDENTES: dá pra mudar só o fundo,
       // só refinar, os dois juntos, ou nenhum (mantém a foto como está).

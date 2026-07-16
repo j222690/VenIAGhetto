@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import {
   ANATOMY_CLAUSE,
   GARMENT_FIDELITY_CLAUSE,
+  GARMENT_REPLACE_CLAUSE,
   IDENTITY_LOCK_CLAUSE,
   IDENTITY_RECAP_CLAUSE,
   MUST_APPLY_CLAUSE,
@@ -90,6 +91,8 @@ function PostsPage() {
         ? IDENTITY_LOCK_CLAUSE +
           " " +
           ANATOMY_CLAUSE +
+          " " +
+          GARMENT_REPLACE_CLAUSE +
           " Troque a roupa da pessoa da PRIMEIRA imagem pela peça/look mostrado na imagem seguinte, " +
           "em uma composição de moda profissional para redes sociais."
         : `Crie uma foto de moda profissional para redes sociais de um(a) ${modelDesc} vestindo a ` +

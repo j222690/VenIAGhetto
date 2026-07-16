@@ -20,6 +20,18 @@ export const IDENTITY_LOCK_CLAUSE =
 export const IDENTITY_RECAP_CLAUSE =
   "Antes de gerar, confira: o rosto e o corpo continuam sendo os da PRIMEIRA imagem — só a roupa mudou.";
 
+// Bug real observado: a pessoa da foto original já está com uma peça na
+// mesma região (ex.: bermuda) e a IA vestia a peça NOVA (calça) por cima ou
+// junto da antiga, em vez de substituir — resultado com duas peças
+// sobrepostas sem sentido. "Troque" sozinho não é instrução forte o
+// suficiente; precisa dizer explicitamente que a peça antiga SOME.
+export const GARMENT_REPLACE_CLAUSE =
+  "TROCA DE ROUPA, não sobreposição: a peça que a pessoa já está usando naquela região do corpo na " +
+  "PRIMEIRA imagem precisa DESAPARECER por completo — nunca fica visível por baixo, por cima, ao " +
+  "lado ou combinada com a peça nova. Exemplo: se a pessoa está de bermuda/shorts e o novo look é " +
+  "uma calça, a bermuda SOME inteira — só a calça nova aparece, nunca as duas juntas. O resultado " +
+  "PRECISA mostrar apenas a roupa NOVA nessa região, claramente diferente da roupa original.";
+
 // Proporção do corpo — ataca um bug observado: a IA distorcia a proporção
 // corpo/cabeça (cabeça grande demais, corpo esticado) ao vestir o look.
 export const ANATOMY_CLAUSE =
