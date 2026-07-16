@@ -19,7 +19,11 @@ export function PhotoLightbox({ url, onClose }: Props) {
       <img
         src={url}
         alt="Foto ampliada"
-        className="max-h-full max-w-full rounded-2xl object-contain"
+        // max-h-full não funciona aqui: numa célula de grid com altura "auto"
+        // (sem track fixo), a % de max-height não tem referência pra resolver
+        // — a imagem ficava sem limite vertical e cortava fora da tela.
+        // Usa unidade de viewport direto, que sempre resolve certo.
+        className="max-h-[90vh] max-w-[92vw] rounded-2xl object-contain"
         onClick={(e) => e.stopPropagation()}
       />
       <button
