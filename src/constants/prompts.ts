@@ -187,10 +187,11 @@ export function buildSequentialStepClause(stepIndex: number): string {
 // da descrição corresponde, em ordem, a um quadrante preenchido).
 const QUADRANT_LABELS = ["superior-esquerdo", "superior-direito", "inferior-esquerdo", "inferior-direito"];
 
-// Descreve a grade de quadrantes em si (reutilizável nos dois casos: editar
-// pessoa existente = grade é a "SEGUNDA" imagem; criar modelo do zero = grade
-// é a "ÚNICA" imagem, já que não tem foto de pessoa nenhuma pra editar).
-function quadrantReferenceNote(pieceCount: number, imageLabel: "SEGUNDA" | "ÚNICA"): string {
+// Descreve a grade de quadrantes em si. Identifica a imagem pelo CONTEÚDO
+// (não pela posição) — outras imagens podem estar anexadas junto (ex.: foto
+// de referência do fundo/cenário), então não dá pra assumir "a imagem X" por
+// ordem fixa.
+function quadrantReferenceNote(pieceCount: number): string {
   const used = QUADRANT_LABELS.slice(0, pieceCount).join(", ");
   const empty = QUADRANT_LABELS.slice(pieceCount);
   const emptyPart = empty.length
@@ -202,15 +203,15 @@ function quadrantReferenceNote(pieceCount: number, imageLabel: "SEGUNDA" | "ÚNI
     `${pieceCount > 2 ? `, 3ª peça = ${QUADRANT_LABELS[2]}` : ""}` +
     `${pieceCount > 3 ? `, 4ª peça = ${QUADRANT_LABELS[3]}` : ""}`;
   return (
-    `A imagem ${imageLabel} é uma grade de referência dividida em 4 quadrantes (2x2). Os quadrantes ${used} ` +
-    `cada um mostra UMA peça de roupa/calçado diferente, na MESMA ordem da descrição das peças dada a ` +
-    `seguir (${orderList}).${emptyPart}`
+    `Uma das imagens anexadas é uma grade de referência dividida em 4 quadrantes (2x2) — reconheça-a ` +
+    `pelo layout de grade, não pela ordem. Os quadrantes ${used} cada um mostra UMA peça de roupa/calçado ` +
+    `diferente, na MESMA ordem da descrição das peças dada a seguir (${orderList}).${emptyPart}`
   );
 }
 
 export function buildQuadrantClause(pieceCount: number): string {
   return (
-    quadrantReferenceNote(pieceCount, "SEGUNDA") +
+    quadrantReferenceNote(pieceCount) +
     ` TASK: vista a pessoa da PRIMEIRA imagem com TODAS as ${pieceCount} peças mostradas nos quadrantes ` +
     `preenchidos ao mesmo tempo — cada peça na região do corpo correspondente ao seu tipo (ex.: peça de ` +
     `cima no tronco, peça de baixo nas pernas, calçado nos pés). NÃO aplique só uma peça e ignore as ` +
@@ -231,7 +232,7 @@ export function buildQuadrantFromScratchClause(pieceCount: number, modelDesc: st
     `pés). NÃO aplique só uma peça e ignore as outras — todas as ${pieceCount} precisam aparecer no ` +
     `resultado. NÃO adicione nenhum acessório (óculos, bolsa, joia, chapéu etc.) que não esteja em ` +
     `uma das peças enviadas. ` +
-    quadrantReferenceNote(pieceCount, "ÚNICA")
+    quadrantReferenceNote(pieceCount)
   );
 }
 
@@ -288,6 +289,27 @@ export const COLOR_LIGHT_INDEPENDENCE_CLAUSE =
 // abre uma exceção EXPLÍCITA, deixando claro que ajustar caimento não é
 // "inventar" a peça — só entra no prompt quando o usuário realmente pediu
 // tamanho/caimento/comprimento.
+// Troca de cenário/fundo — antes só descrevia o cenário em TEXTO, e a IA
+// "inventava" o ambiente do zero (saía genérico/plástico). Agora manda uma
+// FOTO real de referência do cenário (sem pessoa, ver BACKGROUNDS em
+// lookOptions.ts) junto — mas copiar a luz da referência ao pé da letra
+// pode destoar da foto da pessoa (ângulo/hora do dia diferentes), por isso
+// pede pra ADAPTAR luz/perspectiva em vez de copiar. Também cobre um bug
+// real observado: pessoa de tênis "flutuando" na areia da praia — pede pra
+// posicionar num trecho do cenário coerente com o calçado.
+export function buildBackgroundClause(desc: string, hasRef: boolean): string {
+  if (!hasRef) return ` Cenário: ${desc}.`;
+  return (
+    ` Uma das imagens de referência anexadas mostra o CENÁRIO desejado (sem pessoa): ${desc}. Use essa ` +
+    "imagem como referência visual do ambiente (elementos, cores, estilo, texturas), mas ADAPTE a " +
+    "iluminação, o ângulo de câmera e a temperatura de cor pra combinar naturalmente com a foto da " +
+    "pessoa — não copie a luz da referência do fundo se ela não bater com a luz da pessoa. Preste " +
+    "atenção no CALÇADO da pessoa: se ele não for apropriado pro terreno mostrado (ex.: tênis ou sapato " +
+    "fechado numa praia ou trilha), posicione a pessoa numa parte do cenário onde esse calçado faça " +
+    "sentido (deck de madeira, calçadão, trilha seca/pavimentada) em vez de areia molhada, grama alta ou lama."
+  );
+}
+
 export function fitExceptionClause(specText: string): string {
   return (
     `FIT EXCEPTION (allowed and required, overrides shape-fidelity above): keep the garment's color, ` +

@@ -159,9 +159,14 @@ async function urlToInline(url: string): Promise<InputImage> {
   return { mimeType, data: btoa(bin), width: dims?.width, height: dims?.height };
 }
 
+// `imageUrls` (fotos reais hospedadas — pessoa, peça) vêm ANTES de `images`
+// (inline, ex.: a grade de quadrantes montada no cliente) — a detecção de
+// aspect ratio usa a PRIMEIRA imagem (`inputImages[0]`), e precisa ser a foto
+// real da pessoa, não uma grade auxiliar sempre quadrada.
 async function resolveImages(images?: InputImage[], imageUrls?: string[]): Promise<InputImage[]> {
-  const out: InputImage[] = [...(images ?? [])];
+  const out: InputImage[] = [];
   for (const u of imageUrls ?? []) out.push(await urlToInline(u));
+  out.push(...(images ?? []));
   return out;
 }
 

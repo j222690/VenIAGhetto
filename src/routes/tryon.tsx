@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import type { Client, Generation } from "@/types";
 import { composeQuadrant } from "@/lib/composeQuadrant";
 import {
+  buildBackgroundClause,
   buildQuadrantClause,
   buildSequentialStepClause,
   COLOR_LIGHT_INDEPENDENCE_CLAUSE,
@@ -144,15 +145,19 @@ function TryOnPage() {
         .join(", ");
       const specPart = specText ? fitExceptionClause(specText) : "";
 
+      // Fundo escolhido (com foto de referência real, ver BACKGROUNDS) — usado
+      // tanto no texto do prompt quanto como imagem extra na chamada final.
+      const selectedBg = changeSceneOn ? BACKGROUNDS.find((b) => b.id === background) : undefined;
+      const bgRefUrls = selectedBg ? [selectedBg.refUrl] : [];
+
       // Cauda comum (fundo/retoques/realismo/fidelidade) — igual pro passo
       // único (quadrante) ou pro último passo do fluxo sequencial (5+ peças).
       const buildFinishPart = (): string => {
         let part = "";
         if (changeSceneOn) {
-          const bg = BACKGROUNDS.find((b) => b.id === background);
           const scenePart =
             " Enquadramento de corpo inteiro." +
-            (bg ? ` Cenário: ${bg.desc}.` : "") +
+            (selectedBg ? buildBackgroundClause(selectedBg.desc, true) : "") +
             (bgCustom.trim() ? ` Detalhes do cenário: ${bgCustom.trim()}.` : "");
           part += scenePart + " " + POSE_LOCK_CLAUSE + " " + COLOR_LIGHT_INDEPENDENCE_CLAUSE;
         } else {
@@ -187,12 +192,14 @@ function TryOnPage() {
           REF_APP_FIDELITY_CLOSING_CLAUSE;
 
         if (garments.length === 1) {
-          const { url } = await AIService.image(stepPrompt, { imageUrls: [photoUrl, garments[0]] });
+          const { url } = await AIService.image(stepPrompt, {
+            imageUrls: [photoUrl, garments[0], ...bgRefUrls],
+          });
           currentUrl = url;
         } else {
           const composite = await composeQuadrant(garments);
           const { url } = await AIService.image(stepPrompt, {
-            imageUrls: [photoUrl],
+            imageUrls: [photoUrl, ...bgRefUrls],
             images: [composite],
           });
           currentUrl = url;
@@ -215,7 +222,8 @@ function TryOnPage() {
             piecesPart;
           stepPrompt += isLast ? buildFinishPart() : " " + PRESERVE_PHOTO_CLAUSE;
           stepPrompt += " " + REF_APP_FIDELITY_CLOSING_CLAUSE;
-          const { url } = await AIService.image(stepPrompt, { imageUrls: [running, garments[i]] });
+          const stepImgs = isLast ? [running, garments[i], ...bgRefUrls] : [running, garments[i]];
+          const { url } = await AIService.image(stepPrompt, { imageUrls: stepImgs });
           running = url;
         }
         currentUrl = running;

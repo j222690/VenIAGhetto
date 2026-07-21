@@ -63,7 +63,12 @@ export const LENGTHS: { id: string; label: string; desc: string }[] = [
 // materiais, hora do dia, tipo de luz específico) em vez de frases genéricas
 // tipo "praia ensolarada". Frase vaga = a IA cai no "fundo de banco de
 // imagens" genérico; detalhe concreto = composição mais real e específica.
-export const BACKGROUNDS: { id: string; label: string; emoji: string; desc: string }[] = [
+// `refUrl`: foto de referência REAL do cenário (sem pessoa), gerada uma vez e
+// hospedada no bucket `generated` — dá pro Gemini uma referência VISUAL do
+// ambiente em vez de só descrição em texto, que antes saía genérico/plástico
+// (a IA "inventava" o cenário do zero). Pra trocar por foto de verdade, só
+// substituir a URL aqui — ver comentário de padrão em PresetLibrary.ts.
+export const BACKGROUNDS: { id: string; label: string; emoji: string; desc: string; refUrl: string }[] = [
   {
     id: "estudio",
     label: "Estúdio",
@@ -72,6 +77,8 @@ export const BACKGROUNDS: { id: string; label: string; emoji: string; desc: stri
       "estúdio fotográfico profissional com fundo infinito cinza-claro (papel ciclorama sem dobras " +
       "visíveis), duas softboxes laterais criando luz suave e direcional, leve sombra de contato no " +
       "chão, sem props no cenário — clima de editorial de revista de moda",
+    refUrl:
+      "https://vjjbihptzgxptyhzaftp.supabase.co/storage/v1/object/public/generated/46a3fd7c-c311-45f9-932c-bf535228c9e9/58bf22ea-05db-4a26-98c5-3e0c294d5dfb.jpg",
   },
   {
     id: "praia",
@@ -81,6 +88,8 @@ export const BACKGROUNDS: { id: string; label: string; emoji: string; desc: stri
       "praia tropical ao entardecer, areia branca fina em primeiro plano, ondas suaves desfocadas ao " +
       "fundo, silhuetas de coqueiros recortadas contra um céu em tons de laranja e rosa do pôr do sol, " +
       "luz dourada rasante batendo de lado no rosto e no corpo",
+    refUrl:
+      "https://vjjbihptzgxptyhzaftp.supabase.co/storage/v1/object/public/generated/46a3fd7c-c311-45f9-932c-bf535228c9e9/930ace94-50b2-457c-98c9-170899d353d7.jpg",
   },
   {
     id: "urbano",
@@ -90,6 +99,8 @@ export const BACKGROUNDS: { id: string; label: string; emoji: string; desc: stri
       "calçada de rua urbana contemporânea, fachada de prédio de tijolo aparente com um mural de " +
       "grafite discreto desfocado ao fundo, poste de luz de ferro fundido próximo, piso de " +
       "paralelepípedo, luz de fim de tarde criando sombras longas e tom levemente quente",
+    refUrl:
+      "https://vjjbihptzgxptyhzaftp.supabase.co/storage/v1/object/public/generated/46a3fd7c-c311-45f9-932c-bf535228c9e9/35916e3b-7c3a-4692-892a-ce15e336beb5.jpg",
   },
   {
     id: "festa",
@@ -99,6 +110,8 @@ export const BACKGROUNDS: { id: string; label: string; emoji: string; desc: stri
       "salão de festa à noite com luzes de neon roxo e azul desfocadas ao fundo (efeito bokeh), " +
       "taças de vidro brilhando sobre uma mesa alta fora de foco, ambiente vibrante e sofisticado, " +
       "leve luz de contorno colorida na silhueta da pessoa",
+    refUrl:
+      "https://vjjbihptzgxptyhzaftp.supabase.co/storage/v1/object/public/generated/46a3fd7c-c311-45f9-932c-bf535228c9e9/23c5e5a7-9b06-4249-8824-821a92c18669.jpg",
   },
   {
     id: "natureza",
@@ -108,6 +121,8 @@ export const BACKGROUNDS: { id: string; label: string; emoji: string; desc: stri
       "trilha em um parque arborizado, árvores altas com folhagem verde intensa desfocada ao fundo, " +
       "luz de sol filtrada entre as folhas criando pontos de luz salpicados (dappled light) sobre a " +
       "pessoa, grama curta e bem cuidada no chão",
+    refUrl:
+      "https://vjjbihptzgxptyhzaftp.supabase.co/storage/v1/object/public/generated/46a3fd7c-c311-45f9-932c-bf535228c9e9/741d1754-249d-4953-8ec5-81159b9240b1.jpg",
   },
   {
     id: "trabalho",
@@ -117,6 +132,8 @@ export const BACKGROUNDS: { id: string; label: string; emoji: string; desc: stri
       "escritório corporativo moderno com paredes de vidro, mesas de madeira clara e uma planta " +
       "grande desfocada ao fundo, luz natural entrando por janelas amplas do lado, ambiente clean, " +
       "minimalista e bem iluminado",
+    refUrl:
+      "https://vjjbihptzgxptyhzaftp.supabase.co/storage/v1/object/public/generated/46a3fd7c-c311-45f9-932c-bf535228c9e9/571ab827-459f-42a0-8b40-37cfb440670a.jpg",
   },
   {
     id: "casamento",
@@ -125,6 +142,8 @@ export const BACKGROUNDS: { id: string; label: string; emoji: string; desc: stri
     desc:
       "salão de eventos elegante com lustres de cristal desfocados ao fundo, mesas decoradas com " +
       "toalhas brancas e arranjos florais discretos, luz quente e âmbar, atmosfera sofisticada de gala",
+    refUrl:
+      "https://vjjbihptzgxptyhzaftp.supabase.co/storage/v1/object/public/generated/46a3fd7c-c311-45f9-932c-bf535228c9e9/c5436845-5dd6-4c2a-a0f0-92dfb4679e11.jpg",
   },
   {
     id: "cafe",
@@ -134,5 +153,7 @@ export const BACKGROUNDS: { id: string; label: string; emoji: string; desc: stri
       "interior de cafeteria aconchegante, balcão de madeira rústica com uma máquina de espresso " +
       "desfocada ao fundo, luz quente de lâmpadas pendentes tipo Edison, plantas em vasos de barro " +
       "próximas",
+    refUrl:
+      "https://vjjbihptzgxptyhzaftp.supabase.co/storage/v1/object/public/generated/46a3fd7c-c311-45f9-932c-bf535228c9e9/1bbf69a8-f2ab-4cb6-9d84-67f990f70376.jpg",
   },
 ];

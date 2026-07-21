@@ -10,6 +10,7 @@ import { AIService } from "@/services/AIService";
 import { TokenService } from "@/services/TokenService";
 import { useTokens } from "@/hooks/useTokens";
 import {
+  buildBackgroundClause,
   COLOR_LIGHT_INDEPENDENCE_CLAUSE,
   GARMENT_FIDELITY_CLAUSE,
   POSE_LOCK_CLAUSE,
@@ -17,23 +18,13 @@ import {
   REF_APP_ANATOMY_CLAUSE,
   REF_APP_FIDELITY_CLOSING_CLAUSE,
 } from "@/constants/prompts";
+import { BACKGROUNDS } from "@/constants/lookOptions";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 // Refinar gera uma nova imagem — custa tokens como as demais gerações.
 // Flat 1 token (token = R$0,65); custo real ~R$0,35 → margem ~46% (ver GenerationService.ts).
 const REFINE_COST = 1;
-
-const BACKGROUNDS: { id: string; label: string; emoji: string; desc: string }[] = [
-  { id: "estudio", label: "Estúdio", emoji: "📸", desc: "fundo de estúdio neutro e limpo, iluminação editorial" },
-  { id: "praia", label: "Praia", emoji: "🏖️", desc: "uma praia ensolarada, mar e areia ao fundo" },
-  { id: "urbano", label: "Urbano", emoji: "🏙️", desc: "uma rua urbana moderna ao fundo" },
-  { id: "festa", label: "Festa", emoji: "🎉", desc: "um ambiente de festa noturna com luzes" },
-  { id: "natureza", label: "Natureza", emoji: "🌳", desc: "um parque verde ao ar livre" },
-  { id: "trabalho", label: "Trabalho", emoji: "💼", desc: "um escritório elegante" },
-  { id: "casamento", label: "Evento", emoji: "🥂", desc: "um evento formal sofisticado" },
-  { id: "cafe", label: "Café", emoji: "☕", desc: "um café aconchegante" },
-];
 
 interface Props {
   imageUrl: string;
@@ -66,7 +57,7 @@ export function RefinePanel({ imageUrl, onRefined }: Props) {
         "mesmo rosto, tom de pele, cabelo, corpo e proporções da imagem original, como um editor de " +
         "fotos ajustando só o fundo/detalhes. " +
         REF_APP_ANATOMY_CLAUSE +
-        (bg ? ` Troque o fundo/cenário para: ${bg.desc}.` : "") +
+        (bg ? buildBackgroundClause(bg.desc, true) : "") +
         (bgCustom.trim() ? ` Fundo: ${bgCustom.trim()}.` : "") +
         (refine.trim() ? ` Ajustes: ${refine.trim()}.` : "") +
         " Mantenha o mesmo enquadramento e proporção da imagem original. " +
@@ -76,7 +67,9 @@ export function RefinePanel({ imageUrl, onRefined }: Props) {
         GARMENT_FIDELITY_CLAUSE +
         " " +
         REF_APP_FIDELITY_CLOSING_CLAUSE;
-      const { url } = await AIService.image(prompt, { imageUrls: [imageUrl] });
+      const { url } = await AIService.image(prompt, {
+        imageUrls: bg ? [imageUrl, bg.refUrl] : [imageUrl],
+      });
       await TokenService.debit(REFINE_COST, "Refinar imagem");
       onRefined(url);
       toast.success("Imagem atualizada.");

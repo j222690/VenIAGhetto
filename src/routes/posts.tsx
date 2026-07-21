@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { composeQuadrant } from "@/lib/composeQuadrant";
 import {
+  buildBackgroundClause,
   buildQuadrantClause,
   buildQuadrantFromScratchClause,
   buildSequentialStepClause,
@@ -118,6 +119,11 @@ function PostsPage() {
         garments.length > 1 ? "Montando o look…" : aiCaption ? "Criando imagem e legenda…" : "Criando imagem…",
       );
 
+      // Fundo escolhido (com foto de referência real, ver BACKGROUNDS) — usado
+      // tanto no texto do prompt quanto como imagem extra na chamada final.
+      const selectedBg = changeSceneOn ? BACKGROUNDS.find((b) => b.id === background) : undefined;
+      const bgRefUrls = selectedBg ? [selectedBg.refUrl] : [];
+
       // Cauda comum (fundo/refino/realismo) — igual pro passo único (1 peça
       // ou quadrante 2-4) e pro último passo do fallback sequencial (5+).
       const buildFinishPart = (hasOwnPhoto: boolean): string => {
@@ -125,9 +131,9 @@ function PostsPage() {
         if (hasOwnPhoto && !changeSceneOn) {
           part += " " + PRESERVE_PHOTO_CLAUSE;
         } else if (changeSceneOn) {
-          const bg = BACKGROUNDS.find((b) => b.id === background);
           const scenePart =
-            (bg ? ` Cenário/fundo: ${bg.desc}.` : "") + (bgCustom.trim() ? ` Detalhes do fundo: ${bgCustom.trim()}.` : "");
+            (selectedBg ? buildBackgroundClause(selectedBg.desc, true) : "") +
+            (bgCustom.trim() ? ` Detalhes do fundo: ${bgCustom.trim()}.` : "");
           part += scenePart + " " + COLOR_LIGHT_INDEPENDENCE_CLAUSE;
           if (hasOwnPhoto) part += " " + POSE_LOCK_CLAUSE;
         }
@@ -170,25 +176,28 @@ function PostsPage() {
 
         if (hasOwnPhoto) {
           if (garments.length === 1) {
-            const { url } = await AIService.image(stepPrompt, { imageUrls: [modelUrl!, garments[0]] });
+            const { url } = await AIService.image(stepPrompt, {
+              imageUrls: [modelUrl!, garments[0], ...bgRefUrls],
+            });
             currentUrl = url;
           } else {
             const composite = await composeQuadrant(garments);
             const { url } = await AIService.image(stepPrompt, {
-              imageUrls: [modelUrl!],
+              imageUrls: [modelUrl!, ...bgRefUrls],
               images: [composite],
             });
             currentUrl = url;
           }
         } else if (garments.length === 1) {
           const { url } = await AIService.image(stepPrompt, {
-            imageUrls: [garments[0]],
+            imageUrls: [garments[0], ...bgRefUrls],
             aspectRatio: "3:4",
           });
           currentUrl = url;
         } else {
           const composite = await composeQuadrant(garments);
           const { url } = await AIService.image(stepPrompt, {
+            imageUrls: bgRefUrls,
             images: [composite],
             aspectRatio: "3:4",
           });
@@ -227,6 +236,7 @@ function PostsPage() {
           }
           stepPrompt += isLast ? buildFinishPart(!!running) : running ? " " + PRESERVE_PHOTO_CLAUSE : "";
           stepPrompt += " " + REF_APP_FIDELITY_CLOSING_CLAUSE;
+          if (isLast) imgs = [...imgs, ...bgRefUrls];
           const { url } = await AIService.image(stepPrompt, { imageUrls: imgs, aspectRatio: stepAspectRatio });
           running = url;
         }
