@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { CatalogService, categoriesForSegment } from "@/services/CatalogService";
 import { TokenService } from "@/services/TokenService";
+import { useTokens } from "@/hooks/useTokens";
 import type { CatalogItem } from "@/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -17,9 +18,8 @@ import { toast } from "sonner";
 const IMPORT_TOKEN_PER_ITEM = 1;
 const IMPORT_URL_MIN_TOKENS = 5;
 // "Limpar peça" (opcional) — isola a peça da foto (remove fundo/modelo).
-// Recalibrado após a troca pro Gemini 3 Pro Image: 1 token (R$0,44) tinha
-// ficado ABAIXO do custo real da chamada (~R$0,69) — ver GenerationService.ts.
-const CLEAN_IMAGE_COST = 10;
+// Flat 1 token (token = R$0,65); custo real ~R$0,35 → margem ~46% (mesma conta do Refinar).
+const CLEAN_IMAGE_COST = 1;
 
 export const Route = createFileRoute("/catalog")({
   head: () => ({ meta: [{ title: "Catálogo — Vest IA" }] }),
@@ -50,6 +50,7 @@ const EMPTY_FORM: ItemForm = {
 
 function CatalogPage() {
   const { session } = useAuth();
+  const { balance } = useTokens();
   const { can } = usePermissions();
   const canManage = can("catalog:manage");
 
@@ -142,7 +143,7 @@ function CatalogPage() {
   const cleanPiece = async () => {
     if (!form.imageUrl) return;
     if (!TokenService.hasBalance(CLEAN_IMAGE_COST)) {
-      toast.error(`São necessários ${CLEAN_IMAGE_COST} token(s) para limpar a peça.`);
+      toast.error("Você já usou todas as gerações do mês. Adicione mais nas Configurações.");
       return;
     }
     setCleaningImage(true);
@@ -421,7 +422,7 @@ function CatalogPage() {
                   <Wand2 className="h-3.5 w-3.5" />
                   {cleaningImage
                     ? "Limpando…"
-                    : `Limpar peça? (melhora a geração) · ${CLEAN_IMAGE_COST} token`}
+                    : `Limpar peça? (melhora a geração) · ${Math.floor(balance / CLEAN_IMAGE_COST)} gerações restantes`}
                 </button>
               )
             ) : null}

@@ -79,7 +79,7 @@ function PlansPage() {
                   <span className="text-sm text-muted-foreground">/mês</span>
                 </p>
               </div>
-              <p className="mt-1 text-sm text-clay">{plan.tokens} tokens/mês</p>
+              <p className="mt-1 text-sm text-clay">{plan.tokens} gerações/mês</p>
               <ul className="mt-4 grid gap-2">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm text-foreground">

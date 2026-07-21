@@ -34,14 +34,14 @@ const PLAN_PRICE_ENV: Record<string, string> = {
   pro: "STRIPE_PRICE_PRO",
   business: "STRIPE_PRICE_BUSINESS",
 };
-const PLAN_TOKENS: Record<string, number> = { starter: 200, pro: 450, business: 900 };
+const PLAN_TOKENS: Record<string, number> = { starter: 149, pro: 303, business: 610 };
 const TRIAL_BONUS = 25;
 const PACK_PRICE_ENV: Record<string, string> = {
   pack_100: "STRIPE_PRICE_TOKENS_100",
   pack_300: "STRIPE_PRICE_TOKENS_300",
   pack_1000: "STRIPE_PRICE_TOKENS_1000",
 };
-const PACK_TOKENS: Record<string, number> = { pack_100: 100, pack_300: 300, pack_1000: 1000 };
+const PACK_TOKENS: Record<string, number> = { pack_100: 75, pack_300: 198, pack_1000: 660 };
 
 // Credita tokens com service_role (bypassa RLS) e registra a transação.
 async function credit(storeId: string, amount: number): Promise<number> {

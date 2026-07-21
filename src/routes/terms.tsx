@@ -65,7 +65,7 @@ function TermsPage() {
         </Section>
 
         <Section title="10. Contato">
-          Dúvidas: <span className="text-clay">contato@vestia.app</span>.
+          Dúvidas: <span className="text-clay">contato@vestaiapp.com</span>.
         </Section>
 
         <p className="rounded-2xl border border-dashed border-border bg-card p-4 text-xs text-muted-foreground">

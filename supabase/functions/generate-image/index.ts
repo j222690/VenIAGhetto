@@ -20,12 +20,14 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-// Nano Banana Pro primeiro (melhor qualidade); se falhar (preview pode ser
-// instável), cai pro modelo anterior — nunca deixa a geração quebrar de vez.
+// Gemini 3.1 Flash Image: ~metade do preço do 3 Pro Image ($0,067/imagem 1K
+// vs $0,134) e AINDA suporta aspectRatio (o 2.5 Flash legado não suporta —
+// foi descartado por reintroduzir a distorção de fisionomia que o aspect
+// ratio corrigiu). Fallback pro 2.5 legado só em último caso (sem aspectRatio).
 // OBS: modelos 3.x tendem a RECONSTRUIR a peça no try-on — a fidelidade
 // (fecho/botão/costura/modelo) é garantida pela redação do PROMPT (cláusula de
 // fidelidade no INÍCIO e no FIM), não pela escolha do modelo.
-const IMAGE_MODEL = "gemini-3-pro-image-preview";
+const IMAGE_MODEL = "gemini-3.1-flash-image";
 const IMAGE_MODEL_FALLBACK = "gemini-2.5-flash-image";
 const TEXT_MODEL = "gemini-2.5-flash";
 const GENAI = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -203,12 +205,13 @@ async function callImageModel(
 
 async function geminiImage(prompt: string, images: InputImage[], aspectRatio?: string) {
   try {
-    // 2K: mais detalhe fino pro modelo preservar (ex.: posição de fecho/
-    // costura) do que a resolução padrão. aspectRatio: sem isso o modelo usa
-    // um formato padrão dele (~quadrado) em vez do formato da foto original,
-    // forçando a pessoa a ser espremida/cortada — distorcia a fisionomia. Só
-    // no modelo Pro — o fallback (gemini-2.5-flash-image) não usa imageConfig.
-    return await callImageModel(IMAGE_MODEL, prompt, images, { imageSize: "2K", aspectRatio });
+    // 1K: resolução padrão do modelo — 2K custaria ~50% mais caro ($0,101 vs
+    // $0,067/imagem) por pouco ganho real de detalhe. aspectRatio: sem isso o
+    // modelo usa um formato padrão dele (~quadrado) em vez do formato da foto
+    // original, forçando a pessoa a ser espremida/cortada — distorcia a
+    // fisionomia. Só o modelo principal suporta imageConfig — o fallback
+    // (gemini-2.5-flash-image, legado) não aceita esse parâmetro.
+    return await callImageModel(IMAGE_MODEL, prompt, images, { imageSize: "1K", aspectRatio });
   } catch (err) {
     console.warn(`[generate-image] ${IMAGE_MODEL} falhou, caindo pro fallback:`, (err as Error)?.message);
     return await callImageModel(IMAGE_MODEL_FALLBACK, prompt, images);

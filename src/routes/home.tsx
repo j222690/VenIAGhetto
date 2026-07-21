@@ -34,13 +34,16 @@ function HomePage() {
         <section className="rounded-3xl border border-border bg-card p-5 shadow-soft">
           <div className="flex items-baseline justify-between">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Tokens este mês
+              Gerações este mês
             </p>
-            <p className="text-xs text-muted-foreground">{used} usados</p>
+            <p className="text-xs text-muted-foreground">{used} usadas</p>
           </div>
           <p className="mt-2 font-display text-4xl font-semibold text-foreground">
             {balance}
             <span className="ml-1 text-base font-normal text-muted-foreground">/ {total}</span>
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Vale pra Provador, Post, Refinar e Limpar peça — cada geração conta 1.
           </p>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
             <div
@@ -61,7 +64,7 @@ function HomePage() {
           <FeatureCard
             to="/tryon"
             title="Provador IA"
-            description="Vista a peça em qualquer modelo."
+            description={`Vista a peça em qualquer modelo. ${Math.floor(balance / GenerationService.tryonCost(1))} gerações restantes este mês.`}
             icon={Shirt}
             accent
           />

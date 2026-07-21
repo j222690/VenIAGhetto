@@ -10,10 +10,14 @@ import { GenerationService } from "@/services/GenerationService";
 import { ShareService } from "@/services/ShareService";
 import { TokenService } from "@/services/TokenService";
 import { PRESET_MODELS } from "@/services/PresetLibrary";
+import { useTokens } from "@/hooks/useTokens";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { composeQuadrant } from "@/lib/composeQuadrant";
 import {
+  buildQuadrantClause,
+  buildQuadrantFromScratchClause,
   buildSequentialStepClause,
   COLOR_LIGHT_INDEPENDENCE_CLAUSE,
   fitExceptionClause,
@@ -44,6 +48,7 @@ const AUDIENCES: { id: StoreSegment; label: string }[] = [
 
 function PostsPage() {
   const { session } = useAuth();
+  const { balance } = useTokens();
   const [modelUrl, setModelUrl] = useState<string | undefined>();
   const [garments, setGarments] = useState<string[]>([]);
   const [size, setSize] = useState<string | null>(null);
@@ -51,10 +56,10 @@ function PostsPage() {
   const [length, setLength] = useState<string | null>(null);
   const [audience, setAudience] = useState<StoreSegment>(session?.store.segment ?? "feminina");
   // Independentes: dá pra mudar só o fundo, só refinar, os dois, ou nenhum.
-  const [changeSceneOn, setChangeSceneOn] = useState(true);
+  const [changeSceneOn, setChangeSceneOn] = useState(false);
   const [background, setBackground] = useState<string>("estudio");
   const [bgCustom, setBgCustom] = useState("");
-  const [refineOn, setRefineOn] = useState(true);
+  const [refineOn, setRefineOn] = useState(false);
   const [refineText, setRefineText] = useState("");
   const [aiCaption, setAiCaption] = useState(true);
   const [showModels, setShowModels] = useState(false);
@@ -63,7 +68,7 @@ function PostsPage() {
   const [result, setResult] = useState<Generation | null>(null);
   const [channel, setChannel] = useState<Channel>("instagram");
 
-  // Custo varia: 1 peça = 5 tokens; várias peças = 8 (mesma lógica do Provador).
+  // Custo é flat: 1 geração, não importa o nº de peças (ver GenerationService.ts).
   const cost = GenerationService.postCost(garments.length);
 
   const addGarment = (url: string) => setGarments((g) => [...g, url]);
@@ -75,7 +80,7 @@ function PostsPage() {
       return;
     }
     if (!TokenService.hasBalance(cost)) {
-      toast.error("Saldo de tokens insuficiente. Adicione tokens nas Configurações.");
+      toast.error("Você já usou todas as gerações do mês. Adicione mais nas Configurações.");
       return;
     }
     setBusy(true);
@@ -109,35 +114,38 @@ function PostsPage() {
         .join(", ");
       const specPart = specText ? fitExceptionClause(specText) : "";
 
-      // Veste UMA PEÇA POR VEZ, encadeando o resultado (mesmo motivo do
-      // Provador — mandar várias peças numa chamada só faz o modelo aplicar
-      // só uma). Com foto própria (modelUrl): edita a foto real, identidade
-      // TRAVADA. Sem foto: o 1º passo CRIA um modelo genérico do zero
-      // vestindo a 1ª peça; os passos seguintes editam esse resultado normal.
-      let currentUrl: string | undefined = modelUrl;
-      for (let i = 0; i < garments.length; i++) {
-        const isFirst = i === 0;
-        const isLast = i === garments.length - 1;
-        setBusyLabel(
-          garments.length > 1
-            ? `Vestindo peça ${i + 1} de ${garments.length}…`
-            : aiCaption
-              ? "Criando imagem e legenda…"
-              : "Criando imagem…",
-        );
+      setBusyLabel(
+        garments.length > 1 ? "Montando o look…" : aiCaption ? "Criando imagem e legenda…" : "Criando imagem…",
+      );
 
+      // Cauda comum (fundo/refino/realismo) — igual pro passo único (1 peça
+      // ou quadrante 2-4) e pro último passo do fallback sequencial (5+).
+      const buildFinishPart = (hasOwnPhoto: boolean): string => {
+        let part = "";
+        if (hasOwnPhoto && !changeSceneOn) {
+          part += " " + PRESERVE_PHOTO_CLAUSE;
+        } else if (changeSceneOn) {
+          const bg = BACKGROUNDS.find((b) => b.id === background);
+          const scenePart =
+            (bg ? ` Cenário/fundo: ${bg.desc}.` : "") + (bgCustom.trim() ? ` Detalhes do fundo: ${bgCustom.trim()}.` : "");
+          part += scenePart + " " + COLOR_LIGHT_INDEPENDENCE_CLAUSE;
+          if (hasOwnPhoto) part += " " + POSE_LOCK_CLAUSE;
+        }
+        if (refineOn && refineText.trim()) part += ` Ajustes: ${refineText.trim()}.`;
+        part +=
+          " Composição vibrante e atraente, pronta para publicação, alta definição. " +
+          REALISM_CLAUSE +
+          (hasOwnPhoto ? "" : " " + GARMENT_FIDELITY_CLAUSE);
+        return part;
+      };
+
+      let currentUrl: string;
+      if (garments.length <= 4) {
+        const hasOwnPhoto = !!modelUrl;
         let stepPrompt: string;
-        let imgs: string[];
-        // Aspect ratio: sem foto própria, a 1ª imagem é a PEÇA (não a
-        // pessoa) — detectar pelo formato dela daria um resultado errado
-        // (ex.: peça em foto quadrada geraria pessoa "quadrada"). Força
-        // retrato explícito só nesse caso; com foto real, deixa a Edge
-        // Function detectar pelo tamanho de verdade da foto da pessoa.
-        let stepAspectRatio: string | undefined;
-        if (currentUrl) {
-          // Editando uma foto real (própria, ou já gerada num passo anterior).
+        if (hasOwnPhoto) {
           stepPrompt =
-            buildSequentialStepClause(isFirst ? 0 : 1) +
+            (garments.length === 1 ? buildSequentialStepClause(0) : buildQuadrantClause(garments.length)) +
             (specPart ? " " + specPart : "") +
             " " +
             REF_APP_ANATOMY_CLAUSE +
@@ -146,51 +154,83 @@ function PostsPage() {
             " " +
             REF_APP_NO_INVENT_CLAUSE +
             piecesPart;
-          imgs = [currentUrl, garments[i]];
-        } else {
-          // Sem foto própria: cria o modelo genérico do zero vestindo a 1ª peça.
+        } else if (garments.length === 1) {
           stepPrompt =
             `Crie uma foto de moda profissional para redes sociais de um(a) ${modelDesc} vestindo a ` +
             "peça mostrada na imagem." +
             (specPart ? " " + specPart : "") +
             piecesPart;
-          imgs = [garments[i]];
-          stepAspectRatio = "3:4";
+        } else {
+          stepPrompt =
+            buildQuadrantFromScratchClause(garments.length, modelDesc) +
+            (specPart ? " " + specPart : "") +
+            piecesPart;
         }
+        stepPrompt += buildFinishPart(hasOwnPhoto) + " " + REF_APP_FIDELITY_CLOSING_CLAUSE;
 
-        if (isLast) {
-          // Fundo/cenário e refino são INDEPENDENTES — só entram no ÚLTIMO
-          // passo, depois que todas as peças já foram aplicadas.
-          if (currentUrl && !changeSceneOn) {
-            stepPrompt += " " + PRESERVE_PHOTO_CLAUSE;
-          } else if (changeSceneOn) {
-            const bg = BACKGROUNDS.find((b) => b.id === background);
-            const scenePart =
-              (bg ? ` Cenário/fundo: ${bg.desc}.` : "") +
-              (bgCustom.trim() ? ` Detalhes do fundo: ${bgCustom.trim()}.` : "");
-            stepPrompt += scenePart + " " + COLOR_LIGHT_INDEPENDENCE_CLAUSE;
-            if (currentUrl) stepPrompt += " " + POSE_LOCK_CLAUSE;
+        if (hasOwnPhoto) {
+          if (garments.length === 1) {
+            const { url } = await AIService.image(stepPrompt, { imageUrls: [modelUrl!, garments[0]] });
+            currentUrl = url;
+          } else {
+            const composite = await composeQuadrant(garments);
+            const { url } = await AIService.image(stepPrompt, {
+              imageUrls: [modelUrl!],
+              images: [composite],
+            });
+            currentUrl = url;
           }
-          if (refineOn && refineText.trim()) {
-            stepPrompt += ` Ajustes: ${refineText.trim()}.`;
-          }
-          stepPrompt +=
-            " Composição vibrante e atraente, pronta para publicação, alta definição. " +
-            REALISM_CLAUSE +
-            (currentUrl ? "" : " " + GARMENT_FIDELITY_CLAUSE);
-        } else if (currentUrl) {
-          stepPrompt += " " + PRESERVE_PHOTO_CLAUSE;
+        } else if (garments.length === 1) {
+          const { url } = await AIService.image(stepPrompt, {
+            imageUrls: [garments[0]],
+            aspectRatio: "3:4",
+          });
+          currentUrl = url;
+        } else {
+          const composite = await composeQuadrant(garments);
+          const { url } = await AIService.image(stepPrompt, {
+            images: [composite],
+            aspectRatio: "3:4",
+          });
+          currentUrl = url;
         }
-
-        // FIDELIDADE por ÚLTIMO (recência): neutraliza o "embelezar" do REALISM_CLAUSE,
-        // que fazia o modelo re-renderizar a peça (mudando fecho/textura/modelo).
-        stepPrompt += " " + REF_APP_FIDELITY_CLOSING_CLAUSE;
-
-        const { url } = await AIService.image(stepPrompt, {
-          imageUrls: imgs,
-          aspectRatio: stepAspectRatio,
-        });
-        currentUrl = url;
+      } else {
+        // Fallback sequencial pra 5+ peças (fora do escopo da grade 2x2).
+        let running: string | undefined = modelUrl;
+        for (let i = 0; i < garments.length; i++) {
+          const isFirst = i === 0;
+          const isLast = i === garments.length - 1;
+          setBusyLabel(`Vestindo peça ${i + 1} de ${garments.length}…`);
+          let stepPrompt: string;
+          let imgs: string[];
+          let stepAspectRatio: string | undefined;
+          if (running) {
+            stepPrompt =
+              buildSequentialStepClause(isFirst ? 0 : 1) +
+              (specPart ? " " + specPart : "") +
+              " " +
+              REF_APP_ANATOMY_CLAUSE +
+              " " +
+              REF_APP_NO_COLLAGE_CLAUSE +
+              " " +
+              REF_APP_NO_INVENT_CLAUSE +
+              piecesPart;
+            imgs = [running, garments[i]];
+          } else {
+            stepPrompt =
+              `Crie uma foto de moda profissional para redes sociais de um(a) ${modelDesc} vestindo a ` +
+              "peça mostrada na imagem." +
+              (specPart ? " " + specPart : "") +
+              piecesPart;
+            imgs = [garments[i]];
+            stepAspectRatio = "3:4";
+          }
+          stepPrompt += isLast ? buildFinishPart(!!running) : running ? " " + PRESERVE_PHOTO_CLAUSE : "";
+          stepPrompt += " " + REF_APP_FIDELITY_CLOSING_CLAUSE;
+          const { url } = await AIService.image(stepPrompt, { imageUrls: imgs, aspectRatio: stepAspectRatio });
+          running = url;
+        }
+        currentUrl = running!;
       }
 
       const gen = await GenerationService.generate({
@@ -621,7 +661,7 @@ function PostsPage() {
           disabled={busy || garments.length === 0}
           className="w-full rounded-full bg-clay px-6 py-4 text-base font-semibold text-clay-foreground shadow-soft disabled:opacity-60"
         >
-          Gerar post · {cost} tokens
+          Gerar post · {Math.floor(balance / cost)} gerações restantes
         </button>
       </div>
 

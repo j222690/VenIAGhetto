@@ -73,7 +73,7 @@ function PrivacyPage() {
         </Section>
 
         <Section title="9. Contato">
-          Dúvidas sobre privacidade: <span className="text-clay">privacidade@vestia.app</span>.
+          Dúvidas sobre privacidade: <span className="text-clay">privacidade@vestaiapp.com</span>.
         </Section>
 
         <p className="rounded-2xl border border-dashed border-border bg-card p-4 text-xs text-muted-foreground">

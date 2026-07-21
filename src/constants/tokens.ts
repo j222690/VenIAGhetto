@@ -11,7 +11,7 @@ export interface TokenPack {
 }
 
 export const TOKEN_PACKS: TokenPack[] = [
-  { id: "pack_100", tokens: 100, priceBRL: 49, label: "100 tokens" },
-  { id: "pack_300", tokens: 300, priceBRL: 129, label: "300 tokens" },
-  { id: "pack_1000", tokens: 1000, priceBRL: 429, label: "1.000 tokens" },
+  { id: "pack_100", tokens: 75, priceBRL: 49, label: "75 gerações" },
+  { id: "pack_300", tokens: 198, priceBRL: 129, label: "198 gerações" },
+  { id: "pack_1000", tokens: 660, priceBRL: 429, label: "660 gerações" },
 ];

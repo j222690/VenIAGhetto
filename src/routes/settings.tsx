@@ -109,7 +109,7 @@ function SettingsPage() {
               <p className="font-display text-lg font-semibold">{plan.name}</p>
               <p className="text-sm text-muted-foreground">R$ {plan.priceBRL}/mês</p>
             </div>
-            <p className="mt-1 text-sm text-clay">{plan.tokens} tokens/mês</p>
+            <p className="mt-1 text-sm text-clay">{plan.tokens} gerações/mês</p>
             {can("plan:change") ? (
               <button
                 onClick={() => navigate({ to: "/plans" })}
@@ -126,7 +126,7 @@ function SettingsPage() {
             >
               <span className="flex items-center gap-3">
                 <Plus className="h-5 w-5 text-clay" />
-                <span className="font-medium">Comprar tokens avulsos</span>
+                <span className="font-medium">Comprar gerações avulsas</span>
               </span>
               <ArrowUpRight className="h-5 w-5 shrink-0 text-muted-foreground" />
             </button>
@@ -194,13 +194,13 @@ function TokenPacksSheet({ onClose }: { onClose: () => void }) {
       <div className="w-full max-w-md rounded-t-3xl bg-background p-5 pb-8">
         <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-border" />
         <div className="flex items-center justify-between">
-          <h3 className="font-display text-lg font-semibold">Comprar tokens</h3>
+          <h3 className="font-display text-lg font-semibold">Comprar gerações</h3>
           <button onClick={onClose} className="text-sm text-muted-foreground">
             Fechar
           </button>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Pagamento seguro via Stripe. Os tokens entram na hora após o pagamento.
+          Pagamento seguro via Stripe. As gerações entram na hora após o pagamento.
         </p>
         <div className="mt-4 space-y-2">
           {TOKEN_PACKS.map((p) => (

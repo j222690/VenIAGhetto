@@ -11,10 +11,13 @@ import { CatalogService } from "@/services/CatalogService";
 import { ClientService } from "@/services/ClientService";
 import { GenerationService } from "@/services/GenerationService";
 import { TokenService } from "@/services/TokenService";
+import { useTokens } from "@/hooks/useTokens";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import type { Client, Generation } from "@/types";
+import { composeQuadrant } from "@/lib/composeQuadrant";
 import {
+  buildQuadrantClause,
   buildSequentialStepClause,
   COLOR_LIGHT_INDEPENDENCE_CLAUSE,
   fitExceptionClause,
@@ -48,6 +51,7 @@ const RETOUCHES: { id: string; label: string; instruction: string }[] = [
 
 function TryOnPage() {
   const { session } = useAuth();
+  const { balance } = useTokens();
   const [client, setClient] = useState<Client | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | undefined>();
   const [garments, setGarments] = useState<string[]>([]);
@@ -55,10 +59,10 @@ function TryOnPage() {
   const [fit, setFit] = useState<string | null>(null);
   const [length, setLength] = useState<string | null>(null);
   // Independentes: dá pra mudar só o fundo, só refinar, os dois, ou nenhum.
-  const [changeSceneOn, setChangeSceneOn] = useState(true);
+  const [changeSceneOn, setChangeSceneOn] = useState(false);
   const [background, setBackground] = useState<string>("estudio");
   const [bgCustom, setBgCustom] = useState("");
-  const [refineOn, setRefineOn] = useState(true);
+  const [refineOn, setRefineOn] = useState(false);
   const [retouches, setRetouches] = useState<string[]>([]);
   const [retouchCustom, setRetouchCustom] = useState("");
   const [sheet, setSheet] = useState<Sheet>(null);
@@ -71,7 +75,7 @@ function TryOnPage() {
     void CatalogService.load().catch(() => {});
   }, []);
 
-  // Custo varia: 1 peça = 5 tokens; várias peças (flat-lay + vestir) = 8.
+  // Custo é flat: 1 geração, não importa o nº de peças (ver GenerationService.ts).
   const cost = GenerationService.tryonCost(garments.length);
 
   const addGarment = (url: string) => {
@@ -102,7 +106,7 @@ function TryOnPage() {
       return;
     }
     if (!TokenService.hasBalance(cost)) {
-      toast.error("Saldo de tokens insuficiente. Adicione tokens nas Configurações.");
+      toast.error("Você já usou todas as gerações do mês. Adicione mais nas Configurações.");
       return;
     }
     setBusy(true);
@@ -124,10 +128,12 @@ function TryOnPage() {
         /* segue sem descrição se a visão falhar */
       }
 
-      // 2) Veste UMA PEÇA POR VEZ, encadeando o resultado (bug real observado:
-      //    mandar várias peças numa ÚNICA chamada faz o modelo aplicar só uma
-      //    e ignorar as outras). Cada passo usa o resultado do anterior como
-      //    nova "pessoa" de entrada — ver buildSequentialStepClause.
+      // 2) Aplica as peças. 1 peça = 1 chamada de imagem direta (como sempre).
+      //    2-4 peças = QUADRANTE: monta 1 imagem com todas as peças (grade
+      //    2x2, sem IA) e veste tudo numa ÚNICA chamada — em vez de N
+      //    chamadas sequenciais (1 por peça), que custavam N × o preço real
+      //    da imagem. 5+ peças (raro) mantém o fluxo sequencial antigo, já
+      //    que a grade só tem 4 quadrantes.
       const piecesPart = pieces ? ` Look completo (contexto): ${pieces}.` : "";
       const specText = [
         size ? `tamanho ${size}` : "",
@@ -138,15 +144,36 @@ function TryOnPage() {
         .join(", ");
       const specPart = specText ? fitExceptionClause(specText) : "";
 
-      let currentUrl = photoUrl;
-      for (let i = 0; i < garments.length; i++) {
-        const isLast = i === garments.length - 1;
-        setBusyLabel(
-          garments.length > 1 ? `Vestindo peça ${i + 1} de ${garments.length}…` : "Vestindo o look…",
-        );
+      // Cauda comum (fundo/retoques/realismo/fidelidade) — igual pro passo
+      // único (quadrante) ou pro último passo do fluxo sequencial (5+ peças).
+      const buildFinishPart = (): string => {
+        let part = "";
+        if (changeSceneOn) {
+          const bg = BACKGROUNDS.find((b) => b.id === background);
+          const scenePart =
+            " Enquadramento de corpo inteiro." +
+            (bg ? ` Cenário: ${bg.desc}.` : "") +
+            (bgCustom.trim() ? ` Detalhes do cenário: ${bgCustom.trim()}.` : "");
+          part += scenePart + " " + POSE_LOCK_CLAUSE + " " + COLOR_LIGHT_INDEPENDENCE_CLAUSE;
+        } else {
+          part += " " + PRESERVE_PHOTO_CLAUSE;
+        }
+        if (refineOn) {
+          const retouchList = RETOUCHES.filter((r) => retouches.includes(r.id)).map((r) => r.instruction);
+          const retouchTxt = [...retouchList, retouchCustom.trim()].filter(Boolean).join("; ");
+          if (retouchTxt) part += ` Retoques: ${retouchTxt}.`;
+        }
+        part += " " + REALISM_CLAUSE;
+        return part;
+      };
 
-        let stepPrompt =
-          buildSequentialStepClause(i) +
+      let currentUrl: string;
+      if (garments.length <= 4) {
+        setBusyLabel(garments.length > 1 ? "Montando o look…" : "Vestindo o look…");
+        const stepPrompt =
+          (garments.length === 1
+            ? buildSequentialStepClause(0)
+            : buildQuadrantClause(garments.length)) +
           (specPart ? " " + specPart : "") +
           " " +
           REF_APP_ANATOMY_CLAUSE +
@@ -154,42 +181,44 @@ function TryOnPage() {
           REF_APP_NO_COLLAGE_CLAUSE +
           " " +
           REF_APP_NO_INVENT_CLAUSE +
-          piecesPart;
+          piecesPart +
+          buildFinishPart() +
+          " " +
+          REF_APP_FIDELITY_CLOSING_CLAUSE;
 
-        if (isLast) {
-          // Fundo/cenário e retoques são INDEPENDENTES: dá pra mudar só o
-          // fundo, só refinar, os dois juntos, ou nenhum. Só entram no ÚLTIMO
-          // passo — nos passos intermediários o cenário ainda não importa.
-          if (changeSceneOn) {
-            const bg = BACKGROUNDS.find((b) => b.id === background);
-            const scenePart =
-              " Enquadramento de corpo inteiro." +
-              (bg ? ` Cenário: ${bg.desc}.` : "") +
-              (bgCustom.trim() ? ` Detalhes do cenário: ${bgCustom.trim()}.` : "");
-            stepPrompt += scenePart + " " + POSE_LOCK_CLAUSE + " " + COLOR_LIGHT_INDEPENDENCE_CLAUSE;
-          } else {
-            stepPrompt += " " + PRESERVE_PHOTO_CLAUSE;
-          }
-          if (refineOn) {
-            const retouchList = RETOUCHES.filter((r) => retouches.includes(r.id)).map((r) => r.instruction);
-            const retouchTxt = [...retouchList, retouchCustom.trim()].filter(Boolean).join("; ");
-            if (retouchTxt) stepPrompt += ` Retoques: ${retouchTxt}.`;
-          }
-          stepPrompt += " " + REALISM_CLAUSE;
+        if (garments.length === 1) {
+          const { url } = await AIService.image(stepPrompt, { imageUrls: [photoUrl, garments[0]] });
+          currentUrl = url;
         } else {
-          // Passo intermediário: mantém tudo (cenário incluso) estável — o
-          // acabamento final só é decidido no último passo.
-          stepPrompt += " " + PRESERVE_PHOTO_CLAUSE;
+          const composite = await composeQuadrant(garments);
+          const { url } = await AIService.image(stepPrompt, {
+            imageUrls: [photoUrl],
+            images: [composite],
+          });
+          currentUrl = url;
         }
-
-        // FIDELIDADE por ÚLTIMO (recência): neutraliza o "embelezar" do REALISM_CLAUSE,
-        // que fazia o modelo re-renderizar a peça (mudando fecho/textura/modelo).
-        stepPrompt += " " + REF_APP_FIDELITY_CLOSING_CLAUSE;
-
-        const { url } = await AIService.image(stepPrompt, {
-          imageUrls: [currentUrl, garments[i]],
-        });
-        currentUrl = url;
+      } else {
+        // Fallback sequencial pra 5+ peças (fora do escopo da grade 2x2).
+        let running = photoUrl;
+        for (let i = 0; i < garments.length; i++) {
+          const isLast = i === garments.length - 1;
+          setBusyLabel(`Vestindo peça ${i + 1} de ${garments.length}…`);
+          let stepPrompt =
+            buildSequentialStepClause(i) +
+            (specPart ? " " + specPart : "") +
+            " " +
+            REF_APP_ANATOMY_CLAUSE +
+            " " +
+            REF_APP_NO_COLLAGE_CLAUSE +
+            " " +
+            REF_APP_NO_INVENT_CLAUSE +
+            piecesPart;
+          stepPrompt += isLast ? buildFinishPart() : " " + PRESERVE_PHOTO_CLAUSE;
+          stepPrompt += " " + REF_APP_FIDELITY_CLOSING_CLAUSE;
+          const { url } = await AIService.image(stepPrompt, { imageUrls: [running, garments[i]] });
+          running = url;
+        }
+        currentUrl = running;
       }
 
       const gen = await GenerationService.generate({
@@ -222,7 +251,7 @@ function TryOnPage() {
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-foreground">Look gerado</p>
                 <p className="truncate text-xs text-muted-foreground">
-                  {client ? `Para ${client.name}` : "Sem cliente associado"} · {cost} tokens
+                  {client ? `Para ${client.name}` : "Sem cliente associado"} · {Math.floor(balance / cost)} gerações restantes este mês
                 </p>
               </div>
               <LookActions look={result} actions={["favorite", "download", "instagram", "whatsapp"]} />
@@ -544,7 +573,7 @@ function TryOnPage() {
           disabled={busy || garments.length === 0 || !photoUrl}
           className="w-full rounded-full bg-clay px-6 py-4 text-base font-semibold text-clay-foreground shadow-soft disabled:opacity-60"
         >
-          Gerar look · {cost} tokens
+          Gerar look · {Math.floor(balance / cost)} gerações restantes
         </button>
       </div>
 

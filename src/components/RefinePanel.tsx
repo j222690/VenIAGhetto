@@ -8,14 +8,21 @@ import { useState } from "react";
 import { RotateCw, Sparkles } from "@/lib/icons";
 import { AIService } from "@/services/AIService";
 import { TokenService } from "@/services/TokenService";
-import { GARMENT_FIDELITY_CLAUSE, REALISM_CLAUSE } from "@/constants/prompts";
+import { useTokens } from "@/hooks/useTokens";
+import {
+  COLOR_LIGHT_INDEPENDENCE_CLAUSE,
+  GARMENT_FIDELITY_CLAUSE,
+  POSE_LOCK_CLAUSE,
+  REALISM_CLAUSE,
+  REF_APP_ANATOMY_CLAUSE,
+  REF_APP_FIDELITY_CLOSING_CLAUSE,
+} from "@/constants/prompts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 // Refinar gera uma nova imagem — custa tokens como as demais gerações.
-// Recalibrado junto com o Provador/Posts após a troca pro Gemini 3 Pro Image
-// (custo real por imagem ~3,4x maior que o modelo antigo) — ver GenerationService.ts.
-const REFINE_COST = 10;
+// Flat 1 token (token = R$0,65); custo real ~R$0,35 → margem ~46% (ver GenerationService.ts).
+const REFINE_COST = 1;
 
 const BACKGROUNDS: { id: string; label: string; emoji: string; desc: string }[] = [
   { id: "estudio", label: "Estúdio", emoji: "📸", desc: "fundo de estúdio neutro e limpo, iluminação editorial" },
@@ -34,6 +41,7 @@ interface Props {
 }
 
 export function RefinePanel({ imageUrl, onRefined }: Props) {
+  const { balance } = useTokens();
   const [enabled, setEnabled] = useState(false);
   const [background, setBackground] = useState<string>("");
   const [bgCustom, setBgCustom] = useState("");
@@ -47,20 +55,27 @@ export function RefinePanel({ imageUrl, onRefined }: Props) {
       return;
     }
     if (!TokenService.hasBalance(REFINE_COST)) {
-      toast.error("Saldo de tokens insuficiente para refinar.");
+      toast.error("Você já usou todas as gerações do mês para refinar.");
       return;
     }
     setBusy(true);
     try {
+      const changingScene = !!bg || !!bgCustom.trim();
       const prompt =
-        "Edite a imagem a seguir mantendo FIELMENTE a pessoa e as roupas (mesmo rosto, corpo e peças)." +
+        "Isto é uma EDIÇÃO de uma foto real, não a criação de uma pessoa nova — mantenha EXATAMENTE o " +
+        "mesmo rosto, tom de pele, cabelo, corpo e proporções da imagem original, como um editor de " +
+        "fotos ajustando só o fundo/detalhes. " +
+        REF_APP_ANATOMY_CLAUSE +
         (bg ? ` Troque o fundo/cenário para: ${bg.desc}.` : "") +
         (bgCustom.trim() ? ` Fundo: ${bgCustom.trim()}.` : "") +
         (refine.trim() ? ` Ajustes: ${refine.trim()}.` : "") +
         " Mantenha o mesmo enquadramento e proporção da imagem original. " +
+        (changingScene ? POSE_LOCK_CLAUSE + " " + COLOR_LIGHT_INDEPENDENCE_CLAUSE + " " : "") +
         REALISM_CLAUSE +
         " " +
-        GARMENT_FIDELITY_CLAUSE;
+        GARMENT_FIDELITY_CLAUSE +
+        " " +
+        REF_APP_FIDELITY_CLOSING_CLAUSE;
       const { url } = await AIService.image(prompt, { imageUrls: [imageUrl] });
       await TokenService.debit(REFINE_COST, "Refinar imagem");
       onRefined(url);
@@ -144,7 +159,7 @@ export function RefinePanel({ imageUrl, onRefined }: Props) {
               </>
             ) : (
               <>
-                <RotateCw className="h-4 w-4" /> Aplicar mudanças · {REFINE_COST} tokens
+                <RotateCw className="h-4 w-4" /> Aplicar mudanças · {Math.floor(balance / REFINE_COST)} gerações restantes
               </>
             )}
           </button>

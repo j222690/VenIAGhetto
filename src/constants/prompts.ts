@@ -176,6 +176,81 @@ export function buildSequentialStepClause(stepIndex: number): string {
   );
 }
 
+// Aplicação em quadrantes — substitui a aplicação SEQUENCIAL (uma chamada de
+// IA por peça) por UMA chamada só, pra cortar custo em looks de 2+ peças (N
+// chamadas de imagem viravam N × custo real). A imagem 2 é uma grade 2x2
+// montada no FRONTEND (sem IA, só recorte/posicionamento): cada quadrante
+// preenchido tem UMA peça; quadrantes vazios são cinza-liso e devem ser
+// ignorados. `pieceCount` é quantos quadrantes (1 a 4) estão preenchidos, na
+// ORDEM: superior-esquerdo, superior-direito, inferior-esquerdo,
+// inferior-direito — a MESMA ordem da descrição em `piecesPart` (cada linha
+// da descrição corresponde, em ordem, a um quadrante preenchido).
+const QUADRANT_LABELS = ["superior-esquerdo", "superior-direito", "inferior-esquerdo", "inferior-direito"];
+
+// Descreve a grade de quadrantes em si (reutilizável nos dois casos: editar
+// pessoa existente = grade é a "SEGUNDA" imagem; criar modelo do zero = grade
+// é a "ÚNICA" imagem, já que não tem foto de pessoa nenhuma pra editar).
+function quadrantReferenceNote(pieceCount: number, imageLabel: "SEGUNDA" | "ÚNICA"): string {
+  const used = QUADRANT_LABELS.slice(0, pieceCount).join(", ");
+  const empty = QUADRANT_LABELS.slice(pieceCount);
+  const emptyPart = empty.length
+    ? ` Os quadrantes ${empty.join(" e ")} estão VAZIOS (cinza-liso) — IGNORE-OS por completo, eles não representam nenhuma peça.`
+    : "";
+  const orderList =
+    `1ª peça descrita = quadrante ${QUADRANT_LABELS[0]}` +
+    `${pieceCount > 1 ? `, 2ª peça = ${QUADRANT_LABELS[1]}` : ""}` +
+    `${pieceCount > 2 ? `, 3ª peça = ${QUADRANT_LABELS[2]}` : ""}` +
+    `${pieceCount > 3 ? `, 4ª peça = ${QUADRANT_LABELS[3]}` : ""}`;
+  return (
+    `A imagem ${imageLabel} é uma grade de referência dividida em 4 quadrantes (2x2). Os quadrantes ${used} ` +
+    `cada um mostra UMA peça de roupa/calçado diferente, na MESMA ordem da descrição das peças dada a ` +
+    `seguir (${orderList}).${emptyPart}`
+  );
+}
+
+export function buildQuadrantClause(pieceCount: number): string {
+  return (
+    quadrantReferenceNote(pieceCount, "SEGUNDA") +
+    ` TASK: vista a pessoa da PRIMEIRA imagem com TODAS as ${pieceCount} peças mostradas nos quadrantes ` +
+    `preenchidos ao mesmo tempo — cada peça na região do corpo correspondente ao seu tipo (ex.: peça de ` +
+    `cima no tronco, peça de baixo nas pernas, calçado nos pés). NÃO aplique só uma peça e ignore as ` +
+    `outras — todas as ${pieceCount} precisam aparecer no resultado. NÃO adicione nenhum acessório ` +
+    `(óculos, bolsa, joia, chapéu etc.) que não esteja em uma das peças enviadas. ` +
+    CLOTHING_MULTI_REARRANGE_CLAUSE
+  );
+}
+
+// Variante pra CRIAR um modelo do zero (Posts sem foto própria) vestindo
+// 2-4 peças de uma vez — não tem "pessoa da primeira imagem" pra editar, a
+// grade é a ÚNICA imagem de referência.
+export function buildQuadrantFromScratchClause(pieceCount: number, modelDesc: string): string {
+  return (
+    `Crie uma foto de moda profissional para redes sociais de um(a) ${modelDesc} vestindo TODAS as ` +
+    `${pieceCount} peças mostradas na grade de referência anexada, cada peça na região do corpo ` +
+    `correspondente ao seu tipo (ex.: peça de cima no tronco, peça de baixo nas pernas, calçado nos ` +
+    `pés). NÃO aplique só uma peça e ignore as outras — todas as ${pieceCount} precisam aparecer no ` +
+    `resultado. NÃO adicione nenhum acessório (óculos, bolsa, joia, chapéu etc.) que não esteja em ` +
+    `uma das peças enviadas. ` +
+    quadrantReferenceNote(pieceCount, "ÚNICA")
+  );
+}
+
+// Variante PLURAL de CLOTHING_FULL_REARRANGE_CLAUSE, para quando VÁRIAS peças
+// (uma por quadrante) são aplicadas na MESMA chamada — a versão original fala
+// de "a peça nova desta etapa" (singular, feita pro fluxo sequencial); aqui
+// cada peça nova tem sua própria região liberada, e só as regiões SEM
+// nenhuma peça nova (ex.: sapato, quando só camisa+calça foram enviadas)
+// ficam ancoradas na foto original.
+export const CLOTHING_MULTI_REARRANGE_CLAUSE =
+  "CLOTHING SCOPE (mandatory, narrow): this rule applies to each body region covered by one of the NEW " +
+  "garments shown in the quadrant grid (e.g. a pants quadrant frees ONLY the lower-body region; a shirt " +
+  "quadrant frees ONLY the torso region). In each such region, nothing from the original photo is " +
+  "anchored except the person's face/body physiognomy — fully replace whatever was there (old garment, " +
+  "old layering) with the corresponding new garment, from scratch. ANY body region NOT covered by one " +
+  "of the new garments (e.g. shoes/accessories, if no shoe quadrant was provided) is OUTSIDE this rule " +
+  "and must stay 100% pixel-identical to the original photo — do not redesign, restyle or invent " +
+  "anything for a region no new garment covers.";
+
 // Pedido explícito do usuário: a única coisa que vem da foto original nessa
 // REGIÃO DO CORPO (a região da peça sendo trocada) é rosto/fisionomia — o
 // resto da roupa NAQUELA região deve ser rearrumado do zero conforme a peça

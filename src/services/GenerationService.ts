@@ -94,34 +94,35 @@ async function generatePostCopy(
 // gerações reais da loja carregadas por `load()`.
 let generations: Generation[] = [];
 
-// Custo em tokens por operação — alinhado ao custo real de IA. Recalculado
-// depois da troca pro Gemini 3 Pro Image (Nano Banana Pro, ~3,4x mais caro
-// por imagem que o modelo antigo) e da aplicação SEQUENCIAL de peças (2+
-// peças agora são N chamadas de IA, uma por peça, em vez de 1 chamada só —
-// ver TryOnPage.run/PostsPage.generate). Valores calibrados pra manter a
-// margem perto da faixa original (~85-90%): 1 peça ≈ R$0,75-0,80 de custo
-// real → 12 tokens; 2+ peças ≈ R$1,45-1,50 de custo real → 22 tokens.
+// Custo em tokens por operação — flat, 1 token por geração (token = R$0,65).
+// Provador/Post usam a grade de QUADRANTES (composeQuadrant) pra looks de até
+// 4 peças: 1 chamada de imagem só, custo real ~igual não importa o nº de
+// peças (~R$0,43 Provador, ~R$0,45 Post com Gemini 3.1 Flash Image) — por
+// isso 1 peça e 2-4 peças custam o MESMO: 1 token. Margem a R$0,65: Provador
+// ~34%, Post ~31%, Scanner ~94% (custo real ~R$0,04). Looks de 5+ peças
+// (raro, fora da grade 2x2) caem no fallback sequencial antigo mas cobram só
+// 1 token — margem menor nesse caso extremo, aceito por simplicidade de preço.
 const TOKEN_COST: Record<GenerationType, number> = {
-  tryon: 12, // 1 peça
-  post: 12,
+  tryon: 1,
+  post: 1,
   scanner: 1,
 };
-const TRYON_MULTI_COST = 22; // provador com 2+ peças (N chamadas sequenciais)
-const POST_MULTI_COST = 22; // post com 2+ peças (N chamadas sequenciais)
 
 export const GenerationService = {
   history(): Generation[] {
     return generations;
   },
 
-  // Custo do Provador conforme o nº de peças (várias peças = flat-lay + vestir).
+  // Custo do Provador — flat, não varia mais com o nº de peças (ver comentário acima).
   tryonCost(pieceCount: number): number {
-    return pieceCount >= 2 ? TRYON_MULTI_COST : TOKEN_COST.tryon;
+    void pieceCount;
+    return TOKEN_COST.tryon;
   },
 
-  // Custo do Post conforme o nº de peças (mesma lógica do Provador).
+  // Custo do Post — flat, mesma lógica do Provador.
   postCost(pieceCount: number): number {
-    return pieceCount >= 2 ? POST_MULTI_COST : TOKEN_COST.post;
+    void pieceCount;
+    return TOKEN_COST.post;
   },
 
   filter(type?: GenerationType): Generation[] {
