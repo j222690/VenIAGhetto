@@ -294,8 +294,10 @@ export const COLOR_LIGHT_INDEPENDENCE_CLAUSE =
 // tamanho/caimento/comprimento.
 // Troca de cenário/fundo — antes só descrevia o cenário em TEXTO, e a IA
 // "inventava" o ambiente do zero (saía genérico/plástico). Agora manda uma
-// FOTO real de referência do cenário (sem pessoa, ver BACKGROUNDS em
-// lookOptions.ts) junto. Pedido explícito do usuário: quando o cenário muda,
+// FOTO real de referência do cenário (ver BACKGROUNDS em lookOptions.ts)
+// junto — algumas são fotos reais de banco de imagens e PODEM ter gente nelas
+// (ex.: alguém na praia ao fundo), por isso pede pra ignorar qualquer pessoa
+// da referência. Pedido explícito do usuário: quando o cenário muda,
 // é a PESSOA que precisa se adaptar à luz do novo ambiente (relight), não o
 // cenário se adaptando à luz da pessoa — senão fica com "cara de composição"
 // (pessoa iluminada como no estúdio original, colada num fundo diferente).
@@ -304,10 +306,12 @@ export const COLOR_LIGHT_INDEPENDENCE_CLAUSE =
 export function buildBackgroundClause(desc: string, hasRef: boolean): string {
   if (!hasRef) return ` Cenário: ${desc}.`;
   return (
-    ` Uma das imagens de referência anexadas mostra o CENÁRIO desejado (sem pessoa): ${desc}. Use essa ` +
-    "imagem como referência visual do ambiente (elementos, cores, estilo, texturas). A PESSOA precisa " +
-    "se ADAPTAR à luz desse novo ambiente, não o contrário — relumine a pele, o cabelo e a roupa da " +
-    "pessoa conforme a direção, cor (quente/fria) e intensidade da luz do cenário de referência, como " +
+    ` Uma das imagens de referência anexadas mostra o CENÁRIO desejado: ${desc}. Use essa imagem como ` +
+    "referência visual do ambiente (elementos, cores, estilo, texturas) — se ela tiver alguma pessoa, " +
+    "IGNORE essa pessoa completamente (não a copie, não a inclua, não misture os dois corpos); ela serve " +
+    "só de escala/contexto do lugar. O resultado final tem APENAS a pessoa da primeira imagem. A PESSOA " +
+    "precisa se ADAPTAR à luz desse novo ambiente, não o contrário — relumine a pele, o cabelo e a roupa " +
+    "da pessoa conforme a direção, cor (quente/fria) e intensidade da luz do cenário de referência, como " +
     "se ela estivesse fisicamente ali (sombra e brilho realistas, condizentes com aquela luz). A cor " +
     "BASE da peça de roupa continua idêntica à referência da peça (só sombra/brilho pode variar). " +
     "Preste atenção no CALÇADO da pessoa: se ele não for apropriado pro terreno mostrado (ex.: tênis ou " +

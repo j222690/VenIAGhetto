@@ -19,6 +19,7 @@ import {
   REF_APP_FIDELITY_CLOSING_CLAUSE,
 } from "@/constants/prompts";
 import { BACKGROUNDS } from "@/constants/lookOptions";
+import { BackgroundRefPicker } from "@/components/BackgroundRefPicker";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -35,6 +36,7 @@ export function RefinePanel({ imageUrl, onRefined }: Props) {
   const { balance } = useTokens();
   const [enabled, setEnabled] = useState(false);
   const [background, setBackground] = useState<string>("");
+  const [bgRefUrl, setBgRefUrl] = useState<string>("");
   const [bgCustom, setBgCustom] = useState("");
   const [refine, setRefine] = useState("");
   const [busy, setBusy] = useState(false);
@@ -68,7 +70,7 @@ export function RefinePanel({ imageUrl, onRefined }: Props) {
         " " +
         REF_APP_FIDELITY_CLOSING_CLAUSE;
       const { url } = await AIService.image(prompt, {
-        imageUrls: bg ? [imageUrl, bg.refUrl] : [imageUrl],
+        imageUrls: bg && bgRefUrl ? [imageUrl, bgRefUrl] : [imageUrl],
       });
       await TokenService.debit(REFINE_COST, "Refinar imagem");
       onRefined(url);
@@ -115,7 +117,11 @@ export function RefinePanel({ imageUrl, onRefined }: Props) {
             {BACKGROUNDS.map((b) => (
               <button
                 key={b.id}
-                onClick={() => setBackground((cur) => (cur === b.id ? "" : b.id))}
+                onClick={() => {
+                  const deselecting = background === b.id;
+                  setBackground(deselecting ? "" : b.id);
+                  setBgRefUrl(deselecting ? "" : b.refs[0]?.url ?? "");
+                }}
                 className={cn(
                   "flex flex-col items-center gap-1 rounded-2xl border px-1 py-2.5 transition",
                   background === b.id
@@ -128,6 +134,11 @@ export function RefinePanel({ imageUrl, onRefined }: Props) {
               </button>
             ))}
           </div>
+          <BackgroundRefPicker
+            refs={BACKGROUNDS.find((b) => b.id === background)?.refs ?? []}
+            value={bgRefUrl}
+            onChange={setBgRefUrl}
+          />
           <input
             value={bgCustom}
             onChange={(e) => setBgCustom(e.target.value)}

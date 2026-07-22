@@ -4,6 +4,7 @@ import { Copy, Download, Instagram, MessageCircle, Sparkles, Trash2 } from "@/li
 import { AppLayout } from "@/layouts/AppLayout";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
+import { BackgroundRefPicker } from "@/components/BackgroundRefPicker";
 import { RefinePanel } from "@/components/RefinePanel";
 import { AIService } from "@/services/AIService";
 import { GenerationService } from "@/services/GenerationService";
@@ -59,6 +60,7 @@ function PostsPage() {
   // Independentes: dá pra mudar só o fundo, só refinar, os dois, ou nenhum.
   const [changeSceneOn, setChangeSceneOn] = useState(false);
   const [background, setBackground] = useState<string>("estudio");
+  const [bgRefUrl, setBgRefUrl] = useState<string>(BACKGROUNDS[0]?.refs[0]?.url ?? "");
   const [bgCustom, setBgCustom] = useState("");
   const [refineOn, setRefineOn] = useState(false);
   const [refineText, setRefineText] = useState("");
@@ -122,7 +124,7 @@ function PostsPage() {
       // Fundo escolhido (com foto de referência real, ver BACKGROUNDS) — usado
       // tanto no texto do prompt quanto como imagem extra na chamada final.
       const selectedBg = changeSceneOn ? BACKGROUNDS.find((b) => b.id === background) : undefined;
-      const bgRefUrls = selectedBg ? [selectedBg.refUrl] : [];
+      const bgRefUrls = selectedBg && bgRefUrl ? [bgRefUrl] : [];
 
       // Cauda comum (fundo/refino/realismo) — igual pro passo único (1 peça
       // ou quadrante 2-4) e pro último passo do fallback sequencial (5+).
@@ -553,7 +555,10 @@ function PostsPage() {
               {BACKGROUNDS.map((b) => (
                 <button
                   key={b.id}
-                  onClick={() => setBackground(b.id)}
+                  onClick={() => {
+                    setBackground(b.id);
+                    setBgRefUrl(b.refs[0]?.url ?? "");
+                  }}
                   className={cn(
                     "flex flex-col items-center gap-1 rounded-2xl border px-1 py-2.5 transition",
                     background === b.id
@@ -566,6 +571,11 @@ function PostsPage() {
                 </button>
               ))}
             </div>
+            <BackgroundRefPicker
+              refs={BACKGROUNDS.find((b) => b.id === background)?.refs ?? []}
+              value={bgRefUrl}
+              onChange={setBgRefUrl}
+            />
             <input
               value={bgCustom}
               onChange={(e) => setBgCustom(e.target.value)}
