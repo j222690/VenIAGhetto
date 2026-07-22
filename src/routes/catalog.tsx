@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Check, Globe, ImagePlus, Pencil, Plus, Search, Sparkles, Trash2, Wand2 } from "@/lib/icons";
+import { describeApiError } from "@/lib/apiErrors";
 import { AppLayout } from "@/layouts/AppLayout";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
@@ -204,7 +205,7 @@ function CatalogPage() {
       toast.success(`${done} produto(s) importado(s) do link.`);
       setEditing(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Não foi possível importar do link.");
+      toast.error(describeApiError(e, "Não foi possível importar do link."));
     } finally {
       setBusy(false);
       setImportLabel(null);

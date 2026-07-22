@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowLeft, Check } from "@/lib/icons";
+import { describeApiError } from "@/lib/apiErrors";
 import { PLANS } from "@/constants/plans";
 import { PaymentService } from "@/services/PaymentService";
 import { cn } from "@/lib/utils";
@@ -33,7 +34,7 @@ function PlansPage() {
       window.location.href = url;
     } catch (e) {
       // Stripe ainda não configurado: segue o onboarding para não travar o fluxo.
-      toast.error(e instanceof Error ? e.message : "Pagamento indisponível no momento.");
+      toast.error(describeApiError(e, "Pagamento indisponível no momento."));
       navigate({ to: "/onboarding" });
     } finally {
       setBusy(false);

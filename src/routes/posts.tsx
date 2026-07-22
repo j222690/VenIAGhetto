@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Copy, Download, Instagram, MessageCircle, Sparkles, Trash2 } from "@/lib/icons";
+import { describeApiError } from "@/lib/apiErrors";
 import { AppLayout } from "@/layouts/AppLayout";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
@@ -269,7 +270,7 @@ function PostsPage() {
       });
       setResult(gen);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Não foi possível gerar o post.");
+      toast.error(describeApiError(e, "Não foi possível gerar o post."));
     } finally {
       setBusy(false);
     }
@@ -560,7 +561,7 @@ function PostsPage() {
         {changeSceneOn ? (
           <section className="space-y-3">
             <p className="text-sm font-semibold text-foreground">Fundo / cenário</p>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {BACKGROUNDS.map((b) => (
                 <button
                   key={b.id}

@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { StoreService } from "@/services/StoreService";
 import { PaymentService } from "@/services/PaymentService";
+import { describeApiError } from "@/lib/apiErrors";
 import { getPlan } from "@/constants/plans";
 import { TOKEN_PACKS } from "@/constants/tokens";
 import type { StoreSegment } from "@/types";
@@ -184,7 +185,7 @@ function TokenPacksSheet({ onClose }: { onClose: () => void }) {
       const { url } = await PaymentService.startTokenPurchase(packId);
       window.location.href = url;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Pagamento indisponível no momento.");
+      toast.error(describeApiError(e, "Pagamento indisponível no momento."));
       setBusy(null);
     }
   };

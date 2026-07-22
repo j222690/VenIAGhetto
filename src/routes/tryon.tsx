@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { BookImage, RotateCw, Sparkles, Trash2, Users } from "@/lib/icons";
+import { describeApiError } from "@/lib/apiErrors";
 import { AppLayout } from "@/layouts/AppLayout";
 import { BackgroundRefPicker } from "@/components/BackgroundRefPicker";
 import { ImageUploadField } from "@/components/ImageUploadField";
@@ -251,7 +252,7 @@ function TryOnPage() {
       });
       setResult(gen);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Não foi possível gerar o look.");
+      toast.error(describeApiError(e, "Não foi possível gerar o look."));
     } finally {
       setBusy(false);
     }
@@ -502,7 +503,7 @@ function TryOnPage() {
                 Onde o cliente vai usar? O fundo combina com o momento.
               </p>
             </div>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {BACKGROUNDS.map((b) => (
                 <button
                   key={b.id}

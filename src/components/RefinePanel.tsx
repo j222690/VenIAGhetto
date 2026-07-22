@@ -19,6 +19,7 @@ import {
   REF_APP_FIDELITY_CLOSING_CLAUSE,
 } from "@/constants/prompts";
 import { BACKGROUNDS } from "@/constants/lookOptions";
+import { describeApiError } from "@/lib/apiErrors";
 import { BackgroundRefPicker } from "@/components/BackgroundRefPicker";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -76,7 +77,7 @@ export function RefinePanel({ imageUrl, onRefined }: Props) {
       onRefined(url);
       toast.success("Imagem atualizada.");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Não foi possível refinar a imagem.");
+      toast.error(describeApiError(e, "Não foi possível refinar a imagem."));
     } finally {
       setBusy(false);
     }
@@ -113,7 +114,7 @@ export function RefinePanel({ imageUrl, onRefined }: Props) {
           <p className="text-xs text-muted-foreground">
             Edita a imagem gerada mantendo pessoa e roupas.
           </p>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {BACKGROUNDS.map((b) => (
               <button
                 key={b.id}

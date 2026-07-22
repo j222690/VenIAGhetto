@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { ImagePlus } from "@/lib/icons";
+import { describeApiError } from "@/lib/apiErrors";
 import { StorageService, type StorageBucket } from "@/services/StorageService";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -54,7 +55,7 @@ export function ImageUploadField({
       onChange(url);
       toast.success("Imagem enviada.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Falha ao enviar a imagem.");
+      toast.error(describeApiError(err, "Falha ao enviar a imagem."));
     } finally {
       setUploading(false);
     }
