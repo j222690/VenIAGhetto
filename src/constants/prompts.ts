@@ -211,6 +211,9 @@ function quadrantReferenceNote(pieceCount: number): string {
 
 export function buildQuadrantClause(pieceCount: number): string {
   return (
+    "Isto é uma EDIÇÃO de uma foto real, não a criação de uma pessoa nova — mantenha EXATAMENTE o " +
+    "mesmo rosto, tom de pele, cabelo, corpo e pose da PRIMEIRA imagem, como um editor de fotos " +
+    "trocando só a roupa. " +
     quadrantReferenceNote(pieceCount) +
     ` TASK: vista a pessoa da PRIMEIRA imagem com TODAS as ${pieceCount} peças mostradas nos quadrantes ` +
     `preenchidos ao mesmo tempo — cada peça na região do corpo correspondente ao seu tipo (ex.: peça de ` +
@@ -292,20 +295,23 @@ export const COLOR_LIGHT_INDEPENDENCE_CLAUSE =
 // Troca de cenário/fundo — antes só descrevia o cenário em TEXTO, e a IA
 // "inventava" o ambiente do zero (saía genérico/plástico). Agora manda uma
 // FOTO real de referência do cenário (sem pessoa, ver BACKGROUNDS em
-// lookOptions.ts) junto — mas copiar a luz da referência ao pé da letra
-// pode destoar da foto da pessoa (ângulo/hora do dia diferentes), por isso
-// pede pra ADAPTAR luz/perspectiva em vez de copiar. Também cobre um bug
-// real observado: pessoa de tênis "flutuando" na areia da praia — pede pra
-// posicionar num trecho do cenário coerente com o calçado.
+// lookOptions.ts) junto. Pedido explícito do usuário: quando o cenário muda,
+// é a PESSOA que precisa se adaptar à luz do novo ambiente (relight), não o
+// cenário se adaptando à luz da pessoa — senão fica com "cara de composição"
+// (pessoa iluminada como no estúdio original, colada num fundo diferente).
+// Também cobre um bug real observado: pessoa de tênis "flutuando" na areia
+// da praia — pede pra posicionar num trecho do cenário coerente com o calçado.
 export function buildBackgroundClause(desc: string, hasRef: boolean): string {
   if (!hasRef) return ` Cenário: ${desc}.`;
   return (
     ` Uma das imagens de referência anexadas mostra o CENÁRIO desejado (sem pessoa): ${desc}. Use essa ` +
-    "imagem como referência visual do ambiente (elementos, cores, estilo, texturas), mas ADAPTE a " +
-    "iluminação, o ângulo de câmera e a temperatura de cor pra combinar naturalmente com a foto da " +
-    "pessoa — não copie a luz da referência do fundo se ela não bater com a luz da pessoa. Preste " +
-    "atenção no CALÇADO da pessoa: se ele não for apropriado pro terreno mostrado (ex.: tênis ou sapato " +
-    "fechado numa praia ou trilha), posicione a pessoa numa parte do cenário onde esse calçado faça " +
+    "imagem como referência visual do ambiente (elementos, cores, estilo, texturas). A PESSOA precisa " +
+    "se ADAPTAR à luz desse novo ambiente, não o contrário — relumine a pele, o cabelo e a roupa da " +
+    "pessoa conforme a direção, cor (quente/fria) e intensidade da luz do cenário de referência, como " +
+    "se ela estivesse fisicamente ali (sombra e brilho realistas, condizentes com aquela luz). A cor " +
+    "BASE da peça de roupa continua idêntica à referência da peça (só sombra/brilho pode variar). " +
+    "Preste atenção no CALÇADO da pessoa: se ele não for apropriado pro terreno mostrado (ex.: tênis ou " +
+    "sapato fechado numa praia ou trilha), posicione a pessoa numa parte do cenário onde esse calçado faça " +
     "sentido (deck de madeira, calçadão, trilha seca/pavimentada) em vez de areia molhada, grama alta ou lama."
   );
 }

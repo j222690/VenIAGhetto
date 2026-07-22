@@ -103,17 +103,6 @@ export const BACKGROUNDS: { id: string; label: string; emoji: string; desc: stri
       "https://vjjbihptzgxptyhzaftp.supabase.co/storage/v1/object/public/generated/46a3fd7c-c311-45f9-932c-bf535228c9e9/35916e3b-7c3a-4692-892a-ce15e336beb5.jpg",
   },
   {
-    id: "festa",
-    label: "Festa",
-    emoji: "🎉",
-    desc:
-      "salão de festa à noite com luzes de neon roxo e azul desfocadas ao fundo (efeito bokeh), " +
-      "taças de vidro brilhando sobre uma mesa alta fora de foco, ambiente vibrante e sofisticado, " +
-      "leve luz de contorno colorida na silhueta da pessoa",
-    refUrl:
-      "https://vjjbihptzgxptyhzaftp.supabase.co/storage/v1/object/public/generated/46a3fd7c-c311-45f9-932c-bf535228c9e9/23c5e5a7-9b06-4249-8824-821a92c18669.jpg",
-  },
-  {
     id: "natureza",
     label: "Natureza",
     emoji: "🌳",
@@ -144,16 +133,5 @@ export const BACKGROUNDS: { id: string; label: string; emoji: string; desc: stri
       "toalhas brancas e arranjos florais discretos, luz quente e âmbar, atmosfera sofisticada de gala",
     refUrl:
       "https://vjjbihptzgxptyhzaftp.supabase.co/storage/v1/object/public/generated/46a3fd7c-c311-45f9-932c-bf535228c9e9/c5436845-5dd6-4c2a-a0f0-92dfb4679e11.jpg",
-  },
-  {
-    id: "cafe",
-    label: "Café",
-    emoji: "☕",
-    desc:
-      "interior de cafeteria aconchegante, balcão de madeira rústica com uma máquina de espresso " +
-      "desfocada ao fundo, luz quente de lâmpadas pendentes tipo Edison, plantas em vasos de barro " +
-      "próximas",
-    refUrl:
-      "https://vjjbihptzgxptyhzaftp.supabase.co/storage/v1/object/public/generated/46a3fd7c-c311-45f9-932c-bf535228c9e9/1bbf69a8-f2ab-4cb6-9d84-67f990f70376.jpg",
   },
 ];
