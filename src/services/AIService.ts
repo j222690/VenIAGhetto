@@ -19,14 +19,23 @@ export interface ImageRefs {
 async function invoke<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke("generate-image", { body });
   if (error) {
-    // Tenta extrair a mensagem de erro retornada pela função.
+    // Tenta extrair a mensagem de erro retornada pela função (o corpo da
+    // resposta só pode ser lido UMA vez — se der erro no JSON, tenta texto
+    // puro antes de cair na mensagem genérica do SDK).
     let detail = error.message;
-    try {
-      const ctx = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context;
-      const parsed = await ctx?.json?.();
-      if (parsed?.error) detail = parsed.error;
-    } catch {
-      /* ignora */
+    const ctx = (error as { context?: Response }).context;
+    if (ctx && typeof ctx.clone === "function") {
+      try {
+        const parsed = (await ctx.clone().json()) as { error?: string };
+        if (parsed?.error) detail = parsed.error;
+      } catch {
+        try {
+          const text = await ctx.text();
+          if (text?.trim()) detail = text.trim();
+        } catch {
+          /* mantém a mensagem genérica */
+        }
+      }
     }
     throw new Error(detail || "Falha na geração com IA.");
   }
