@@ -37,11 +37,19 @@ async function invoke<T>(body: Record<string, unknown>): Promise<T> {
 }
 
 export const AIService = {
-  // Gera/edita uma imagem com o Gemini (gemini-2.5-flash-image) e devolve a URL
-  // pública do resultado já salvo no Storage.
-  async image(prompt: string, refs?: ImageRefs): Promise<{ url: string }> {
-    return invoke<{ url: string }>({
+  // Gera/edita uma imagem com o Gemini e devolve a URL pública do resultado já
+  // salvo no Storage. `feature` identifica a operação (tryon/post/refine/
+  // clean_image) — o custo em tokens é validado e DEBITADO no SERVIDOR a
+  // partir dela (nunca confiando num valor calculado no cliente); a função
+  // devolve o saldo já atualizado em `balance`.
+  async image(
+    prompt: string,
+    feature: "tryon" | "post" | "refine" | "clean_image",
+    refs?: ImageRefs,
+  ): Promise<{ url: string; balance?: number }> {
+    return invoke<{ url: string; balance?: number }>({
       mode: "image",
+      feature,
       prompt,
       imageUrls: refs?.imageUrls,
       images: refs?.images,

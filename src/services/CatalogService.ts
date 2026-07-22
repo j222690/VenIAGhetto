@@ -255,11 +255,11 @@ export const CatalogService = {
 
   // Limpeza de peça (ação manual/opcional do lojista, ver catalog.tsx): gera
   // uma versão isolada da foto (fundo e eventual modelo removidos), mesmo
-  // que a foto original mostre alguém vestindo a peça. Não persiste nem
-  // cobra token aqui — quem chama decide (form ainda não salvo) e debita.
-  async cleanPieceImage(imageUrl: string): Promise<string> {
-    const { url } = await AIService.image(GARMENT_ISOLATION_PROMPT, { imageUrls: [imageUrl] });
-    return url;
+  // que a foto original mostre alguém vestindo a peça. O token já é debitado
+  // no SERVIDOR (dentro da Edge Function) — devolve o saldo atualizado pra
+  // quem chama sincronizar o cache local (ver catalog.tsx).
+  async cleanPieceImage(imageUrl: string): Promise<{ url: string; balance?: number }> {
+    return AIService.image(GARMENT_ISOLATION_PROMPT, "clean_image", { imageUrls: [imageUrl] });
   },
 
   // Importa o catálogo a partir de um LINK (e-commerce, Instagram, etc.). A

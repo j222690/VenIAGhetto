@@ -19,7 +19,7 @@ const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 const WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
-const PLAN_TOKENS: Record<string, number> = { starter: 200, pro: 450, business: 900 };
+const PLAN_TOKENS: Record<string, number> = { starter: 149, pro: 303, business: 610 };
 // Bônus liberado no início do trial (o total do plano só entra na 1ª fatura paga).
 const TRIAL_BONUS = 25;
 

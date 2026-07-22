@@ -148,9 +148,9 @@ function CatalogPage() {
     }
     setCleaningImage(true);
     try {
-      const cleanUrl = await CatalogService.cleanPieceImage(form.imageUrl);
+      const { url: cleanUrl, balance } = await CatalogService.cleanPieceImage(form.imageUrl);
       setForm((f) => ({ ...f, cleanImageUrl: cleanUrl }));
-      await TokenService.debit(CLEAN_IMAGE_COST, "Limpeza de peça (catálogo)");
+      TokenService.syncAfterServerDebit(CLEAN_IMAGE_COST, "Limpeza de peça (catálogo)", balance);
       toast.success("Peça limpa — isso melhora o resultado no Provador.");
     } catch {
       toast.error("Não foi possível limpar a peça.");

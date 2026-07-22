@@ -260,6 +260,32 @@ function base64ToBytes(b64: string): Uint8Array {
   return bytes;
 }
 
+// Custo em tokens por feature — validado e cobrado AQUI (servidor), nunca
+// confiando num valor vindo do cliente. Espelha GenerationService.ts /
+// RefinePanel.tsx / catalog.tsx — se o preço mudar lá, muda aqui também.
+// SEGURANÇA: sem essa cobrança server-side, qualquer usuário autenticado
+// podia chamar esta função direto (fora do app) e gerar imagens de graça —
+// o desconto de token só acontecia no frontend, DEPOIS da chamada cara à IA
+// já ter sido paga por nós de qualquer forma.
+const FEATURE_COST: Record<string, number> = {
+  tryon: 1,
+  post: 1,
+  refine: 1,
+  clean_image: 1,
+};
+
+// Reembolsa (service_role) se o débito foi feito mas a chamada de IA falhou
+// depois — não expõe crédito ao cliente, só corrige internamente aqui.
+async function refundTokens(admin: ReturnType<typeof createClient>, userId: string, amount: number) {
+  const { data: u } = await admin.from("users").select("store_id").eq("id", userId).single();
+  const storeId = u?.store_id;
+  if (!storeId) return;
+  const { data: store } = await admin.from("stores").select("tokens_balance").eq("id", storeId).single();
+  if (!store) return;
+  await admin.from("stores").update({ tokens_balance: store.tokens_balance + amount }).eq("id", storeId);
+  await admin.from("token_transactions").insert({ store_id: storeId, type: "credit", amount });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Método não permitido" }, 405);
@@ -281,8 +307,18 @@ Deno.serve(async (req) => {
 
     if (!prompt.trim()) return json({ error: "Prompt vazio." }, 400);
 
+    // Saldo > 0 exigido pra visão/texto (não cobram token próprio — ficam
+    // embutidos no custo da feature principal — mas sem esse mínimo dava pra
+    // abusar de graça mesmo com 0 tokens). RLS já restringe a leitura à
+    // própria loja (stores_select_own).
+    async function hasAnyBalance(): Promise<boolean> {
+      const { data } = await authed.from("stores").select("tokens_balance").single();
+      return (data?.tokens_balance ?? 0) > 0;
+    }
+
     // Visão (OpenAI) — analisa imagens por URL, não precisa baixar/inline.
     if (mode === "vision") {
+      if (!(await hasAnyBalance())) return json({ error: "Saldo de tokens insuficiente." }, 402);
       const urls: string[] = body.imageUrls ?? [];
       urls.forEach(assertAllowedImageUrl);
       const text = await openaiVision(prompt, urls);
@@ -292,30 +328,57 @@ Deno.serve(async (req) => {
     const inputImages = await resolveImages(body.images, body.imageUrls);
 
     if (mode === "text") {
+      if (!(await hasAnyBalance())) return json({ error: "Saldo de tokens insuficiente." }, 402);
       const text = await geminiText(prompt, inputImages);
       return json({ text });
     }
 
-    // mode === "image" — aspectRatio explícito (body.aspectRatio) vence; sem
-    // isso, detecta pelo tamanho REAL da 1ª imagem de referência (a foto
-    // base sendo editada) e pede ao Gemini o formato suportado mais próximo.
+    // mode === "image" — a única chamada realmente cara (Gemini image gen).
+    // Cobra o token ANTES de chamar a IA, com o custo determinado pelo
+    // SERVIDOR (nunca pelo cliente) a partir de `feature`.
+    const feature: string = (body.feature ?? "").toString();
+    const cost = FEATURE_COST[feature];
+    if (cost === undefined) {
+      return json({ error: "Feature de geração inválida." }, 400);
+    }
+    const { data: newBalance, error: debitErr } = await authed.rpc("debit_tokens", {
+      p_amount: cost,
+      p_reason: `Geração: ${feature}`,
+    });
+    if (debitErr) {
+      return json({ error: "Saldo de tokens insuficiente." }, 402);
+    }
+
+    const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
+
+    // aspectRatio explícito (body.aspectRatio) vence; sem isso, detecta pelo
+    // tamanho REAL da 1ª imagem de referência (a foto base sendo editada) e
+    // pede ao Gemini o formato suportado mais próximo.
     let aspectRatio: string | undefined = body.aspectRatio;
     if (!aspectRatio) {
       const base = inputImages[0];
       if (base?.width && base?.height) aspectRatio = nearestAspectRatio(base.width, base.height);
     }
-    const { mimeType, data } = await geminiImage(prompt, inputImages, aspectRatio);
+    let mimeType: string, data: string;
+    try {
+      ({ mimeType, data } = await geminiImage(prompt, inputImages, aspectRatio));
+    } catch (e) {
+      await refundTokens(admin, user.id, cost);
+      throw e;
+    }
     const ext = mimeType.includes("png") ? "png" : mimeType.includes("webp") ? "webp" : "jpg";
     const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
     const { error: upErr } = await admin.storage
       .from("generated")
       .upload(path, base64ToBytes(data), { contentType: mimeType, upsert: false });
-    if (upErr) throw upErr;
+    if (upErr) {
+      await refundTokens(admin, user.id, cost);
+      throw upErr;
+    }
 
     const { data: pub } = admin.storage.from("generated").getPublicUrl(path);
-    return json({ url: pub.publicUrl });
+    return json({ url: pub.publicUrl, balance: newBalance });
   } catch (e) {
     return json({ error: (e as Error)?.message ?? String(e) }, 500);
   }

@@ -178,32 +178,36 @@ function PostsPage() {
 
         if (hasOwnPhoto) {
           if (garments.length === 1) {
-            const { url } = await AIService.image(stepPrompt, {
+            const { url, balance } = await AIService.image(stepPrompt, "post", {
               imageUrls: [modelUrl!, garments[0], ...bgRefUrls],
             });
             currentUrl = url;
+            TokenService.syncAfterServerDebit(cost, "Geração: post", balance);
           } else {
             const composite = await composeQuadrant(garments);
-            const { url } = await AIService.image(stepPrompt, {
+            const { url, balance } = await AIService.image(stepPrompt, "post", {
               imageUrls: [modelUrl!, ...bgRefUrls],
               images: [composite],
             });
             currentUrl = url;
+            TokenService.syncAfterServerDebit(cost, "Geração: post", balance);
           }
         } else if (garments.length === 1) {
-          const { url } = await AIService.image(stepPrompt, {
+          const { url, balance } = await AIService.image(stepPrompt, "post", {
             imageUrls: [garments[0], ...bgRefUrls],
             aspectRatio: "3:4",
           });
           currentUrl = url;
+          TokenService.syncAfterServerDebit(cost, "Geração: post", balance);
         } else {
           const composite = await composeQuadrant(garments);
-          const { url } = await AIService.image(stepPrompt, {
+          const { url, balance } = await AIService.image(stepPrompt, "post", {
             imageUrls: bgRefUrls,
             images: [composite],
             aspectRatio: "3:4",
           });
           currentUrl = url;
+          TokenService.syncAfterServerDebit(cost, "Geração: post", balance);
         }
       } else {
         // Fallback sequencial pra 5+ peças (fora do escopo da grade 2x2).
@@ -239,14 +243,19 @@ function PostsPage() {
           stepPrompt += isLast ? buildFinishPart(!!running) : running ? " " + PRESERVE_PHOTO_CLAUSE : "";
           stepPrompt += " " + REF_APP_FIDELITY_CLOSING_CLAUSE;
           if (isLast) imgs = [...imgs, ...bgRefUrls];
-          const { url } = await AIService.image(stepPrompt, { imageUrls: imgs, aspectRatio: stepAspectRatio });
+          const { url, balance } = await AIService.image(stepPrompt, "post", {
+            imageUrls: imgs,
+            aspectRatio: stepAspectRatio,
+          });
           running = url;
+          TokenService.syncAfterServerDebit(cost, "Geração: post", balance);
         }
         currentUrl = running!;
       }
 
       const gen = await GenerationService.generate({
         type: "post",
+        alreadyDebited: true,
         inputs: {
           clientPhotoUrl: modelUrl,
           notes: (refineOn ? refineText.trim() : "") || bgCustom.trim() || undefined,

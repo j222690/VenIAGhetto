@@ -72,6 +72,14 @@ Deno.serve(async (req) => {
     } = await authed.auth.getUser();
     if (!user) return json({ error: "Não autenticado." }, 401);
 
+    // Exige saldo > 0 — sem isso, dava pra chamar esta função direto (fora do
+    // app) pra buscar/analisar QUALQUER url de graça e sem limite, mesmo com
+    // 0 tokens (a cobrança de verdade continua acontecendo no app, por item).
+    const { data: store } = await authed.from("stores").select("tokens_balance").single();
+    if ((store?.tokens_balance ?? 0) <= 0) {
+      return json({ error: "Saldo de tokens insuficiente." }, 402);
+    }
+
     const { url } = await req.json().catch(() => ({}));
     if (!url || !/^https?:\/\//i.test(url)) {
       return json({ error: "Informe um link válido (começando com http)." }, 400);

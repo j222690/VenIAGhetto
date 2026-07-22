@@ -194,20 +194,24 @@ function TryOnPage() {
           REF_APP_FIDELITY_CLOSING_CLAUSE;
 
         if (garments.length === 1) {
-          const { url } = await AIService.image(stepPrompt, {
+          const { url, balance } = await AIService.image(stepPrompt, "tryon", {
             imageUrls: [photoUrl, garments[0], ...bgRefUrls],
           });
           currentUrl = url;
+          TokenService.syncAfterServerDebit(cost, "Geração: tryon", balance);
         } else {
           const composite = await composeQuadrant(garments);
-          const { url } = await AIService.image(stepPrompt, {
+          const { url, balance } = await AIService.image(stepPrompt, "tryon", {
             imageUrls: [photoUrl, ...bgRefUrls],
             images: [composite],
           });
           currentUrl = url;
+          TokenService.syncAfterServerDebit(cost, "Geração: tryon", balance);
         }
       } else {
-        // Fallback sequencial pra 5+ peças (fora do escopo da grade 2x2).
+        // Fallback sequencial pra 5+ peças (fora do escopo da grade 2x2). Cada
+        // peça é 1 chamada de IA = 1 token cobrado no servidor (mais caro que
+        // o quadrante de propósito — reflete o custo real maior desse caso raro).
         let running = photoUrl;
         for (let i = 0; i < garments.length; i++) {
           const isLast = i === garments.length - 1;
@@ -225,14 +229,16 @@ function TryOnPage() {
           stepPrompt += isLast ? buildFinishPart() : " " + PRESERVE_PHOTO_CLAUSE;
           stepPrompt += " " + REF_APP_FIDELITY_CLOSING_CLAUSE;
           const stepImgs = isLast ? [running, garments[i], ...bgRefUrls] : [running, garments[i]];
-          const { url } = await AIService.image(stepPrompt, { imageUrls: stepImgs });
+          const { url, balance } = await AIService.image(stepPrompt, "tryon", { imageUrls: stepImgs });
           running = url;
+          TokenService.syncAfterServerDebit(cost, "Geração: tryon", balance);
         }
         currentUrl = running;
       }
 
       const gen = await GenerationService.generate({
         type: "tryon",
+        alreadyDebited: true,
         inputs: {
           clientPhotoUrl: photoUrl,
           notes: `${changeSceneOn ? `${background} ${bgCustom}` : ""} ${refineOn ? retouchCustom : ""} ${size ?? ""} ${fit ?? ""} ${length ?? ""}`.trim(),

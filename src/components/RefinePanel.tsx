@@ -69,10 +69,10 @@ export function RefinePanel({ imageUrl, onRefined }: Props) {
         GARMENT_FIDELITY_CLAUSE +
         " " +
         REF_APP_FIDELITY_CLOSING_CLAUSE;
-      const { url } = await AIService.image(prompt, {
+      const { url, balance } = await AIService.image(prompt, "refine", {
         imageUrls: bg && bgRefUrl ? [imageUrl, bgRefUrl] : [imageUrl],
       });
-      await TokenService.debit(REFINE_COST, "Refinar imagem");
+      TokenService.syncAfterServerDebit(REFINE_COST, "Refinar imagem", balance);
       onRefined(url);
       toast.success("Imagem atualizada.");
     } catch (e) {

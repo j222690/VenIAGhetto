@@ -117,6 +117,20 @@ export const TokenService = {
     }
   },
 
+  // Sincroniza o cache LOCAL depois de um débito que já aconteceu no
+  // SERVIDOR (ver generate-image: o token é cobrado lá, antes de chamar a IA,
+  // pra não dar pra chamar a Edge Function direto e gerar de graça). Não
+  // chama o RPC de novo — só reflete o saldo que a função já devolveu.
+  syncAfterServerDebit(amount: number, reason: string, newBalance?: number): void {
+    const store = StoreService.get();
+    StoreService.update({
+      tokensBalance: newBalance ?? Math.max(0, store.tokensBalance - amount),
+      tokensUsedThisMonth: store.tokensUsedThisMonth + amount,
+    });
+    txs = [localTx(store.id, -amount, reason), ...txs];
+    notify();
+  },
+
   subscribe(listener: () => void): () => void {
     listeners.add(listener);
     return () => listeners.delete(listener);

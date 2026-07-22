@@ -172,11 +172,15 @@ export const GenerationService = {
     withCopy?: boolean;
     // Custo em tokens explícito (o Provador calcula por nº de peças).
     tokenCost?: number;
+    // true quando quem chamou (Provador/Post) já gerou a imagem chamando
+    // AIService.image() diretamente — nesse caso o token já foi debitado no
+    // SERVIDOR (dentro da Edge Function, ver generate-image) e não deve ser
+    // cobrado de novo aqui.
+    alreadyDebited?: boolean;
   }): Promise<Generation> {
     const cost = params.tokenCost ?? TOKEN_COST[params.type];
 
-    // Bloqueia se não houver saldo (a UI também avisa antes de chamar).
-    if (!TokenService.hasBalance(cost)) {
+    if (!params.alreadyDebited && !TokenService.hasBalance(cost)) {
       throw new Error("INSUFFICIENT_TOKENS");
     }
 
@@ -186,7 +190,7 @@ export const GenerationService = {
     if (!resultUrl) {
       const prompt = params.prompt?.trim() || defaultPrompt(params.type, params.inputs);
       const refs = params.imageUrls?.length ? { imageUrls: params.imageUrls } : undefined;
-      const { url } = await AIService.image(prompt, refs);
+      const { url } = await AIService.image(prompt, params.type as "tryon" | "post", refs);
       resultUrl = url;
     }
     // Copy do post: a IA de visão OLHA a imagem gerada e escreve a legenda.
@@ -198,8 +202,11 @@ export const GenerationService = {
       );
     }
 
-    // Débito real do token (persiste em token_transactions + stores).
-    await TokenService.debit(cost, `Geração: ${params.type}`);
+    // Débito real do token (persiste em token_transactions + stores) — só
+    // quando ainda NÃO foi cobrado no servidor (ver `alreadyDebited` acima).
+    if (!params.alreadyDebited) {
+      await TokenService.debit(cost, `Geração: ${params.type}`);
+    }
 
     // Persiste a geração no banco (RLS por loja). A legenda (copies) é salva na
     // coluna `copies` (jsonb) para ficar guardada com a imagem no álbum.
