@@ -58,6 +58,7 @@ function PostsPage() {
   const [fit, setFit] = useState<string | null>(null);
   const [length, setLength] = useState<string | null>(null);
   const [audience, setAudience] = useState<StoreSegment>(session?.store.segment ?? "feminina");
+  const [format, setFormat] = useState<"feed" | "story">("feed");
   // Independentes: dá pra mudar só o fundo, só refinar, os dois, ou nenhum.
   const [changeSceneOn, setChangeSceneOn] = useState(false);
   const [background, setBackground] = useState<string>("estudio");
@@ -117,6 +118,10 @@ function PostsPage() {
         .filter(Boolean)
         .join(", ");
       const specPart = specText ? fitExceptionClause(specText) : "";
+      // Formato final do post — força o aspect ratio escolhido (feed 4:5,
+      // story 9:16) na última etapa, mesmo com foto própria (sem isso, o
+      // fundo/enquadramento seguiria o formato da foto original ou 3:4 fixo).
+      const outputAspectRatio = format === "story" ? "9:16" : "4:5";
 
       setBusyLabel(
         garments.length > 1 ? "Montando o look…" : aiCaption ? "Criando imagem e legenda…" : "Criando imagem…",
@@ -181,6 +186,7 @@ function PostsPage() {
           if (garments.length === 1) {
             const { url, balance } = await AIService.image(stepPrompt, "post", {
               imageUrls: [modelUrl!, garments[0], ...bgRefUrls],
+              aspectRatio: outputAspectRatio,
             });
             currentUrl = url;
             TokenService.syncAfterServerDebit(cost, "Geração: post", balance);
@@ -189,6 +195,7 @@ function PostsPage() {
             const { url, balance } = await AIService.image(stepPrompt, "post", {
               imageUrls: [modelUrl!, ...bgRefUrls],
               images: [composite],
+              aspectRatio: outputAspectRatio,
             });
             currentUrl = url;
             TokenService.syncAfterServerDebit(cost, "Geração: post", balance);
@@ -196,7 +203,7 @@ function PostsPage() {
         } else if (garments.length === 1) {
           const { url, balance } = await AIService.image(stepPrompt, "post", {
             imageUrls: [garments[0], ...bgRefUrls],
-            aspectRatio: "3:4",
+            aspectRatio: outputAspectRatio,
           });
           currentUrl = url;
           TokenService.syncAfterServerDebit(cost, "Geração: post", balance);
@@ -205,7 +212,7 @@ function PostsPage() {
           const { url, balance } = await AIService.image(stepPrompt, "post", {
             imageUrls: bgRefUrls,
             images: [composite],
-            aspectRatio: "3:4",
+            aspectRatio: outputAspectRatio,
           });
           currentUrl = url;
           TokenService.syncAfterServerDebit(cost, "Geração: post", balance);
@@ -243,7 +250,10 @@ function PostsPage() {
           }
           stepPrompt += isLast ? buildFinishPart(!!running) : running ? " " + PRESERVE_PHOTO_CLAUSE : "";
           stepPrompt += " " + REF_APP_FIDELITY_CLOSING_CLAUSE;
-          if (isLast) imgs = [...imgs, ...bgRefUrls];
+          if (isLast) {
+            imgs = [...imgs, ...bgRefUrls];
+            stepAspectRatio = outputAspectRatio;
+          }
           const { url, balance } = await AIService.image(stepPrompt, "post", {
             imageUrls: imgs,
             aspectRatio: stepAspectRatio,
@@ -634,6 +644,36 @@ function PostsPage() {
             />
           </section>
         ) : null}
+
+        {/* Formato — feed (4:5) ou story (9:16), define o enquadramento final */}
+        <div className="grid gap-1.5">
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Formato
+          </span>
+          <div className="rounded-2xl border border-border bg-card p-1">
+            <div className="grid grid-cols-2 gap-1">
+              {(
+                [
+                  { id: "feed", label: "Feed" },
+                  { id: "story", label: "Story" },
+                ] as const
+              ).map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setFormat(f.id)}
+                  className={cn(
+                    "rounded-xl px-2 py-2 text-xs font-medium transition-colors",
+                    format === f.id
+                      ? "bg-clay text-clay-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
         {/* Público (dá contexto à legenda) */}
         <div className="grid gap-1.5">
