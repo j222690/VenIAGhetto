@@ -36,7 +36,7 @@ import { BACKGROUNDS, FITS, LENGTHS, SIZES } from "@/constants/lookOptions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/tryon")({
-  head: () => ({ meta: [{ title: "Provador — Vest IA" }] }),
+  head: () => ({ meta: [{ title: "Provador — Vest Ai" }] }),
   component: TryOnPage,
 });
 

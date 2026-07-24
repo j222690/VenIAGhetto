@@ -24,7 +24,7 @@ export function AppHeader({ title, subtitle, showTokens = true }: Props) {
                 Vest · IA
               </p>
               <p className="truncate font-display text-lg font-semibold text-foreground">
-                {session?.store.name ?? "Vest IA"}
+                {session?.store.name ?? "Vest Ai"}
               </p>
             </Link>
           )}

@@ -74,8 +74,8 @@ export function LookActions({
     setBusy(true);
     try {
       const result = await ShareService.share({
-        title: "Vest IA",
-        text: "Veja este look criado no Vest IA",
+        title: "Vest Ai",
+        text: "Veja este look criado no Vest Ai",
         url: look.resultUrl,
       });
       if (result === "copied") toast.success("Link copiado para a área de transferência");
@@ -139,7 +139,7 @@ export function LookActions({
     try {
       await ShareService.shareToWhatsApp(
         look.resultUrl,
-        "Veja este look criado no Vest IA ✨",
+        "Veja este look criado no Vest Ai ✨",
         buildFilename(),
       );
     } finally {

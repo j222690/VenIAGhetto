@@ -1,4 +1,4 @@
--- StyleDesk AI — galeria de fotos do cliente (várias, não só a foto-base)
+-- Vest Ai — galeria de fotos do cliente (várias, não só a foto-base)
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- Idempotente.

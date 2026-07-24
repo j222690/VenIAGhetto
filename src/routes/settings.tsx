@@ -24,7 +24,7 @@ import type { StoreSegment } from "@/types";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings")({
-  head: () => ({ meta: [{ title: "Configurações — Vest IA" }] }),
+  head: () => ({ meta: [{ title: "Configurações — Vest Ai" }] }),
   component: SettingsPage,
 });
 

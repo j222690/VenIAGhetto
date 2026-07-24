@@ -1,4 +1,4 @@
--- StyleDesk AI — F1: integridade de tokens e plano
+-- Vest Ai — F1: integridade de tokens e plano
 -- ---------------------------------------------------------------------------
 -- Impede que uma loja altere o próprio saldo/plano pela API (RLS não filtra
 -- coluna). O cliente passa a só editar o PERFIL; saldo e plano mudam apenas por

@@ -28,7 +28,7 @@ import type { StoreInvite, User, UserRole } from "@/types";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/profile")({
-  head: () => ({ meta: [{ title: "Perfil da Loja — Vest IA" }] }),
+  head: () => ({ meta: [{ title: "Perfil da Loja — Vest Ai" }] }),
   component: ProfilePage,
 });
 
@@ -405,7 +405,7 @@ function TeamSection({ currentUserId }: { currentUserId: string }) {
     const url = InviteService.linkFor(invite);
     const result = await ShareService.share({
       title: "Convite para a equipe",
-      text: "Você foi convidado(a) para a equipe da loja no Vest IA.",
+      text: "Você foi convidado(a) para a equipe da loja no Vest Ai.",
       url,
     });
     if (result === "copied") toast.success("Link copiado.");

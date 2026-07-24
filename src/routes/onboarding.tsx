@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Shirt, ScanLine, Sparkles } from "@/lib/icons";
 
 export const Route = createFileRoute("/onboarding")({
-  head: () => ({ meta: [{ title: "Bem-vindo — Vest IA" }] }),
+  head: () => ({ meta: [{ title: "Bem-vindo — Vest Ai" }] }),
   component: OnboardingPage,
 });
 

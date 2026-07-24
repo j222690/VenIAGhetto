@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/album")({
-  head: () => ({ meta: [{ title: "Álbum de Looks — Vest IA" }] }),
+  head: () => ({ meta: [{ title: "Álbum de Looks — Vest Ai" }] }),
   component: AlbumPage,
 });
 

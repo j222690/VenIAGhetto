@@ -1,4 +1,4 @@
--- StyleDesk AI — Catálogo de peças da loja
+-- Vest Ai — Catálogo de peças da loja
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- NÃO edite as migrations anteriores. Idempotente (if not exists / or replace).

@@ -1,4 +1,4 @@
--- StyleDesk AI — convite de funcionário por LINK (além do convite por e-mail)
+-- Vest Ai — convite de funcionário por LINK (além do convite por e-mail)
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- Idempotente.

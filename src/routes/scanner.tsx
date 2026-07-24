@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import type { ProductSheet } from "@/types";
 
 export const Route = createFileRoute("/scanner")({
-  head: () => ({ meta: [{ title: "Scanner de peças — Vest IA" }] }),
+  head: () => ({ meta: [{ title: "Scanner de peças — Vest Ai" }] }),
   component: ScannerPage,
 });
 

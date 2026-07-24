@@ -1,4 +1,4 @@
--- StyleDesk AI — segmento da loja (feminina / masculina)
+-- Vest Ai — segmento da loja (feminina / masculina)
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- Idempotente.

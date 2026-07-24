@@ -106,7 +106,7 @@ export const ShareService = {
   // enviar a imagem direto); se não houver, abre o WhatsApp com o texto e o link
   // público da imagem (mostra a prévia). Sempre resolve — nunca lança.
   async shareToWhatsApp(url: string, text: string, filename?: string): Promise<void> {
-    const r = await this.shareImageFile(url, { title: "Vest IA", text, filename });
+    const r = await this.shareImageFile(url, { title: "Vest Ai", text, filename });
     if (r === "shared" || r === "canceled") return;
     const msg = encodeURIComponent(`${text ? text + "\n" : ""}${url}`);
     window.open(`https://wa.me/?text=${msg}`, "_blank", "noopener,noreferrer");
@@ -118,7 +118,7 @@ export const ShareService = {
   // suporte, baixamos a imagem e abrimos o Instagram para o usuário postar.
   // Retorna "shared" (foi pro app) ou "fallback" (baixou + abriu o site).
   async shareToInstagram(url: string, filename?: string): Promise<"shared" | "fallback"> {
-    const r = await this.shareImageFile(url, { title: "Vest IA", filename });
+    const r = await this.shareImageFile(url, { title: "Vest Ai", filename });
     if (r === "shared" || r === "canceled") return "shared";
     try {
       await this.downloadImage(url, filename);

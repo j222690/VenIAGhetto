@@ -10,7 +10,7 @@ import type { AssetCategory } from "@/types";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/library")({
-  head: () => ({ meta: [{ title: "Biblioteca — Vest IA" }] }),
+  head: () => ({ meta: [{ title: "Biblioteca — Vest Ai" }] }),
   component: LibraryPage,
 });
 

@@ -37,7 +37,7 @@ import { BACKGROUNDS, FITS, LENGTHS, SIZES } from "@/constants/lookOptions";
 import type { Generation, StoreSegment } from "@/types";
 
 export const Route = createFileRoute("/posts")({
-  head: () => ({ meta: [{ title: "Criador de Posts — Vest IA" }] }),
+  head: () => ({ meta: [{ title: "Criador de Posts — Vest Ai" }] }),
   component: PostsPage,
 });
 
@@ -586,7 +586,7 @@ function PostsPage() {
                       : "border-border bg-card hover:border-accent/50",
                   )}
                 >
-                  <span className="text-lg">{b.emoji}</span>
+                  <b.icon className="h-5 w-5 text-clay" />
                   <span className="text-[10px] font-medium text-foreground">{b.label}</span>
                 </button>
               ))}

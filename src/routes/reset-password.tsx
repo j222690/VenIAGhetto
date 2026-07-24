@@ -5,7 +5,7 @@ import { describeAuthError } from "@/lib/authErrors";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/reset-password")({
-  head: () => ({ meta: [{ title: "Nova senha — Vest IA" }] }),
+  head: () => ({ meta: [{ title: "Nova senha — Vest Ai" }] }),
   component: ResetPasswordPage,
 });
 

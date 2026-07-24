@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import type { PlanId } from "@/types";
 
 export const Route = createFileRoute("/plans")({
-  head: () => ({ meta: [{ title: "Escolha seu plano — Vest IA" }] }),
+  head: () => ({ meta: [{ title: "Escolha seu plano — Vest Ai" }] }),
   component: PlansPage,
 });
 

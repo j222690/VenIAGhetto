@@ -1,4 +1,4 @@
-// Domain types for Vest IA.
+// Domain types for Vest Ai.
 // Reused across services, hooks and components. Never use `any`.
 
 export type UserRole = "owner" | "manager" | "seller";

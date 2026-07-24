@@ -62,6 +62,10 @@ export {
   Globe,
   Building2,
   Calendar,
+  Waves,
+  TreePine,
+  Briefcase,
+  PartyPopper,
 } from "lucide-react";
 
 export type { LucideIcon } from "lucide-react";

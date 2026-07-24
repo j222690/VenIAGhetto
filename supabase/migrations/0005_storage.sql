@@ -1,4 +1,4 @@
--- StyleDesk AI — Supabase Storage (fotos de catálogo e de clientes)
+-- Vest Ai — Supabase Storage (fotos de catálogo e de clientes)
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- NÃO edite as migrations anteriores. Idempotente.

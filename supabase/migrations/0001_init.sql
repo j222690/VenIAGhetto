@@ -1,4 +1,4 @@
--- StyleDesk AI — fundação do backend (multi-tenant)
+-- Vest Ai — fundação do backend (multi-tenant)
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute uma única vez.
 -- Ele cria: enums, 7 tabelas, índices, RLS multi-tenant por loja (store),

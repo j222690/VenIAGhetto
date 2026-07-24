@@ -21,7 +21,7 @@ import type { Client, ClientPhoto, Generation } from "@/types";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/clients")({
-  head: () => ({ meta: [{ title: "Clientes — Vest IA" }] }),
+  head: () => ({ meta: [{ title: "Clientes — Vest Ai" }] }),
   // ?client=<id> abre direto a pasta daquele cliente (usado pelo Provador).
   validateSearch: (search: Record<string, unknown>): { client?: string } => ({
     client: typeof search.client === "string" ? search.client : undefined,

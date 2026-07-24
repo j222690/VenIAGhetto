@@ -1,4 +1,4 @@
--- StyleDesk AI — categorias de catálogo personalizadas pela loja
+-- Vest Ai — categorias de catálogo personalizadas pela loja
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- Idempotente.

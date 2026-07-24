@@ -1,4 +1,4 @@
--- StyleDesk AI — foto LIMPA da peça (isolada, sem fundo/modelo)
+-- Vest Ai — foto LIMPA da peça (isolada, sem fundo/modelo)
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- Idempotente.

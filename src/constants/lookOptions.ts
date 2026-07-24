@@ -2,6 +2,8 @@
 // comprimento das peças, e cenários de fundo. Extraído para um só lugar
 // porque as duas telas usavam listas idênticas duplicadas.
 
+import { Briefcase, Building2, Camera, PartyPopper, TreePine, Waves, type LucideIcon } from "@/lib/icons";
+
 export const SIZES = ["PP", "P", "M", "G", "GG", "G1", "G2", "G3"];
 
 // Descrições bem CONCRETAS/visuais (contorno, folga em cm, onde cola no
@@ -72,11 +74,11 @@ export interface BackgroundRef {
   label: string;
   url: string;
 }
-export const BACKGROUNDS: { id: string; label: string; emoji: string; desc: string; refs: BackgroundRef[] }[] = [
+export const BACKGROUNDS: { id: string; label: string; icon: LucideIcon; desc: string; refs: BackgroundRef[] }[] = [
   {
     id: "estudio",
     label: "Estúdio",
-    emoji: "📸",
+    icon: Camera,
     desc:
       "estúdio fotográfico profissional com fundo infinito cinza-claro (papel ciclorama sem dobras " +
       "visíveis), duas softboxes laterais criando luz suave e direcional, leve sombra de contato no " +
@@ -91,7 +93,7 @@ export const BACKGROUNDS: { id: string; label: string; emoji: string; desc: stri
   {
     id: "praia",
     label: "Praia",
-    emoji: "🏖️",
+    icon: Waves,
     desc:
       "praia tropical, areia clara, mar ao fundo, luz natural de dia batendo no rosto e no corpo",
     refs: [
@@ -108,7 +110,7 @@ export const BACKGROUNDS: { id: string; label: string; emoji: string; desc: stri
   {
     id: "urbano",
     label: "Urbano",
-    emoji: "🏙️",
+    icon: Building2,
     desc: "rua/calçada urbana contemporânea, prédios ao fundo, ambiente de cidade",
     refs: [
       {
@@ -124,7 +126,7 @@ export const BACKGROUNDS: { id: string; label: string; emoji: string; desc: stri
   {
     id: "natureza",
     label: "Natureza",
-    emoji: "🌳",
+    icon: TreePine,
     desc: "área verde/parque arborizado, luz natural filtrada pelas folhas",
     refs: [
       {
@@ -140,7 +142,7 @@ export const BACKGROUNDS: { id: string; label: string; emoji: string; desc: stri
   {
     id: "trabalho",
     label: "Trabalho",
-    emoji: "💼",
+    icon: Briefcase,
     desc: "escritório/ambiente corporativo moderno e bem iluminado",
     refs: [
       {
@@ -156,7 +158,7 @@ export const BACKGROUNDS: { id: string; label: string; emoji: string; desc: stri
   {
     id: "casamento",
     label: "Evento",
-    emoji: "🥂",
+    icon: PartyPopper,
     desc: "salão/ambiente de evento elegante e sofisticado",
     refs: [
       {

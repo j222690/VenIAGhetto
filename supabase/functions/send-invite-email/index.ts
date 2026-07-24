@@ -15,7 +15,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 const APP_URL = "https://vestaiapp.com";
-const FROM = "Vest IA <convites@vestaiapp.com>";
+const FROM = "Vest Ai <convites@vestaiapp.com>";
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "Dono",
@@ -52,7 +52,7 @@ function buildHtml(storeName: string, role: string, link: string): string {
               <td style="padding:16px 32px 8px;">
                 <h1 style="font-size:24px;font-weight:700;color:#F4F5F9;margin:0 0 12px;text-align:center;">Você foi convidado(a) para a equipe</h1>
                 <p style="font-size:15px;line-height:1.6;color:#A3A6B8;margin:0 0 8px;text-align:center;">
-                  <strong style="color:#F4F5F9;">${storeName}</strong> te convidou para fazer parte da equipe no Vest IA, como <strong style="color:#F4F5F9;">${roleLabel}</strong>.
+                  <strong style="color:#F4F5F9;">${storeName}</strong> te convidou para fazer parte da equipe no Vest Ai, como <strong style="color:#F4F5F9;">${roleLabel}</strong>.
                 </p>
                 <p style="font-size:15px;line-height:1.6;color:#A3A6B8;margin:0;text-align:center;">
                   Toque no botão abaixo para criar sua conta — você já entra direto na loja, sem precisar preencher nada além do seu nome, e-mail e senha.
@@ -75,7 +75,7 @@ function buildHtml(storeName: string, role: string, link: string): string {
               </td>
             </tr>
           </table>
-          <p style="font-size:11px;color:#6E7186;margin:16px 0 0;">© Vest IA</p>
+          <p style="font-size:11px;color:#6E7186;margin:16px 0 0;">© Vest Ai</p>
         </td>
       </tr>
     </table>
@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: FROM,
         to: [invite.email],
-        subject: `Você foi convidado(a) para a equipe de ${storeName} no Vest IA`,
+        subject: `Você foi convidado(a) para a equipe de ${storeName} no Vest Ai`,
         html: buildHtml(storeName, invite.role, link),
       }),
     });

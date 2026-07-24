@@ -83,21 +83,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover",
       },
-      { title: "Vest IA — IA de moda para sua loja" },
+      { title: "Vest Ai — IA de moda para sua loja" },
       {
         name: "description",
         content:
           "Conteúdo profissional de moda em segundos: provador virtual, scanner de peças e criador de posts com IA.",
       },
-      { name: "author", content: "Vest IA" },
+      { name: "author", content: "Vest Ai" },
       // Cara de app instalável (standalone) no iOS e Android.
       { name: "theme-color", content: "#0d0e14" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-      { name: "apple-mobile-web-app-title", content: "Vest IA" },
-      { name: "application-name", content: "Vest IA" },
-      { property: "og:title", content: "Vest IA" },
+      { name: "apple-mobile-web-app-title", content: "Vest Ai" },
+      { name: "application-name", content: "Vest Ai" },
+      { property: "og:title", content: "Vest Ai" },
       {
         property: "og:description",
         content: "IA para vendedores e lojas de moda.",

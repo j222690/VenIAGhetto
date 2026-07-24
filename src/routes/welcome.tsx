@@ -4,7 +4,7 @@ import { Sparkles, ScanLine, Shirt } from "@/lib/icons";
 export const Route = createFileRoute("/welcome")({
   head: () => ({
     meta: [
-      { title: "Vest IA — Conteúdo de moda em segundos" },
+      { title: "Vest Ai — Conteúdo de moda em segundos" },
       {
         name: "description",
         content:

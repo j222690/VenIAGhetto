@@ -6,7 +6,7 @@ import { describeAuthError } from "@/lib/authErrors";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Entrar — Vest IA" }] }),
+  head: () => ({ meta: [{ title: "Entrar — Vest Ai" }] }),
   component: LoginPage,
 });
 

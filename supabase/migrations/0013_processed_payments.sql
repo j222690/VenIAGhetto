@@ -1,4 +1,4 @@
--- Vest IA — trava de idempotência de pagamentos Stripe
+-- Vest Ai — trava de idempotência de pagamentos Stripe
 -- ---------------------------------------------------------------------------
 -- Garante que cada sessão de checkout do Stripe credite tokens UMA única vez,
 -- mesmo que o webhook e a confirmação-no-retorno rodem os dois. Só a service_role
