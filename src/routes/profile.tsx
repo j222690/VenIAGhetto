@@ -21,6 +21,8 @@ import { StoreService } from "@/services/StoreService";
 import { UserService } from "@/services/UserService";
 import { InviteService } from "@/services/InviteService";
 import { ShareService } from "@/services/ShareService";
+import { AdminService, type PlatformStats } from "@/services/AdminService";
+import { describeApiError } from "@/lib/apiErrors";
 import { ROLE_LABEL } from "@/constants/permissions";
 import type { StoreInvite, User, UserRole } from "@/types";
 import { toast } from "sonner";
@@ -226,8 +228,91 @@ function ProfilePage() {
         </section>
 
         <TeamSection currentUserId={session.user.id} />
+
+        {/* Gate aqui é só UX (esconder de quem nunca vai poder ver) — a
+            permissão de verdade é checada no servidor (ADMIN_EMAILS). */}
+        {session.user.email === "victor@styledesk.app" ? <PlatformStatsSection /> : null}
       </div>
     </AppLayout>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Uso da plataforma (todas as lojas) — só visível/permitido pra admin da Vest
+// IA, não é uma métrica da loja individual. Ver supabase/functions/admin-stats.
+// ---------------------------------------------------------------------------
+function PlatformStatsSection() {
+  const [stats, setStats] = useState<PlatformStats | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      setStats(await AdminService.platformStats());
+      setLoaded(true);
+    } catch (e) {
+      toast.error(describeApiError(e, "Não foi possível carregar as métricas."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <section className="space-y-3">
+      <SectionTitle eyebrow="Admin" title="Uso da plataforma" />
+      {!loaded ? (
+        <button
+          onClick={load}
+          disabled={loading}
+          className="w-full rounded-3xl border border-dashed border-accent/40 bg-accent/5 p-4 text-center text-sm font-medium text-foreground disabled:opacity-60"
+        >
+          {loading ? "Carregando…" : "Ver métricas de uso"}
+        </button>
+      ) : (
+        stats && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <StatTile label="Lojas cadastradas" value={stats.totalStores} />
+              <StatTile label="Usuários" value={stats.totalUsers} />
+              <StatTile label="Lojas novas (7 dias)" value={stats.newStoresLast7Days} />
+              <StatTile label="Gerações totais" value={stats.totalGenerations} />
+            </div>
+            <div className="rounded-3xl border border-border bg-card p-4">
+              <p className="text-sm font-medium text-foreground">Gerações por função</p>
+              <div className="mt-2 space-y-1.5 text-sm text-muted-foreground">
+                <p>Provador: {stats.generationsByType.tryon}</p>
+                <p>Post: {stats.generationsByType.post}</p>
+                <p>Scanner: {stats.generationsByType.scanner}</p>
+              </div>
+            </div>
+            <div className="rounded-3xl border border-border bg-card p-4">
+              <p className="text-sm font-medium text-foreground">Tokens consumidos (total)</p>
+              <p className="mt-1 text-2xl font-semibold text-foreground">{stats.tokensConsumed}</p>
+            </div>
+            <p className="rounded-2xl border border-dashed border-border bg-card px-4 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+              {stats.note}
+            </p>
+            <button
+              onClick={load}
+              disabled={loading}
+              className="w-full text-center text-xs font-medium text-clay"
+            >
+              {loading ? "Atualizando…" : "Atualizar"}
+            </button>
+          </div>
+        )
+      )}
+    </section>
+  );
+}
+
+function StatTile({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-3xl border border-border bg-card p-4">
+      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="mt-1 font-display text-2xl font-semibold text-foreground">{value.toLocaleString("pt-BR")}</p>
+    </div>
   );
 }
 
