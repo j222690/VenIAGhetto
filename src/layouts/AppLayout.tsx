@@ -3,6 +3,7 @@ import { Navigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
+import { Sidebar } from "@/components/Sidebar";
 
 interface Props {
   title?: string;
@@ -31,9 +32,14 @@ export function AppLayout({ title, subtitle, showTokens, children }: Props) {
   if (!session) return <Navigate to="/welcome" />;
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader title={title} subtitle={subtitle} showTokens={showTokens} />
-      <main className="mx-auto max-w-md px-5 pb-28 pt-5">{children}</main>
+    <div className="min-h-screen bg-background lg:bg-secondary/30">
+      <Sidebar />
+      <div className="lg:pl-64">
+        <AppHeader title={title} subtitle={subtitle} showTokens={showTokens} />
+        <main className="mx-auto max-w-md px-5 pb-28 pt-5 lg:max-w-3xl lg:pb-10 lg:pt-8">
+          {children}
+        </main>
+      </div>
       <BottomNav />
     </div>
   );
