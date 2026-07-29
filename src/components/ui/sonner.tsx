@@ -8,30 +8,35 @@ type ToasterProps = React.ComponentProps<typeof Sonner>;
 // O offset usa env(safe-area-inset-top) (viewport-fit=cover já setado em
 // __root.tsx) — sem isso, um offset fixo em px ficava por baixo do
 // notch/câmera em celulares com entalhe/furo na tela.
+//
+// IMPORTANTE: classes aqui são aplicadas DIRETO em cada elemento pelo próprio
+// Sonner (via toastOptions.classNames) — não precisam do prefixo `group-[...]:`
+// (que exigiria um ancestral com as duas classes ".group.toaster" batendo
+// exatamente, e não estava gerando o CSS certo aqui — o toast saía com o
+// visual genérico branco do Sonner mesmo com as classes "certas" no elemento).
 const SAFE_TOP_OFFSET = "calc(env(safe-area-inset-top) + 12px)";
 
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
-      className="toaster group"
+      className="toaster"
       position="top-center"
       offset={SAFE_TOP_OFFSET}
       mobileOffset={SAFE_TOP_OFFSET}
       toastOptions={{
+        unstyled: true,
         classNames: {
           toast:
-            "group toast group-[.toaster]:rounded-[28px] group-[.toaster]:border-2 group-[.toaster]:bg-card " +
-            "group-[.toaster]:text-card-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg " +
-            "group-[.toaster]:px-4 group-[.toaster]:py-3",
-          title: "group-[.toast]:font-semibold",
-          description: "group-[.toast]:text-muted-foreground",
-          actionButton:
-            "group-[.toast]:bg-clay group-[.toast]:text-clay-foreground group-[.toast]:rounded-full",
-          cancelButton:
-            "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground group-[.toast]:rounded-full",
-          error: "group-[.toaster]:border-destructive group-[.toaster]:shadow-[0_0_20px_-4px_var(--destructive)]",
-          success: "group-[.toaster]:border-clay group-[.toaster]:shadow-glow",
-          warning: "group-[.toaster]:border-accent-2 group-[.toaster]:shadow-glow",
+            "flex items-start gap-3 rounded-[28px] border-2 border-border bg-card text-card-foreground " +
+            "shadow-lg px-4 py-3.5",
+          title: "text-sm font-semibold",
+          description: "text-sm text-muted-foreground",
+          actionButton: "bg-clay text-clay-foreground rounded-full px-3 py-1.5 text-xs font-semibold",
+          cancelButton: "bg-muted text-muted-foreground rounded-full px-3 py-1.5 text-xs font-semibold",
+          icon: "shrink-0",
+          error: "border-destructive shadow-[0_0_20px_-4px_var(--destructive)]",
+          success: "border-clay shadow-glow",
+          warning: "border-accent-2 shadow-glow",
         },
       }}
       {...props}
