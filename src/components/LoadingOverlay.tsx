@@ -11,7 +11,7 @@ export function LoadingOverlay({ label = "Gerando com IA…" }: { label?: string
         <div>
           <p className="font-display text-lg font-semibold text-foreground">{label}</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Polindo cada detalhe — leva alguns segundos.
+            Polindo cada detalhe, leva alguns segundos.
           </p>
         </div>
       </div>

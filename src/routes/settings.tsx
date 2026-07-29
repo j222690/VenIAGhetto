@@ -92,8 +92,8 @@ function SettingsPage() {
                 refresh();
                 toast.success(
                   segment === "feminina"
-                    ? "Estilo feminino aplicado — rosa & roxo neon."
-                    : "Estilo masculino aplicado — azul & verde neon.",
+                    ? "Estilo feminino aplicado, rosa & roxo neon."
+                    : "Estilo masculino aplicado, azul & verde neon.",
                 );
               } catch {
                 document.documentElement.dataset.segment = session.store.segment;

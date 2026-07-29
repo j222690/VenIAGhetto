@@ -19,9 +19,9 @@ function PrivacyPage() {
 
       <div className="mt-8 space-y-7 text-sm leading-relaxed text-foreground">
         <Section title="1. Quem somos">
-          O Vest Ai é uma ferramenta que ajuda lojas de moda a criar conteúdo (provador
-          virtual, imagens de posts, legendas e catálogo) usando inteligência artificial. Esta
-          política explica quais dados tratamos e por quê.
+          O Vest Ai é uma ferramenta que ajuda lojas de moda a criar conteúdo (provador virtual,
+          imagens de posts, legendas e catálogo) usando inteligência artificial. Esta política
+          explica quais dados tratamos e por quê.
         </Section>
 
         <Section title="2. Dados que coletamos">
@@ -42,9 +42,9 @@ function PrivacyPage() {
         <Section title="4. Compartilhamento com terceiros (subprocessadores)">
           Para funcionar, o app usa provedores que processam dados sob nossa orientação:
           <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
-            <li>Supabase — autenticação, banco de dados e armazenamento de imagens.</li>
-            <li>Google (Gemini) — geração e edição de imagens.</li>
-            <li>OpenAI — análise de imagens (visão) para legendas e catálogo.</li>
+            <li>Supabase: autenticação, banco de dados e armazenamento de imagens.</li>
+            <li>Google (Gemini): geração e edição de imagens.</li>
+            <li>OpenAI: análise de imagens (visão) para legendas e catálogo.</li>
           </ul>
           As imagens enviadas podem ser transmitidas a esses provedores apenas para gerar o
           resultado solicitado.
@@ -62,8 +62,8 @@ function PrivacyPage() {
         </Section>
 
         <Section title="7. Segurança">
-          Adotamos medidas técnicas para proteger seus dados, incluindo isolamento por loja
-          (cada loja acessa apenas os próprios dados) e chaves de IA mantidas em servidor, nunca no
+          Adotamos medidas técnicas para proteger seus dados, incluindo isolamento por loja (cada
+          loja acessa apenas os próprios dados) e chaves de IA mantidas em servidor, nunca no
           aplicativo.
         </Section>
 

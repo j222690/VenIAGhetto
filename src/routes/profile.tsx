@@ -24,7 +24,8 @@ import { ShareService } from "@/services/ShareService";
 import { AdminService, type PlatformStats } from "@/services/AdminService";
 import { describeApiError } from "@/lib/apiErrors";
 import { ROLE_LABEL } from "@/constants/permissions";
-import type { StoreInvite, User, UserRole } from "@/types";
+import { getPlan } from "@/constants/plans";
+import type { PlanId, StoreInvite, User, UserRole } from "@/types";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/profile")({
@@ -227,7 +228,7 @@ function ProfilePage() {
           </div>
         </section>
 
-        <TeamSection currentUserId={session.user.id} />
+        <TeamSection currentUserId={session.user.id} planId={session.store.planId} />
 
         {/* Gate aqui é só UX (esconder de quem nunca vai poder ver) — a
             permissão de verdade é checada no servidor (ADMIN_EMAILS). */}
@@ -311,7 +312,9 @@ function StatTile({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-3xl border border-border bg-card p-4">
       <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="mt-1 font-display text-2xl font-semibold text-foreground">{value.toLocaleString("pt-BR")}</p>
+      <p className="mt-1 font-display text-2xl font-semibold text-foreground">
+        {value.toLocaleString("pt-BR")}
+      </p>
     </div>
   );
 }
@@ -321,7 +324,7 @@ function StatTile({ label, value }: { label: string; value: number }) {
 // owner/manager (perm "users:manage") podem convidar, revogar, mudar papel e
 // remover. Vendedor só visualiza. (Clientes ficam em /clients.)
 // ---------------------------------------------------------------------------
-function TeamSection({ currentUserId }: { currentUserId: string }) {
+function TeamSection({ currentUserId, planId }: { currentUserId: string; planId: PlanId }) {
   const { can } = usePermissions();
   const canManage = can("users:manage");
 
@@ -332,6 +335,13 @@ function TeamSection({ currentUserId }: { currentUserId: string }) {
   const [busy, setBusy] = useState(false);
   const [linkRole, setLinkRole] = useState<UserRole>("seller");
   const [linkBusy, setLinkBusy] = useState(false);
+
+  // Limite de usuários do plano — aplicado de verdade no banco (ver migration
+  // 0022_seat_limits.sql); isto aqui é só UX (evita o convite ser tentado e
+  // rejeitado, mostra quanto falta pro limite).
+  const maxSeats = getPlan(planId).maxUsers;
+  const seatCount = members.length + invites.length;
+  const seatLimitReached = typeof maxSeats === "number" && seatCount >= maxSeats;
 
   useEffect(() => {
     if (!canManage) return;
@@ -354,6 +364,10 @@ function TeamSection({ currentUserId }: { currentUserId: string }) {
       toast.error("Esse e-mail já é membro da equipe.");
       return;
     }
+    if (seatLimitReached) {
+      toast.error("Limite de usuários do plano atingido. Remova alguém da equipe ou faça upgrade de plano.");
+      return;
+    }
     setBusy(true);
     try {
       const invite = await InviteService.createInvite(value, role);
@@ -365,23 +379,29 @@ function TeamSection({ currentUserId }: { currentUserId: string }) {
       } catch {
         // Convite existe (a pessoa ainda consegue entrar) — só o aviso por
         // e-mail falhou (ex.: domínio do Resend ainda não verificado).
-        toast.success("Convite criado — mas não consegui enviar o e-mail agora. Avise a pessoa por fora.");
+        toast.success(
+          "Convite criado, mas não consegui enviar o e-mail agora. Avise a pessoa por fora.",
+        );
       }
-    } catch {
-      toast.error("Não foi possível criar o convite.");
+    } catch (e) {
+      toast.error(describeApiError(e, "Não foi possível criar o convite."));
     } finally {
       setBusy(false);
     }
   };
 
   const createLink = async () => {
+    if (seatLimitReached) {
+      toast.error("Limite de usuários do plano atingido. Remova alguém da equipe ou faça upgrade de plano.");
+      return;
+    }
     setLinkBusy(true);
     try {
       const invite = await InviteService.createLinkInvite(linkRole);
       setInvites((prev) => [invite, ...prev]);
       toast.success("Link de convite criado.");
-    } catch {
-      toast.error("Não foi possível criar o link.");
+    } catch (e) {
+      toast.error(describeApiError(e, "Não foi possível criar o link."));
     } finally {
       setLinkBusy(false);
     }
@@ -443,13 +463,33 @@ function TeamSection({ currentUserId }: { currentUserId: string }) {
 
   return (
     <section className="space-y-3">
-      <SectionTitle eyebrow="Equipe" title="Quem faz login e usa o app" />
+      <div className="flex items-center justify-between gap-3">
+        <SectionTitle eyebrow="Equipe" title="Quem faz login e usa o app" />
+        {canManage ? (
+          <span
+            className={
+              seatLimitReached
+                ? "shrink-0 rounded-full bg-destructive/10 px-3 py-1 text-xs font-medium text-destructive"
+                : "shrink-0 rounded-full bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground"
+            }
+          >
+            {seatCount}/{maxSeats} usuários
+          </span>
+        ) : null}
+      </div>
 
-      {canManage ? (
+      {canManage && seatLimitReached ? (
+        <div className="rounded-3xl border border-dashed border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+          Limite de usuários do plano atingido. Remova alguém da equipe abaixo ou faça upgrade de
+          plano pra convidar mais gente.
+        </div>
+      ) : null}
+
+      {canManage && !seatLimitReached ? (
         <form onSubmit={sendInvite} className="rounded-3xl border border-border bg-card p-4">
           <p className="text-sm font-medium text-foreground">Convidar funcionário</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            O convidado entra na loja ao se cadastrar com este e-mail — antes disso fica pendente.
+            O convidado entra na loja ao se cadastrar com este e-mail. Antes disso fica pendente.
           </p>
           <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
             <input
@@ -478,11 +518,11 @@ function TeamSection({ currentUserId }: { currentUserId: string }) {
         </form>
       ) : null}
 
-      {canManage ? (
+      {canManage && !seatLimitReached ? (
         <div className="rounded-3xl border border-dashed border-border bg-card p-4">
           <p className="text-sm font-medium text-foreground">Convidar por link</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Gere um link e mande por WhatsApp ou Instagram — quem abrir e se cadastrar já entra na
+            Gere um link e mande por WhatsApp ou Instagram: quem abrir e se cadastrar já entra na
             loja, sem precisar saber o e-mail antes.
           </p>
           <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-2">

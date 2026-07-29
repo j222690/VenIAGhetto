@@ -14,9 +14,24 @@ const SEGMENT_OPTIONS: {
   hint: string;
   dots: string[];
 }[] = [
-  { id: "feminina", label: "Feminino", hint: "Rosa & roxo", dots: ["var(--neon-pink)", "var(--neon-purple)"] },
-  { id: "masculina", label: "Masculino", hint: "Azul & verde", dots: ["var(--neon-blue)", "var(--neon-green)"] },
-  { id: "unissex", label: "Os dois", hint: "Roxo & azul", dots: ["var(--neon-purple)", "var(--neon-blue)"] },
+  {
+    id: "feminina",
+    label: "Feminino",
+    hint: "Rosa & roxo",
+    dots: ["var(--neon-pink)", "var(--neon-purple)"],
+  },
+  {
+    id: "masculina",
+    label: "Masculino",
+    hint: "Azul & verde",
+    dots: ["var(--neon-blue)", "var(--neon-green)"],
+  },
+  {
+    id: "unissex",
+    label: "Os dois",
+    hint: "Roxo & azul",
+    dots: ["var(--neon-purple)", "var(--neon-blue)"],
+  },
 ];
 
 export const Route = createFileRoute("/register")({
@@ -105,18 +120,18 @@ function RegisterPage() {
 
       {invitePreview ? (
         <p className="mt-3 rounded-xl bg-secondary px-3 py-2 text-xs text-muted-foreground">
-          Convite de <strong>{invitePreview.storeName}</strong> — você vai entrar como{" "}
+          Convite de <strong>{invitePreview.storeName}</strong>, você vai entrar como{" "}
           <strong>{ROLE_LABEL[invitePreview.role]}</strong>.
         </p>
       ) : emailInviteMode ? (
         <p className="mt-3 rounded-xl bg-secondary px-3 py-2 text-xs text-muted-foreground">
-          Cadastre-se com o <strong>mesmo e-mail</strong> que sua loja convidou — você entra direto
+          Cadastre-se com o <strong>mesmo e-mail</strong> que sua loja convidou: você entra direto
           na equipe dela, sem precisar criar uma loja nova.
         </p>
       ) : (
         <p className="mt-3 rounded-xl bg-secondary px-3 py-2 text-xs text-muted-foreground">
           Recebeu um convite? Cadastre-se com o <strong>mesmo e-mail</strong> convidado para entrar
-          na loja existente como funcionário — neste caso o nome da loja é ignorado.
+          na loja existente como funcionário. Neste caso o nome da loja é ignorado.
         </p>
       )}
 

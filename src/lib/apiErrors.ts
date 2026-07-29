@@ -24,6 +24,7 @@ const KNOWN_SAFE_MESSAGES: RegExp[] = [
   /^são necessários \d+/i,
   /^informe um link válido/i,
   /^este endereço não é permitido/i,
+  /^limite de usuários do plano atingido/i,
 ];
 
 // Padrões técnicos conhecidos (SDK, rede, provedor) → mensagem amigável.

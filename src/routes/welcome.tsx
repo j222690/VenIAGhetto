@@ -19,22 +19,28 @@ function WelcomePage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pb-10 pt-14">
-        <p className="text-[11px] uppercase tracking-[0.25em] text-clay">
-          Vest · IA
-        </p>
+        <p className="text-[11px] uppercase tracking-[0.25em] text-clay">Vest Ai</p>
         <h1 className="mt-4 font-display text-[2.5rem] leading-[1.05] font-semibold text-foreground">
           Conteúdo de moda profissional,
           <span className="text-clay"> em segundos.</span>
         </h1>
         <p className="mt-4 text-base text-muted-foreground">
-          IA para vendedores e lojas: provador virtual, scanner de peças e posts
-          prontos para suas redes — com a estética da sua marca.
+          IA para vendedores e lojas: provador virtual, scanner de peças e posts prontos para suas
+          redes, com a estética da sua marca.
         </p>
 
         <div className="mt-10 grid gap-3">
           <FeatureRow icon={Shirt} title="Provador IA" desc="Veja a peça vestida em modelos." />
-          <FeatureRow icon={ScanLine} title="Scanner de peças" desc="Ficha completa em um clique." />
-          <FeatureRow icon={Sparkles} title="Posts prontos" desc="Imagem + copy para Insta, Whats e Face." />
+          <FeatureRow
+            icon={ScanLine}
+            title="Scanner de peças"
+            desc="Ficha completa em um clique."
+          />
+          <FeatureRow
+            icon={Sparkles}
+            title="Posts prontos"
+            desc="Imagem + copy para Insta, Whats e Face."
+          />
         </div>
 
         <div className="mt-auto pt-10">

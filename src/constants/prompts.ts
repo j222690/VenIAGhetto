@@ -185,7 +185,12 @@ export function buildSequentialStepClause(stepIndex: number): string {
 // ORDEM: superior-esquerdo, superior-direito, inferior-esquerdo,
 // inferior-direito — a MESMA ordem da descrição em `piecesPart` (cada linha
 // da descrição corresponde, em ordem, a um quadrante preenchido).
-const QUADRANT_LABELS = ["superior-esquerdo", "superior-direito", "inferior-esquerdo", "inferior-direito"];
+const QUADRANT_LABELS = [
+  "superior-esquerdo",
+  "superior-direito",
+  "inferior-esquerdo",
+  "inferior-direito",
+];
 
 // Descreve a grade de quadrantes em si. Identifica a imagem pelo CONTEÚDO
 // (não pela posição) — outras imagens podem estar anexadas junto (ex.: foto
@@ -223,6 +228,94 @@ export function buildQuadrantClause(pieceCount: number): string {
     CLOTHING_MULTI_REARRANGE_CLAUSE
   );
 }
+
+// EXPERIMENTAL (teste local) — grade de LOOKS COMPLETOS pra comparar, não
+// peças que se combinam num look só. O layout se ADAPTA à quantidade (ver
+// composeLookGrid): 2 looks = lado a lado, 4 = grade 2x2. 3 looks NÃO é
+// suportado (testado e descartado — rosto/roupa saíam inconsistentes mesmo
+// com layout dedicado; a UI em tryon.tsx bloqueia esse caso antes de chegar
+// aqui). NÃO usa REF_APP_NO_COLLAGE_CLAUSE (que proíbe grade/colagem) — aqui
+// a saída em grade é o objetivo, não um bug.
+function positionLabels(cols: number, rows: number): string[] {
+  if (rows === 1) {
+    if (cols === 2) return ["esquerdo", "direito"];
+    return ["esquerdo", "central", "direito"];
+  }
+  return QUADRANT_LABELS; // 2x2
+}
+
+export function buildLookGridClause(lookCount: number, cols: number, rows: number): string {
+  const labels = positionLabels(cols, rows).slice(0, lookCount);
+  const layoutDesc =
+    rows === 1
+      ? `${lookCount} imagens lado a lado (${labels.join(", ")})`
+      : `grade 2x2 (${labels.join(", ")})`;
+  const orderList = labels
+    .map((label, i) => `${i + 1}ª imagem de referência = posição ${label}`)
+    .join(", ");
+  return (
+    "Isto é uma EDIÇÃO de fotos reais, não a criação de pessoas novas. A PRIMEIRA imagem anexada " +
+    "mostra a PESSOA que será vestida. Memorize com atenção MÁXIMA, antes de gerar qualquer coisa: " +
+    "(1) ROSTO — formato do rosto, olhos, sobrancelhas, nariz, boca, queixo, tom de pele, textura e " +
+    "corte do cabelo; (2) CORPO — altura, proporção ombro/quadril, tipo físico, comprimento de " +
+    "braços e pernas; (3) POSE — ângulo do corpo em relação à câmera, posição dos braços e mãos, " +
+    "inclinação da cabeça. Esses três pontos (rosto, corpo, pose) precisam ser IDÊNTICOS — não só " +
+    `parecidos, o MESMO — em TODAS as ${lookCount} posições do resultado, como se fosse a MESMA foto ` +
+    "da pessoa parada no mesmo lugar, só trocando de roupa a cada posição (tipo um provador de loja: " +
+    "a pessoa não muda, só o look). Isso facilita a COMPARAÇÃO entre os looks — se a pose ou o rosto " +
+    "mudar entre posições, a comparação fica inválida. " +
+    `Outra imagem anexada é uma grade de referência dividida em ${layoutDesc} — reconheça-a pelo ` +
+    `layout, não pela ordem de anexo. Cada posição preenchida mostra um LOOK COMPLETO diferente (se ` +
+    "tiver outra pessoa nessa referência, IGNORE completamente o rosto/corpo/pose dela — olhe só a " +
+    `roupa que ela veste). Ordem: ${orderList}. TASK: gere UMA IMAGEM DE SAÍDA dividida no MESMO ` +
+    `layout (${layoutDesc}) — CONTAGEM EXATA: ${lookCount} posições no TOTAL, nem mais nem menos. NÃO ` +
+    `adicione nenhuma linha, coluna, painel, ângulo de câmera extra ou repetição da pessoa além dessas ` +
+    `${lookCount} posições — mesmo que isso signifique cada posição ficar menor ou mais apertada, o ` +
+    `layout (${layoutDesc}) é FIXO e não pode ser duplicado ou expandido. Em cada posição de saída, ` +
+    `mostre a PESSOA da PRIMEIRA imagem — mesmo ` +
+    `rosto, corpo e pose IDÊNTICOS nas ${lookCount} posições (revise antes de finalizar: compare ` +
+    "mentalmente rosto, corpo e pose de cada posição gerada com a primeira imagem) — vestindo o look " +
+    "da posição CORRESPONDENTE da grade de entrada (mesma ordem esquerda-para-direita). NÃO misture " +
+    "looks entre posições — cada posição de saída tem APENAS o look da sua posição correspondente, " +
+    "reproduzido fielmente (cor, tecido, corte, calçado, botões e fechos exatamente como na " +
+    "referência, sem redesenhar ou simplificar a peça). NÃO adicione nenhum acessório que não esteja " +
+    "no look de referência. Fotografia realista e profissional, sem aparência plástica."
+  );
+}
+
+// EXPERIMENTAL (teste local) — usada só na Grade de Looks, junto com
+// buildLookGridClause. Há uma imagem extra anexada só com um CLOSE-UP do
+// rosto (recortada no cliente, ver cropFaceCloseup em @/lib/composeQuadrant)
+// — ela existe SÓ pra ancorar a identidade com mais precisão (a foto de
+// corpo inteiro é pequena demais pra fixar detalhe fino de rosto quando ele
+// precisa se repetir idêntico em várias posições da grade); não deve virar
+// uma posição extra na saída.
+export const FACE_CLOSEUP_CLAUSE =
+  "Há também uma imagem adicional em CLOSE-UP mostrando só o ROSTO da mesma pessoa da primeira " +
+  "imagem, bem de perto. Use esse close-up como a referência PRINCIPAL e mais confiável para o " +
+  "formato exato do rosto — olhos, sobrancelhas, nariz, boca, queixo, tom de pele e cabelo — em " +
+  "TODAS as posições da grade de saída (mais confiável que a foto de corpo inteiro pra esse fim, " +
+  "que está mais distante e pequena). Esse close-up é APENAS uma referência de identidade — NÃO é " +
+  "uma posição a mais na grade, NÃO o replique como um painel extra, e NÃO copie o enquadramento " +
+  "dele (a saída continua de corpo inteiro/enquadramento normal em cada posição, só o rosto precisa " +
+  "bater com esse close-up).";
+
+// EXPERIMENTAL (teste local) — usada só na Grade de Looks. Bug real observado:
+// com 4 looks (grade 2x2), o modelo afasta a câmera em cada posição (a pessoa
+// fica menor, com mais espaço vazio ao redor) em vez de manter a MESMA
+// distância da foto original — isso reduz a resolução efetiva da pessoa
+// dentro da imagem de saída (resolução total é fixa), piorando o rosto e a
+// fidelidade da roupa junto. REF_APP_ANATOMY_CLAUSE já pede "same camera
+// framing" mas fala da relação com a "primeira imagem" de forma genérica;
+// esta cláusula é mais explícita e direta sobre DISTÂNCIA/ZOOM especificamente
+// pro contexto de múltiplas posições.
+export const GRID_FRAMING_LOCK_CLAUSE =
+  "DISTÂNCIA DE CÂMERA (mandatório): em TODAS as posições da grade de saída, a pessoa precisa ocupar " +
+  "a MESMA proporção do quadro que na PRIMEIRA imagem — mesmo enquadramento, mesma distância de " +
+  "câmera, mesmo corte (do topo da cabeça até os pés, se a primeira imagem for de corpo inteiro). NÃO " +
+  "afaste a câmera, não adicione mais espaço vazio ao redor da pessoa, e não transforme numa foto de " +
+  "still de editorial mais distante do que a referência — cada posição é um recorte PRÓXIMO, igual à " +
+  "primeira imagem, só trocando o look.";
 
 // Variante pra CRIAR um modelo do zero (Posts sem foto própria) vestindo
 // 2-4 peças de uma vez — não tem "pessoa da primeira imagem" pra editar, a

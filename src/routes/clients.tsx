@@ -167,11 +167,7 @@ function ClientsPage() {
             />
           </Field>
           <Field label="Instagram">
-            <Input
-              value={form.instagram}
-              onChange={set("instagram")}
-              placeholder="@cliente"
-            />
+            <Input value={form.instagram} onChange={set("instagram")} placeholder="@cliente" />
           </Field>
           <Field label="Telefone">
             <Input value={form.phone} onChange={set("phone")} placeholder="(11) 99999-0000" />
@@ -402,14 +398,18 @@ function ClientFolder({ client: initialClient, onBack }: { client: Client; onBac
               Fotos do cliente
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Toque numa foto pra usar como base do Provador — a com <Check className="inline h-3 w-3" /> é a atual.
+              Toque numa foto pra usar como base do Provador, a com{" "}
+              <Check className="inline h-3 w-3" /> é a atual.
             </p>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {photos.map((p) => {
               const isBase = client.photoUrl === p.url;
               return (
-                <div key={p.id} className="relative overflow-hidden rounded-2xl border border-border">
+                <div
+                  key={p.id}
+                  className="relative overflow-hidden rounded-2xl border border-border"
+                >
                   <button
                     type="button"
                     onClick={() => applyAsBasePhoto(p.url)}

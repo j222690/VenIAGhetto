@@ -17,14 +17,13 @@ function TermsPage() {
 
       <div className="mt-8 space-y-7 text-sm leading-relaxed text-foreground">
         <Section title="1. Aceitação">
-          Ao usar o Vest Ai, você concorda com estes Termos. Se não concordar, não use o
-          serviço.
+          Ao usar o Vest Ai, você concorda com estes Termos. Se não concordar, não use o serviço.
         </Section>
 
         <Section title="2. O serviço">
-          O Vest Ai oferece geração de conteúdo de moda com IA — provador virtual, criação de
-          posts, análise de peças e catálogo. Os resultados são gerados automaticamente e podem
-          conter imprecisões; revise antes de publicar ou vender.
+          O Vest Ai oferece geração de conteúdo de moda com IA: provador virtual, criação de posts,
+          análise de peças e catálogo. Os resultados são gerados automaticamente e podem conter
+          imprecisões; revise antes de publicar ou vender.
         </Section>
 
         <Section title="3. Conta e uso">
@@ -34,8 +33,8 @@ function TermsPage() {
         </Section>
 
         <Section title="4. Tokens e cobrança">
-          Recursos de IA consomem tokens conforme o plano da loja. O saldo é debitado a cada
-          geração ou importação. Créditos consumidos não são reembolsáveis, salvo exigência legal.
+          Recursos de IA consomem tokens conforme o plano da loja. O saldo é debitado a cada geração
+          ou importação. Créditos consumidos não são reembolsáveis, salvo exigência legal.
         </Section>
 
         <Section title="5. Conteúdo e propriedade">
@@ -45,8 +44,8 @@ function TermsPage() {
         </Section>
 
         <Section title="6. Fidelidade das peças">
-          A IA é orientada a reproduzir fielmente as peças enviadas, pois representam produtos reais.
-          Ainda assim, a loja deve conferir cada resultado antes de anunciar — não nos
+          A IA é orientada a reproduzir fielmente as peças enviadas, pois representam produtos
+          reais. Ainda assim, a loja deve conferir cada resultado antes de anunciar. Não nos
           responsabilizamos por divergências entre a imagem gerada e o produto físico.
         </Section>
 

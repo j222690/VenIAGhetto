@@ -1,6 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Check, Globe, ImagePlus, Pencil, Plus, Search, Sparkles, Trash2, Wand2 } from "@/lib/icons";
+import {
+  Check,
+  Globe,
+  ImagePlus,
+  Pencil,
+  Plus,
+  Search,
+  Sparkles,
+  Trash2,
+  Wand2,
+} from "@/lib/icons";
 import { describeApiError } from "@/lib/apiErrors";
 import { AppLayout } from "@/layouts/AppLayout";
 import { ImageUploadField } from "@/components/ImageUploadField";
@@ -152,7 +162,7 @@ function CatalogPage() {
       const { url: cleanUrl, balance } = await CatalogService.cleanPieceImage(form.imageUrl);
       setForm((f) => ({ ...f, cleanImageUrl: cleanUrl }));
       TokenService.syncAfterServerDebit(CLEAN_IMAGE_COST, "Limpeza de peça (catálogo)", balance);
-      toast.success("Peça limpa — isso melhora o resultado no Provador.");
+      toast.success("Peça limpa, isso melhora o resultado no Provador.");
     } catch {
       toast.error("Não foi possível limpar a peça.");
     } finally {
@@ -336,13 +346,15 @@ function CatalogPage() {
 
           <div className="flex items-center gap-3">
             <span className="h-px flex-1 bg-border" />
-            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">ou por foto</span>
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              ou por foto
+            </span>
             <span className="h-px flex-1 bg-border" />
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-4">
             <p className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <Sparkles className="h-4 w-4 text-clay" /> Importe por foto — a IA cataloga
+              <Sparkles className="h-4 w-4 text-clay" /> Importe por foto: a IA cataloga
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               Envie as fotos dos seus produtos (prints do WhatsApp ou qualquer formato). A IA
@@ -354,7 +366,11 @@ function CatalogPage() {
           <div className="grid grid-cols-3 gap-2">
             {importPhotos.map((url, i) => (
               <div key={url} className="relative overflow-hidden rounded-2xl border border-border">
-                <img src={url} alt={`Produto ${i + 1}`} className="aspect-square w-full object-cover" />
+                <img
+                  src={url}
+                  alt={`Produto ${i + 1}`}
+                  className="aspect-square w-full object-cover"
+                />
                 <button
                   onClick={() => setImportPhotos((p) => p.filter((_, idx) => idx !== i))}
                   aria-label="Remover foto"
@@ -411,7 +427,7 @@ function CatalogPage() {
             {form.imageUrl ? (
               form.cleanImageUrl ? (
                 <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-clay">
-                  <Check className="h-3.5 w-3.5" /> Peça limpa — melhora o resultado no Provador
+                  <Check className="h-3.5 w-3.5" /> Peça limpa: melhora o resultado no Provador
                 </p>
               ) : (
                 <button
@@ -596,7 +612,7 @@ function CatalogPage() {
           <p className="py-12 text-center text-sm text-muted-foreground">
             {query || category !== "all"
               ? "Nenhuma peça encontrada."
-              : "Catálogo vazio — adicione sua primeira peça."}
+              : "Catálogo vazio. Adicione sua primeira peça."}
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-3">

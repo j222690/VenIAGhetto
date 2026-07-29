@@ -127,7 +127,7 @@ export function LookActions({
       toast.success(
         r === "shared"
           ? "Escolha o Instagram para publicar."
-          : "Imagem baixada e Instagram aberto — é só publicar.",
+          : "Imagem baixada e Instagram aberto, é só publicar.",
       );
     } finally {
       setBusy(false);

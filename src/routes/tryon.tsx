@@ -7,6 +7,7 @@ import { BackgroundRefPicker } from "@/components/BackgroundRefPicker";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { LookActions } from "@/components/LookActions";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { RefinePanel } from "@/components/RefinePanel";
 import { AIService } from "@/services/AIService";
 import { CatalogService } from "@/services/CatalogService";
@@ -17,13 +18,16 @@ import { useTokens } from "@/hooks/useTokens";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import type { Client, Generation } from "@/types";
-import { composeQuadrant } from "@/lib/composeQuadrant";
+import { composeLookGrid, composeQuadrant, cropFaceCloseup } from "@/lib/composeQuadrant";
 import {
   buildBackgroundClause,
+  buildLookGridClause,
   buildQuadrantClause,
   buildSequentialStepClause,
   COLOR_LIGHT_INDEPENDENCE_CLAUSE,
+  FACE_CLOSEUP_CLAUSE,
   fitExceptionClause,
+  GRID_FRAMING_LOCK_CLAUSE,
   POSE_LOCK_CLAUSE,
   PRESERVE_PHOTO_CLAUSE,
   REALISM_CLAUSE,
@@ -44,12 +48,32 @@ type Sheet = "client" | "item" | null;
 
 // Retoques de IA — presets prontos + campo livre.
 const RETOUCHES: { id: string; label: string; instruction: string }[] = [
-  { id: "amassados", label: "Tirar amassados", instruction: "remova amassados e vincos da roupa deixando o tecido liso" },
-  { id: "tatuagens", label: "Remover tatuagens", instruction: "remova tatuagens visíveis da pele do modelo" },
-  { id: "pele", label: "Suavizar pele", instruction: "suavize a pele de forma natural, sem exagero" },
-  { id: "luz", label: "Melhorar luz", instruction: "melhore a iluminação e o equilíbrio de cores da foto" },
+  {
+    id: "amassados",
+    label: "Tirar amassados",
+    instruction: "remova amassados e vincos da roupa deixando o tecido liso",
+  },
+  {
+    id: "tatuagens",
+    label: "Remover tatuagens",
+    instruction: "remova tatuagens visíveis da pele do modelo",
+  },
+  {
+    id: "pele",
+    label: "Suavizar pele",
+    instruction: "suavize a pele de forma natural, sem exagero",
+  },
+  {
+    id: "luz",
+    label: "Melhorar luz",
+    instruction: "melhore a iluminação e o equilíbrio de cores da foto",
+  },
   { id: "fundo", label: "Limpar fundo", instruction: "remova elementos que distraem do fundo" },
-  { id: "caimento", label: "Ajustar caimento", instruction: "melhore o caimento e o ajuste da roupa no corpo" },
+  {
+    id: "caimento",
+    label: "Ajustar caimento",
+    instruction: "melhore o caimento e o ajuste da roupa no corpo",
+  },
 ];
 
 function TryOnPage() {
@@ -58,6 +82,9 @@ function TryOnPage() {
   const [client, setClient] = useState<Client | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | undefined>();
   const [garments, setGarments] = useState<string[]>([]);
+  // EXPERIMENTAL (teste local): em vez de combinar peças num look só, compara
+  // até 4 looks COMPLETOS numa grade só — ver buildLookGridClause.
+  const [gridMode, setGridMode] = useState(false);
   const [size, setSize] = useState<string | null>(null);
   const [fit, setFit] = useState<string | null>(null);
   const [length, setLength] = useState<string | null>(null);
@@ -73,6 +100,7 @@ function TryOnPage() {
   const [busy, setBusy] = useState(false);
   const [busyLabel, setBusyLabel] = useState("Gerando…");
   const [result, setResult] = useState<Generation | null>(null);
+  const [viewingUrl, setViewingUrl] = useState<string | null>(null);
 
   useEffect(() => {
     void ClientService.load().catch(() => {});
@@ -84,13 +112,15 @@ function TryOnPage() {
 
   const addGarment = (url: string) => {
     setGarments((g) => [...g, url]);
+    if (gridMode) return; // dica é sobre foto de PEÇA — não se aplica a look completo
     // Checa (em 2º plano) se a foto da peça é boa pra prova; avisa o lojista se não for.
     void AIService.garmentPhotoTip(url)
       .then((tip) => {
         if (tip) {
           toast.warning(tip, {
             duration: 9000,
-            description: "Dica: fotografe a peça esticada e de frente, com o fecho e os detalhes bem visíveis.",
+            description:
+              "Dica: fotografe a peça esticada e de frente, com o fecho e os detalhes bem visíveis.",
           });
         }
       })
@@ -115,6 +145,64 @@ function TryOnPage() {
     }
     setBusy(true);
     try {
+      // Modo EXPERIMENTAL de grade de looks — ver buildLookGridClause. Fluxo
+      // totalmente separado do combinar-peças normal: cada imagem enviada é
+      // um LOOK COMPLETO (não uma peça), a saída é uma grade comparando todos.
+      if (gridMode) {
+        setBusyLabel("Montando a grade de looks…");
+        // Sem cenário escolhido, cai no Estúdio de verdade (descrição rica +
+        // foto de referência) em vez de uma linha genérica — que antes saía
+        // com fundo "inventado" (parede decorada, plantas) em vez de neutro.
+        const selectedBg = changeSceneOn
+          ? BACKGROUNDS.find((b) => b.id === background)
+          : BACKGROUNDS.find((b) => b.id === "estudio");
+        const effectiveBgRefUrl = changeSceneOn ? bgRefUrl : selectedBg?.refs[0]?.url;
+        const bgRefUrls = selectedBg && effectiveBgRefUrl ? [effectiveBgRefUrl] : [];
+        const scenePart =
+          (selectedBg ? buildBackgroundClause(selectedBg.desc, !!effectiveBgRefUrl) : "") +
+          (changeSceneOn && bgCustom.trim() ? ` Detalhes do cenário: ${bgCustom.trim()}.` : "") +
+          " " +
+          COLOR_LIGHT_INDEPENDENCE_CLAUSE;
+        const { composite, cols, rows, aspectRatio } = await composeLookGrid(garments);
+        // Recorte extra do rosto (ver cropFaceCloseup) — ancora a identidade
+        // com mais precisão do que só a foto de corpo inteiro, que é pequena
+        // demais pra fixar detalhe fino de rosto repetido em várias posições.
+        let faceCloseup: { mimeType: string; data: string } | null = null;
+        try {
+          faceCloseup = await cropFaceCloseup(photoUrl);
+        } catch {
+          /* segue sem o close-up se o recorte falhar */
+        }
+        const gridPrompt =
+          buildLookGridClause(Math.min(garments.length, 4), cols, rows) +
+          " " +
+          REF_APP_ANATOMY_CLAUSE +
+          " " +
+          GRID_FRAMING_LOCK_CLAUSE +
+          (faceCloseup ? " " + FACE_CLOSEUP_CLAUSE : "") +
+          scenePart +
+          " " +
+          REALISM_CLAUSE;
+        const { url, balance } = await AIService.image(gridPrompt, "tryon", {
+          imageUrls: [photoUrl, ...bgRefUrls],
+          images: faceCloseup ? [composite, faceCloseup] : [composite],
+          aspectRatio,
+        });
+        TokenService.syncAfterServerDebit(cost, "Geração: tryon (grade de looks)", balance);
+        const gen = await GenerationService.generate({
+          type: "tryon",
+          alreadyDebited: true,
+          inputs: { clientPhotoUrl: photoUrl, notes: "Grade de looks" },
+          resultUrl: url,
+          tokenCost: cost,
+          userId: session.user.id,
+          storeId: session.store.id,
+          clientId: client?.id,
+        });
+        setResult(gen);
+        return;
+      }
+
       // 1) Visão (OpenAI) — descreve as peças para dar fidelidade ao look (reforço
       //    em TEXTO, além das fotos reais que vão juntas na geração abaixo).
       setBusyLabel("Analisando as peças…");
@@ -167,7 +255,9 @@ function TryOnPage() {
           part += " " + PRESERVE_PHOTO_CLAUSE;
         }
         if (refineOn) {
-          const retouchList = RETOUCHES.filter((r) => retouches.includes(r.id)).map((r) => r.instruction);
+          const retouchList = RETOUCHES.filter((r) => retouches.includes(r.id)).map(
+            (r) => r.instruction,
+          );
           const retouchTxt = [...retouchList, retouchCustom.trim()].filter(Boolean).join("; ");
           if (retouchTxt) part += ` Retoques: ${retouchTxt}.`;
         }
@@ -230,7 +320,9 @@ function TryOnPage() {
           stepPrompt += isLast ? buildFinishPart() : " " + PRESERVE_PHOTO_CLAUSE;
           stepPrompt += " " + REF_APP_FIDELITY_CLOSING_CLAUSE;
           const stepImgs = isLast ? [running, garments[i], ...bgRefUrls] : [running, garments[i]];
-          const { url, balance } = await AIService.image(stepPrompt, "tryon", { imageUrls: stepImgs });
+          const { url, balance } = await AIService.image(stepPrompt, "tryon", {
+            imageUrls: stepImgs,
+          });
           running = url;
           TokenService.syncAfterServerDebit(cost, "Geração: tryon", balance);
         }
@@ -242,7 +334,8 @@ function TryOnPage() {
         alreadyDebited: true,
         inputs: {
           clientPhotoUrl: photoUrl,
-          notes: `${changeSceneOn ? `${background} ${bgCustom}` : ""} ${refineOn ? retouchCustom : ""} ${size ?? ""} ${fit ?? ""} ${length ?? ""}`.trim(),
+          notes:
+            `${changeSceneOn ? `${background} ${bgCustom}` : ""} ${refineOn ? retouchCustom : ""} ${size ?? ""} ${fit ?? ""} ${length ?? ""}`.trim(),
         },
         resultUrl: currentUrl,
         tokenCost: cost,
@@ -263,15 +356,26 @@ function TryOnPage() {
       <AppLayout title="Resultado">
         <div className="space-y-5">
           <div className="overflow-hidden rounded-3xl bg-card shadow-soft">
-            <img src={result.resultUrl} alt="Resultado do provador" className="w-full" />
+            <button
+              type="button"
+              onClick={() => setViewingUrl(result.resultUrl)}
+              className="block w-full"
+              aria-label="Ampliar imagem"
+            >
+              <img src={result.resultUrl} alt="Resultado do provador" className="w-full" />
+            </button>
             <div className="flex items-center justify-between gap-3 p-4">
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-foreground">Look gerado</p>
                 <p className="truncate text-xs text-muted-foreground">
-                  {client ? `Para ${client.name}` : "Sem cliente associado"} · {Math.floor(balance / cost)} gerações restantes este mês
+                  {client ? `Para ${client.name}` : "Sem cliente associado"} ·{" "}
+                  {Math.floor(balance / cost)} gerações restantes este mês
                 </p>
               </div>
-              <LookActions look={result} actions={["favorite", "download", "instagram", "whatsapp"]} />
+              <LookActions
+                look={result}
+                actions={["favorite", "download", "instagram", "whatsapp"]}
+              />
             </div>
           </div>
 
@@ -307,6 +411,7 @@ function TryOnPage() {
           ) : null}
         </div>
         {busy ? <LoadingOverlay label={busyLabel} /> : null}
+        <PhotoLightbox url={viewingUrl} onClose={() => setViewingUrl(null)} />
       </AppLayout>
     );
   }
@@ -332,127 +437,200 @@ function TryOnPage() {
           <span className="text-sm text-clay">{client ? "Trocar" : "Escolher"}</span>
         </button>
 
-        {/* Peças do look — uma ou várias (fotos separadas viram um look) */}
+        {/* EXPERIMENTAL — grade de looks (teste local, não é a Vest Ai "oficial" ainda) */}
+        <button
+          onClick={() => {
+            setGridMode((v) => !v);
+            setGarments([]);
+          }}
+          className="flex w-full items-center justify-between rounded-2xl border border-dashed border-accent/40 bg-accent/5 p-4 text-left"
+        >
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-foreground">
+              Grade de looks (experimental)
+            </span>
+            <span className="block text-xs text-muted-foreground">
+              Compare até 4 looks completos numa imagem só, em vez de vestir um look por vez.
+            </span>
+          </span>
+          <span
+            className={cn(
+              "relative h-6 w-11 shrink-0 rounded-full transition-colors",
+              gridMode ? "bg-clay" : "bg-secondary",
+            )}
+          >
+            <span
+              className={cn(
+                "absolute top-0.5 h-5 w-5 rounded-full bg-background transition-all",
+                gridMode ? "left-[22px]" : "left-0.5",
+              )}
+            />
+          </span>
+        </button>
+
+        {/* Peças do look — uma ou várias (fotos separadas viram um look), OU
+            looks completos pra comparar (modo grade experimental) */}
         <section className="space-y-3">
           <div>
-            <p className="text-sm font-semibold text-foreground">Peças do look</p>
+            <p className="text-sm font-semibold text-foreground">
+              {gridMode ? "Looks para comparar" : "Peças do look"}
+            </p>
             <p className="text-xs text-muted-foreground">
-              Envie 1 peça, ou várias fotos separadas — a IA junta tudo no mesmo look.
+              {gridMode
+                ? "Envie 2 ou 4 fotos — cada uma um look completo diferente."
+                : "Envie 1 peça, ou várias fotos separadas — a IA junta tudo no mesmo look."}
             </p>
           </div>
-          <p className="rounded-2xl border border-clay/25 bg-clay/5 px-4 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
-            💡 <span className="font-semibold text-foreground">Para a prova ficar fiel:</span> fotografe a peça
-            {" "}<span className="text-foreground">esticada e de frente</span>, com boa luz e os detalhes visíveis
-            (fecho, botão, braguilha, bolsos). Peça dobrada ou de lado faz a IA "inventar" o que ficou escondido.
-          </p>
+          {!gridMode ? (
+            <p className="flex items-start gap-2 rounded-2xl border border-clay/25 bg-clay/5 px-4 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+              <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-clay" />
+              <span>
+                <span className="font-semibold text-foreground">Para a prova ficar fiel:</span>{" "}
+                fotografe a peça <span className="text-foreground">esticada e de frente</span>, com
+                boa luz e os detalhes visíveis (fecho, botão, braguilha, bolsos). Peça dobrada ou de
+                lado faz a IA "inventar" o que ficou escondido.
+              </span>
+            </p>
+          ) : null}
           <div className="grid grid-cols-3 gap-2">
             {garments.map((url, i) => (
               <div key={url} className="relative overflow-hidden rounded-2xl border border-border">
-                <img src={url} alt={`Peça ${i + 1}`} className="aspect-square w-full object-cover" />
+                <img
+                  src={url}
+                  alt={`${gridMode ? "Look" : "Peça"} ${i + 1}`}
+                  className="aspect-square w-full object-cover"
+                />
                 <button
                   onClick={() => removeGarment(i)}
-                  aria-label="Remover peça"
+                  aria-label={gridMode ? "Remover look" : "Remover peça"}
                   className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-background/85 text-foreground shadow-soft backdrop-blur"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
             ))}
-            <ImageUploadField
-              bucket="catalog"
-              onChange={addGarment}
-              label={garments.length ? "Adicionar" : "Adicionar peça"}
-              hint="Galeria/câmera"
-              aspectClassName="aspect-square"
-            />
+            {!gridMode || garments.length < 4 ? (
+              <ImageUploadField
+                bucket="catalog"
+                onChange={addGarment}
+                label={
+                  garments.length ? "Adicionar" : gridMode ? "Adicionar look" : "Adicionar peça"
+                }
+                hint="Galeria/câmera"
+                aspectClassName="aspect-square"
+              />
+            ) : null}
           </div>
-          <button
-            onClick={() => setSheet("item")}
-            className="w-full text-center text-[11px] font-medium text-clay"
-          >
-            ou escolher do catálogo
-          </button>
+          {!gridMode ? (
+            <button
+              onClick={() => setSheet("item")}
+              className="w-full text-center text-[11px] font-medium text-clay"
+            >
+              ou escolher do catálogo
+            </button>
+          ) : null}
         </section>
 
-        {garments.length >= 2 ? (
+        {gridMode && garments.length === 1 ? (
           <p className="rounded-2xl border border-dashed border-border bg-card px-4 py-2.5 text-xs text-muted-foreground">
-            ✨ Várias peças: a IA junta tudo em um look só e veste no cliente de uma vez.
+            Envie mais 1 look pra comparar (2 ou 4 no total — 3 não é suportado).
           </p>
         ) : null}
 
-        {/* Tamanho, caimento e comprimento — opcionais, ajustam o look gerado */}
-        <section className="space-y-3">
-          <div>
-            <p className="text-sm font-semibold text-foreground">Tamanho e caimento</p>
-            <p className="text-xs text-muted-foreground">Opcional — ajusta o corte do look gerado.</p>
-          </div>
+        {gridMode && garments.length === 3 ? (
+          <p className="rounded-2xl border border-dashed border-destructive/40 bg-destructive/5 px-4 py-2.5 text-xs text-destructive">
+            A grade com 3 looks não é suportada (qualidade ruim) — remova 1 ou adicione mais 1
+            (total de 2 ou 4).
+          </p>
+        ) : null}
 
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              Tamanho
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {SIZES.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSize((cur) => (cur === s ? null : s))}
-                  className={cn(
-                    "rounded-full border px-3 py-1.5 text-xs font-medium transition",
-                    size === s
-                      ? "border-accent bg-accent text-accent-foreground shadow-glow"
-                      : "border-border bg-card text-foreground hover:border-accent/50",
-                  )}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
+        {!gridMode && garments.length >= 2 ? (
+          <p className="flex items-center gap-2 rounded-2xl border border-dashed border-border bg-card px-4 py-2.5 text-xs text-muted-foreground">
+            <Sparkles className="h-3.5 w-3.5 shrink-0 text-clay" />
+            Várias peças: a IA junta tudo em um look só e veste no cliente de uma vez.
+          </p>
+        ) : null}
 
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              Caimento
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {FITS.map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setFit((cur) => (cur === f.id ? null : f.id))}
-                  className={cn(
-                    "rounded-full border px-3 py-1.5 text-xs font-medium transition",
-                    fit === f.id
-                      ? "border-accent bg-accent text-accent-foreground shadow-glow"
-                      : "border-border bg-card text-foreground hover:border-accent/50",
-                  )}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
+        {/* Tamanho, caimento e comprimento — não se aplica no modo grade (looks já prontos) */}
+        {!gridMode && (
+          <>
+            {/* Tamanho, caimento e comprimento — opcionais, ajustam o look gerado */}
+            <section className="space-y-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Tamanho e caimento</p>
+                <p className="text-xs text-muted-foreground">
+                  Opcional — ajusta o corte do look gerado.
+                </p>
+              </div>
 
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              Comprimento (barra da peça — não a manga)
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {LENGTHS.map((l) => (
-                <button
-                  key={l.id}
-                  onClick={() => setLength((cur) => (cur === l.id ? null : l.id))}
-                  className={cn(
-                    "rounded-full border px-3 py-1.5 text-xs font-medium transition",
-                    length === l.id
-                      ? "border-accent bg-accent text-accent-foreground shadow-glow"
-                      : "border-border bg-card text-foreground hover:border-accent/50",
-                  )}
-                >
-                  {l.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Tamanho
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {SIZES.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setSize((cur) => (cur === s ? null : s))}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                        size === s
+                          ? "border-accent bg-accent text-accent-foreground shadow-glow"
+                          : "border-border bg-card text-foreground hover:border-accent/50",
+                      )}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Caimento
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {FITS.map((f) => (
+                    <button
+                      key={f.id}
+                      onClick={() => setFit((cur) => (cur === f.id ? null : f.id))}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                        fit === f.id
+                          ? "border-accent bg-accent text-accent-foreground shadow-glow"
+                          : "border-border bg-card text-foreground hover:border-accent/50",
+                      )}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Comprimento (barra da peça — não a manga)
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {LENGTHS.map((l) => (
+                    <button
+                      key={l.id}
+                      onClick={() => setLength((cur) => (cur === l.id ? null : l.id))}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                        length === l.id
+                          ? "border-accent bg-accent text-accent-foreground shadow-glow"
+                          : "border-border bg-card text-foreground hover:border-accent/50",
+                      )}
+                    >
+                      {l.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
+          </>
+        )}
 
         <div>
           <ImageUploadField
@@ -518,7 +696,7 @@ function TryOnPage() {
                       : "border-border bg-card hover:border-accent/50",
                   )}
                 >
-                  <span className="text-lg">{b.emoji}</span>
+                  <b.icon className="h-5 w-5 text-clay" />
                   <span className="text-[10px] font-medium text-foreground">{b.label}</span>
                 </button>
               ))}
@@ -595,10 +773,16 @@ function TryOnPage() {
 
         <button
           onClick={run}
-          disabled={busy || garments.length === 0 || !photoUrl}
+          disabled={
+            busy ||
+            garments.length === 0 ||
+            !photoUrl ||
+            (gridMode && (garments.length < 2 || garments.length === 3))
+          }
           className="w-full rounded-full bg-clay px-6 py-4 text-base font-semibold text-clay-foreground shadow-soft disabled:opacity-60"
         >
-          Gerar look · {Math.floor(balance / cost)} gerações restantes
+          {gridMode ? "Gerar grade de looks" : "Gerar look"} · {Math.floor(balance / cost)} gerações
+          restantes
         </button>
       </div>
 

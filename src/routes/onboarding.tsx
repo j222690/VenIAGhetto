@@ -11,7 +11,7 @@ const STEPS = [
   {
     icon: Shirt,
     title: "Provador IA",
-    desc: "Suba a foto do modelo e da peça — a IA monta o look pronto para postar.",
+    desc: "Suba a foto do modelo e da peça: a IA monta o look pronto para postar.",
   },
   {
     icon: ScanLine,
@@ -48,9 +48,7 @@ function OnboardingPage() {
       <div className="mt-16 grid h-20 w-20 place-items-center rounded-3xl bg-clay/10 text-clay">
         <Icon className="h-8 w-8" />
       </div>
-      <h1 className="mt-8 font-display text-3xl font-semibold text-foreground">
-        {item.title}
-      </h1>
+      <h1 className="mt-8 font-display text-3xl font-semibold text-foreground">{item.title}</h1>
       <p className="mt-3 text-base text-muted-foreground">{item.desc}</p>
 
       <div className="mt-auto grid gap-3">

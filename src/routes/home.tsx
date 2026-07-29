@@ -43,7 +43,7 @@ function HomePage() {
             <span className="ml-1 text-base font-normal text-muted-foreground">/ {total}</span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Vale pra Provador, Post, Refinar e Limpar peça — cada geração conta 1.
+            Vale pra Provador, Post, Refinar e Limpar peça: cada geração conta 1.
           </p>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
             <div
@@ -54,7 +54,7 @@ function HomePage() {
           {lowBalance ? (
             <div className="mt-4 flex items-start gap-2 rounded-xl bg-clay/10 p-3 text-sm text-clay">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <p>Saldo abaixo de 20% — considere recarregar.</p>
+              <p>Saldo abaixo de 20%. Considere recarregar.</p>
             </div>
           ) : null}
         </section>
@@ -96,7 +96,7 @@ function HomePage() {
           />
           {recent.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Nada por aqui ainda — gere sua primeira imagem.
+              Nada por aqui ainda. Gere sua primeira imagem.
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-3">

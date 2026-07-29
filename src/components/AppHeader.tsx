@@ -21,7 +21,7 @@ export function AppHeader({ title, subtitle, showTokens = true }: Props) {
           ) : (
             <Link to="/home" className="block min-w-0">
               <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                Vest · IA
+                Vest Ai
               </p>
               <p className="truncate font-display text-lg font-semibold text-foreground">
                 {session?.store.name ?? "Vest Ai"}

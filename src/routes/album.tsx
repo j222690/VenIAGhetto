@@ -52,7 +52,7 @@ function AlbumPage() {
           <p className="py-12 text-center text-sm text-muted-foreground">
             {onlyFavorites
               ? "Nenhum look favoritado ainda."
-              : "Nada por aqui ainda — gere seu primeiro look."}
+              : "Nada por aqui ainda. Gere seu primeiro look."}
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-3">
@@ -96,7 +96,9 @@ function AlbumPage() {
                       <button
                         onClick={() => {
                           const c = look.copies!;
-                          const full = [c.instagram, c.hashtags.join(" ")].filter(Boolean).join("\n\n");
+                          const full = [c.instagram, c.hashtags.join(" ")]
+                            .filter(Boolean)
+                            .join("\n\n");
                           navigator.clipboard.writeText(full);
                           toast.success("Legenda copiada.");
                         }}

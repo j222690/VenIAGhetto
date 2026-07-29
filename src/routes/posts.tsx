@@ -108,7 +108,11 @@ function PostsPage() {
       }
 
       const modelDesc =
-        audience === "masculina" ? "modelo masculino" : audience === "feminina" ? "modelo feminino" : "modelo";
+        audience === "masculina"
+          ? "modelo masculino"
+          : audience === "feminina"
+            ? "modelo feminino"
+            : "modelo";
       const piecesPart = pieces ? ` Look completo (contexto): ${pieces}.` : "";
       const specText = [
         size ? `tamanho ${size}` : "",
@@ -124,7 +128,11 @@ function PostsPage() {
       const outputAspectRatio = format === "story" ? "9:16" : "4:5";
 
       setBusyLabel(
-        garments.length > 1 ? "Montando o look…" : aiCaption ? "Criando imagem e legenda…" : "Criando imagem…",
+        garments.length > 1
+          ? "Montando o look…"
+          : aiCaption
+            ? "Criando imagem e legenda…"
+            : "Criando imagem…",
       );
 
       // Fundo escolhido (com foto de referência real, ver BACKGROUNDS) — usado
@@ -159,7 +167,9 @@ function PostsPage() {
         let stepPrompt: string;
         if (hasOwnPhoto) {
           stepPrompt =
-            (garments.length === 1 ? buildSequentialStepClause(0) : buildQuadrantClause(garments.length)) +
+            (garments.length === 1
+              ? buildSequentialStepClause(0)
+              : buildQuadrantClause(garments.length)) +
             (specPart ? " " + specPart : "") +
             " " +
             REF_APP_ANATOMY_CLAUSE +
@@ -248,7 +258,11 @@ function PostsPage() {
             imgs = [garments[i]];
             stepAspectRatio = "3:4";
           }
-          stepPrompt += isLast ? buildFinishPart(!!running) : running ? " " + PRESERVE_PHOTO_CLAUSE : "";
+          stepPrompt += isLast
+            ? buildFinishPart(!!running)
+            : running
+              ? " " + PRESERVE_PHOTO_CLAUSE
+              : "";
           stepPrompt += " " + REF_APP_FIDELITY_CLOSING_CLAUSE;
           if (isLast) {
             imgs = [...imgs, ...bgRefUrls];
@@ -387,7 +401,9 @@ function PostsPage() {
             <button
               onClick={postInstagram}
               className="flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold text-white"
-              style={{ background: "linear-gradient(90deg, #F58529, #DD2A7B 55%, #8134AF 90%, #515BD4)" }}
+              style={{
+                background: "linear-gradient(90deg, #F58529, #DD2A7B 55%, #8134AF 90%, #515BD4)",
+              }}
             >
               <Instagram className="h-4 w-4" /> Instagram
             </button>
@@ -442,13 +458,17 @@ function PostsPage() {
           <div>
             <p className="text-sm font-semibold text-foreground">Peças do look</p>
             <p className="text-xs text-muted-foreground">
-              Envie 1 peça, ou várias fotos separadas — a IA junta tudo no mesmo look.
+              Envie 1 peça, ou várias fotos separadas: a IA junta tudo no mesmo look.
             </p>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {garments.map((url, i) => (
               <div key={url} className="relative overflow-hidden rounded-2xl border border-border">
-                <img src={url} alt={`Peça ${i + 1}`} className="aspect-square w-full object-cover" />
+                <img
+                  src={url}
+                  alt={`Peça ${i + 1}`}
+                  className="aspect-square w-full object-cover"
+                />
                 <button
                   onClick={() => removeGarment(i)}
                   aria-label="Remover peça"
@@ -472,7 +492,9 @@ function PostsPage() {
         <section className="space-y-3">
           <div>
             <p className="text-sm font-semibold text-foreground">Tamanho e caimento</p>
-            <p className="text-xs text-muted-foreground">Opcional — ajusta o corte do look gerado.</p>
+            <p className="text-xs text-muted-foreground">
+              Opcional: ajusta o corte do look gerado.
+            </p>
           </div>
 
           <div className="space-y-1.5">
@@ -521,7 +543,7 @@ function PostsPage() {
 
           <div className="space-y-1.5">
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              Comprimento (barra da peça — não a manga)
+              Comprimento (barra da peça, não a manga)
             </p>
             <div className="flex flex-wrap gap-2">
               {LENGTHS.map((l) => (
