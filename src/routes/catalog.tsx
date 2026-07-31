@@ -370,6 +370,8 @@ function CatalogPage() {
                   src={url}
                   alt={`Produto ${i + 1}`}
                   className="aspect-square w-full object-cover"
+                  loading="lazy"
+                  decoding="async"
                 />
                 <button
                   onClick={() => setImportPhotos((p) => p.filter((_, idx) => idx !== i))}
@@ -623,7 +625,7 @@ function CatalogPage() {
               >
                 <div className="relative aspect-[3/4] w-full overflow-hidden bg-secondary">
                   {it.imageUrl ? (
-                    <img src={it.imageUrl} alt={it.name} className="h-full w-full object-cover" />
+                    <img src={it.imageUrl} alt={it.name} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                   ) : null}
                   {!it.active ? (
                     <span className="absolute left-2 top-2 rounded-full bg-foreground/70 px-2 py-0.5 text-[10px] font-medium text-background">

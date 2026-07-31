@@ -499,6 +499,8 @@ function TryOnPage() {
                   src={url}
                   alt={`${gridMode ? "Look" : "Peça"} ${i + 1}`}
                   className="aspect-square w-full object-cover"
+                  loading="lazy"
+                  decoding="async"
                 />
                 <button
                   onClick={() => removeGarment(i)}
@@ -915,7 +917,7 @@ function CatalogSheet({
               className="overflow-hidden rounded-xl border border-border text-left"
             >
               <div className="aspect-square w-full overflow-hidden bg-secondary">
-                <img src={it.imageUrl} alt={it.name} className="h-full w-full object-cover" />
+                <img src={it.imageUrl} alt={it.name} className="h-full w-full object-cover" loading="lazy" decoding="async" />
               </div>
               <p className="truncate px-1.5 py-1 text-[11px] font-medium text-foreground">
                 {it.name}

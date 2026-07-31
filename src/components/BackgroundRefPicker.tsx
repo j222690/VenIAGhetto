@@ -31,7 +31,7 @@ export function BackgroundRefPicker({ refs, value, onChange }: Props) {
                 active ? "border-accent shadow-glow" : "border-border",
               )}
             >
-              <img src={r.url} alt={r.label} className="h-full w-full object-cover" />
+              <img src={r.url} alt={r.label} className="h-full w-full object-cover" loading="lazy" decoding="async" />
               {active ? (
                 <span className="absolute inset-0 flex items-center justify-center bg-foreground/20">
                   <Check className="h-5 w-5 text-white" />

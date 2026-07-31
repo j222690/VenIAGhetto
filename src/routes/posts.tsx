@@ -468,6 +468,8 @@ function PostsPage() {
                   src={url}
                   alt={`Peça ${i + 1}`}
                   className="aspect-square w-full object-cover"
+                  loading="lazy"
+                  decoding="async"
                 />
                 <button
                   onClick={() => removeGarment(i)}
@@ -820,7 +822,7 @@ function ModelBankSheet({
               onClick={() => onSelect(m.url)}
               className="overflow-hidden rounded-xl border border-border"
             >
-              <img src={m.url} alt={m.label} className="aspect-[3/4] w-full object-cover" />
+              <img src={m.url} alt={m.label} className="aspect-[3/4] w-full object-cover" loading="lazy" decoding="async" />
             </button>
           ))}
         </div>

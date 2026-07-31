@@ -72,6 +72,8 @@ function AlbumPage() {
                       src={look.resultUrl}
                       alt={TYPE_LABEL[look.type] ?? "Look"}
                       className="h-full w-full object-cover"
+                      loading="lazy"
+                      decoding="async"
                     />
                   </button>
                   <LookActions

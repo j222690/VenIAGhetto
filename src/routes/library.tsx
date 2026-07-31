@@ -104,7 +104,7 @@ function LibraryPage() {
             {items.map((a) => (
               <div key={a.id} className="overflow-hidden rounded-2xl border border-border bg-card">
                 <div className="relative">
-                  <img src={a.url} alt={a.name} className="aspect-square w-full object-cover" />
+                  <img src={a.url} alt={a.name} className="aspect-square w-full object-cover" loading="lazy" decoding="async" />
                   <button
                     type="button"
                     aria-label="Remover"

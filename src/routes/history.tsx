@@ -109,6 +109,8 @@ function HistoryPage() {
                     src={g.resultUrl}
                     alt={g.type}
                     className="h-16 w-16 rounded-xl object-cover"
+                    loading="lazy"
+                    decoding="async"
                   />
                 </button>
                 <div className="min-w-0">

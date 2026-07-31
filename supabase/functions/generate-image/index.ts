@@ -371,7 +371,7 @@ Deno.serve(async (req) => {
 
     const { error: upErr } = await admin.storage
       .from("generated")
-      .upload(path, base64ToBytes(data), { contentType: mimeType, upsert: false });
+      .upload(path, base64ToBytes(data), { contentType: mimeType, upsert: false, cacheControl: "31536000" });
     if (upErr) {
       await refundTokens(admin, user.id, cost);
       throw upErr;

@@ -256,6 +256,8 @@ function ClientsPage() {
                     src={c.photoUrl}
                     alt={c.name}
                     className="h-11 w-11 shrink-0 rounded-full object-cover"
+                    loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-secondary text-sm font-semibold text-secondary-foreground">
@@ -415,7 +417,7 @@ function ClientFolder({ client: initialClient, onBack }: { client: Client; onBac
                     onClick={() => applyAsBasePhoto(p.url)}
                     className="block aspect-square w-full"
                   >
-                    <img src={p.url} alt="Foto do cliente" className="h-full w-full object-cover" />
+                    <img src={p.url} alt="Foto do cliente" className="h-full w-full object-cover" loading="lazy" decoding="async" />
                   </button>
                   {isBase ? (
                     <span className="absolute left-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-clay text-clay-foreground shadow-soft">
@@ -471,6 +473,8 @@ function ClientFolder({ client: initialClient, onBack }: { client: Client; onBac
                       src={g.resultUrl}
                       alt="Look do cliente"
                       className="h-full w-full object-cover"
+                      loading="lazy"
+                      decoding="async"
                     />
                   </button>
                   <LookActions

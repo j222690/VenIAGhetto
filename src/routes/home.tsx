@@ -106,7 +106,7 @@ function HomePage() {
                   className="overflow-hidden rounded-2xl border border-border bg-card"
                 >
                   <div className="relative aspect-[3/4] w-full overflow-hidden bg-secondary">
-                    <img src={g.resultUrl} alt={g.type} className="h-full w-full object-cover" />
+                    <img src={g.resultUrl} alt={g.type} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                     <LookActions
                       look={g}
                       actions={["favorite", "save", "download", "share"]}
