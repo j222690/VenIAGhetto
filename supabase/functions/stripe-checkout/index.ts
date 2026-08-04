@@ -12,6 +12,7 @@
 // -----------------------------------------------------------------------------
 import Stripe from "npm:stripe@17.7.0";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { corsHeadersFor } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -20,14 +21,6 @@ const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 const APP_URL = Deno.env.get("APP_URL") ?? "";
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
-
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-const json = (b: unknown, status = 200) =>
-  new Response(JSON.stringify(b), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
 const PLAN_PRICE_ENV: Record<string, string> = {
   starter: "STRIPE_PRICE_STARTER",
@@ -57,6 +50,10 @@ async function credit(storeId: string, amount: number): Promise<number> {
 }
 
 Deno.serve(async (req) => {
+  const cors = corsHeadersFor(req);
+  const json = (b: unknown, status = 200) =>
+    new Response(JSON.stringify(b), { status, headers: { ...cors, "Content-Type": "application/json" } });
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Método não permitido" }, 405);
   if (!STRIPE_SECRET_KEY) return json({ error: "Pagamentos ainda não configurados." }, 503);

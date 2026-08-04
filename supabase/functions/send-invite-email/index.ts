@@ -9,6 +9,7 @@
 // convite de outra loja.
 // -----------------------------------------------------------------------------
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { corsHeadersFor } from "../_shared/cors.ts";
 
 const RESEND_KEY = Deno.env.get("RESEND_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -22,18 +23,6 @@ const ROLE_LABEL: Record<string, string> = {
   manager: "Gerente",
   seller: "Vendedor",
 };
-
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { ...cors, "Content-Type": "application/json" },
-  });
 
 function buildHtml(storeName: string, role: string, link: string): string {
   const roleLabel = ROLE_LABEL[role] ?? role;
@@ -83,6 +72,13 @@ function buildHtml(storeName: string, role: string, link: string): string {
 }
 
 Deno.serve(async (req) => {
+  const cors = corsHeadersFor(req);
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...cors, "Content-Type": "application/json" },
+    });
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Método não permitido" }, 405);
 

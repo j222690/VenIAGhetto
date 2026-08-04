@@ -442,6 +442,19 @@ function TeamSection({ currentUserId, planId }: { currentUserId: string; planId:
   };
 
   const changeRole = async (user: User, next: UserRole) => {
+    // Defesa em profundidade — a UI já esconde estes casos (select nunca
+    // oferece "owner", linha do dono/de si mesmo não é editável), mas
+    // `changeRole`/`UserService.updateRole` continuam chamáveis diretamente
+    // (ex.: console do browser), então o guard fica também aqui, não só na UI.
+    if (user.id === currentUserId) {
+      toast.error("Você não pode alterar seu próprio cargo.");
+      return;
+    }
+    const actingUser = members.find((m) => m.id === currentUserId);
+    if (next === "owner" && actingUser?.role !== "owner") {
+      toast.error("Apenas o dono da loja pode promover alguém a dono.");
+      return;
+    }
     try {
       await UserService.updateRole(user.id, next);
       setMembers((prev) => prev.map((m) => (m.id === user.id ? { ...m, role: next } : m)));

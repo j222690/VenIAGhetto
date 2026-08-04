@@ -13,20 +13,13 @@
 //     enviado é lida — não segue paginação automaticamente.
 // -----------------------------------------------------------------------------
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { corsHeadersFor } from "../_shared/cors.ts";
 
 const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const TEXT_MODEL = "gemini-2.5-flash";
 const GENAI = "https://generativelanguage.googleapis.com/v1beta/models";
-
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-const json = (b: unknown, status = 200) =>
-  new Response(JSON.stringify(b), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
 // Bloqueia hosts internos/privados (anti-SSRF). Cobre os casos óbvios; não
 // resolve DNS-rebinding, mas impede localhost, faixas privadas e metadata.
@@ -59,6 +52,10 @@ function isBlockedHost(hostname: string): boolean {
 }
 
 Deno.serve(async (req) => {
+  const cors = corsHeadersFor(req);
+  const json = (b: unknown, status = 200) =>
+    new Response(JSON.stringify(b), { status, headers: { ...cors, "Content-Type": "application/json" } });
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Método não permitido" }, 405);
 

@@ -13,6 +13,7 @@
 //   • mode "text": texto com gemini-2.5-flash. body: { prompt, images? } → { text }
 // -----------------------------------------------------------------------------
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { corsHeadersFor } from "../_shared/cors.ts";
 
 const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY")!;
 const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY")!;
@@ -32,19 +33,6 @@ const IMAGE_MODEL_FALLBACK = "gemini-2.5-flash-image";
 const TEXT_MODEL = "gemini-2.5-flash";
 const GENAI = "https://generativelanguage.googleapis.com/v1beta/models";
 const OPENAI_VISION_MODEL = "gpt-4o";
-
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { ...cors, "Content-Type": "application/json" },
-  });
 
 interface InputImage {
   mimeType: string;
@@ -287,6 +275,13 @@ async function refundTokens(admin: ReturnType<typeof createClient>, userId: stri
 }
 
 Deno.serve(async (req) => {
+  const cors = corsHeadersFor(req);
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...cors, "Content-Type": "application/json" },
+    });
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Método não permitido" }, 405);
 

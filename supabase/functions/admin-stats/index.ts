@@ -8,6 +8,7 @@
 // Secrets: ADMIN_EMAILS (ex.: "victor@styledesk.app,outro@email.com")
 // -----------------------------------------------------------------------------
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { corsHeadersFor } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -17,15 +18,11 @@ const ADMIN_EMAILS = (Deno.env.get("ADMIN_EMAILS") ?? "")
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
 
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-const json = (b: unknown, status = 200) =>
-  new Response(JSON.stringify(b), { status, headers: { ...cors, "Content-Type": "application/json" } });
-
 Deno.serve(async (req) => {
+  const cors = corsHeadersFor(req);
+  const json = (b: unknown, status = 200) =>
+    new Response(JSON.stringify(b), { status, headers: { ...cors, "Content-Type": "application/json" } });
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
   try {
