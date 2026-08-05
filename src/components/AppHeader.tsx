@@ -12,7 +12,7 @@ export function AppHeader({ title, subtitle, showTokens = true }: Props) {
   const { session } = useAuth();
   return (
     <header className="sticky top-0 z-30 border-b border-border/60 bg-background/85 backdrop-blur-xl">
-      <div className="mx-auto grid max-w-md grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 py-3.5 lg:max-w-3xl">
+      <div className="mx-auto grid max-w-md grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 pb-3.5 pt-[max(0.875rem,env(safe-area-inset-top))] lg:max-w-3xl">
         <div className="min-w-0">
           {title ? (
             <h1 className="truncate font-display text-xl font-semibold text-foreground">{title}</h1>
