@@ -170,7 +170,7 @@ async function callImageModel(
   model: string,
   prompt: string,
   images: InputImage[],
-  imageOpts?: { imageSize?: "1K" | "2K" | "4K"; aspectRatio?: string },
+  imageOpts?: { imageSize?: "1K" | "2K" | "4K"; aspectRatio?: string; timeoutMs?: number },
 ) {
   const generationConfig: Record<string, unknown> = { responseModalities: ["TEXT", "IMAGE"] };
   if (imageOpts?.imageSize || imageOpts?.aspectRatio) {
@@ -179,14 +179,28 @@ async function callImageModel(
       ...(imageOpts.aspectRatio ? { aspectRatio: imageOpts.aspectRatio } : {}),
     };
   }
-  const res = await fetch(`${GENAI}/${model}:generateContent`, {
-    method: "POST",
-    headers: { "x-goog-api-key": GEMINI_KEY, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: buildParts(prompt, images) }],
-      generationConfig,
-    }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${GENAI}/${model}:generateContent`, {
+      method: "POST",
+      headers: { "x-goog-api-key": GEMINI_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: buildParts(prompt, images) }],
+        generationConfig,
+      }),
+      // Sem isso, um modelo lento/sobrecarregado deixa a chamada pendurada até o
+      // limite de execução da Edge Function matar a função sem aviso — o
+      // cliente só via "demorou demais" sem nunca chegar a tentar o fallback.
+      // Com o timeout, uma trava clara aqui dispara o fallback (ou o erro final)
+      // bem mais rápido, dentro de um tempo previsível.
+      signal: imageOpts?.timeoutMs ? AbortSignal.timeout(imageOpts.timeoutMs) : undefined,
+    });
+  } catch (err) {
+    if ((err as Error)?.name === "TimeoutError" || (err as Error)?.name === "AbortError") {
+      throw new Error(`${model} não respondeu a tempo (sobrecarregado).`);
+    }
+    throw err;
+  }
   const j = await res.json();
   if (j.error) throw new Error(j.error.message ?? `${model} image error`);
   const parts = j.candidates?.[0]?.content?.parts ?? [];
@@ -204,10 +218,26 @@ async function geminiImage(prompt: string, images: InputImage[], aspectRatio?: s
     // original, forçando a pessoa a ser espremida/cortada — distorcia a
     // fisionomia. Só o modelo principal suporta imageConfig — o fallback
     // (gemini-2.5-flash-image, legado) não aceita esse parâmetro.
-    return await callImageModel(IMAGE_MODEL, prompt, images, { imageSize: "1K", aspectRatio });
+    // timeoutMs 25s: bug real observado — com o modelo principal sobrecarregado
+    // ("muitas requisições"), a chamada ficava pendurada minutos até falhar por
+    // conta própria, e SÓ ENTÃO tentava o fallback — na prática nunca chegava a
+    // tentar. Cortando em 25s, o fallback entra rápido o suficiente pra não
+    // estourar o tempo total.
+    return await callImageModel(IMAGE_MODEL, prompt, images, { imageSize: "1K", aspectRatio, timeoutMs: 25_000 });
   } catch (err) {
     console.warn(`[generate-image] ${IMAGE_MODEL} falhou, caindo pro fallback:`, (err as Error)?.message);
-    return await callImageModel(IMAGE_MODEL_FALLBACK, prompt, images);
+    try {
+      // 45s: modelo legado (sem imageConfig, geralmente mais lento) — mais
+      // tolerante, mas ainda com teto, pra nunca deixar a função pendurada até
+      // o limite de execução da plataforma matar sem gerar um erro claro.
+      return await callImageModel(IMAGE_MODEL_FALLBACK, prompt, images, { timeoutMs: 45_000 });
+    } catch (fallbackErr) {
+      console.warn(`[generate-image] ${IMAGE_MODEL_FALLBACK} também falhou:`, (fallbackErr as Error)?.message);
+      // Mensagem única e amigável quando os DOIS modelos falham — não expõe
+      // nome de modelo/erro técnico pro lojista, e cobre o cenário real
+      // observado (provedor de IA sobrecarregado nos dois modelos ao mesmo tempo).
+      throw new Error("O serviço de IA está sobrecarregado no momento. Tente novamente em alguns instantes.");
+    }
   }
 }
 
