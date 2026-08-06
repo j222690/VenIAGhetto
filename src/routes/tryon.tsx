@@ -523,14 +523,14 @@ function TryOnPage() {
               />
             ) : null}
           </div>
-          {!gridMode ? (
-            <button
-              onClick={() => setSheet("item")}
-              className="w-full text-center text-[11px] font-medium text-clay"
-            >
-              ou escolher do catálogo
-            </button>
-          ) : null}
+         {!gridMode || garments.length < 4 ? (
+  <button
+    onClick={() => setSheet("item")}
+    className="w-full text-center text-[11px] font-medium text-clay"
+  >
+    ou escolher do catálogo
+  </button>
+) : null}
         </section>
 
         {gridMode && garments.length === 1 ? (

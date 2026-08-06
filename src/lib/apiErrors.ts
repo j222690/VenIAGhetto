@@ -31,7 +31,7 @@ const KNOWN_SAFE_MESSAGES: RegExp[] = [
 // Padrões técnicos conhecidos (SDK, rede, provedor) → mensagem amigável.
 const MESSAGE_PATTERNS: [RegExp, string][] = [
   [/non-2xx status code/i, "Não foi possível completar a operação. Tente de novo em instantes."],
-  [/failed to send a request|failed to fetch|network|load failed/i, "Sem conexão. Confira sua internet e tente de novo."],
+  [/failed to send a request|failed to fetch|network|load failed/i, "OFFLINE_OR_TIMEOUT"],
   [/timeout|timed out|aborted/i, "A operação demorou demais. Tente de novo."],
   [/não autenticado/i, "Sua sessão expirou. Saia e entre de novo."],
 ];
@@ -45,7 +45,17 @@ export function describeApiError(err: unknown, fallback: string): string {
     if (pattern.test(msg)) return msg;
   }
   for (const [pattern, friendly] of MESSAGE_PATTERNS) {
-    if (pattern.test(msg)) return friendly;
+    if (pattern.test(msg)) {
+      if (friendly === "OFFLINE_OR_TIMEOUT") {
+        // "Failed to fetch" é genérico: só é FALTA DE INTERNET de verdade se o
+        // navegador confirma que está offline. Senão, é timeout/erro de servidor
+        // durante uma geração demorada — mensagem diferente pra não confundir o lojista.
+        return typeof navigator !== "undefined" && navigator.onLine === false
+          ? "Sem conexão. Confira sua internet e tente de novo."
+          : "A geração demorou demais ou o servidor não respondeu. Tente de novo.";
+      }
+      return friendly;
+    }
   }
   return fallback;
 }
