@@ -218,19 +218,19 @@ async function geminiImage(prompt: string, images: InputImage[], aspectRatio?: s
     // original, forçando a pessoa a ser espremida/cortada — distorcia a
     // fisionomia. Só o modelo principal suporta imageConfig — o fallback
     // (gemini-2.5-flash-image, legado) não aceita esse parâmetro.
-    // timeoutMs 25s: bug real observado — com o modelo principal sobrecarregado
-    // ("muitas requisições"), a chamada ficava pendurada minutos até falhar por
-    // conta própria, e SÓ ENTÃO tentava o fallback — na prática nunca chegava a
-    // tentar. Cortando em 25s, o fallback entra rápido o suficiente pra não
-    // estourar o tempo total.
-    return await callImageModel(IMAGE_MODEL, prompt, images, { imageSize: "1K", aspectRatio, timeoutMs: 25_000 });
+    // timeoutMs: o wall-clock limit real da Edge Function é 400s (doc da
+    // Supabase) — bem mais folga do que parecia. Um teto CURTO demais aqui
+    // (25s) matava chamadas que estavam lentas mas iam terminar com SUCESSO
+    // (observado: até 77s numa chamada saudável só que sob carga), forçando
+    // o fallback ou um erro final sem necessidade. 60s dá espaço real pro
+    // modelo principal se recuperar de uma sobrecarga passageira.
+    return await callImageModel(IMAGE_MODEL, prompt, images, { imageSize: "1K", aspectRatio, timeoutMs: 60_000 });
   } catch (err) {
     console.warn(`[generate-image] ${IMAGE_MODEL} falhou, caindo pro fallback:`, (err as Error)?.message);
     try {
-      // 45s: modelo legado (sem imageConfig, geralmente mais lento) — mais
-      // tolerante, mas ainda com teto, pra nunca deixar a função pendurada até
-      // o limite de execução da plataforma matar sem gerar um erro claro.
-      return await callImageModel(IMAGE_MODEL_FALLBACK, prompt, images, { timeoutMs: 45_000 });
+      // 90s: modelo legado, geralmente mais lento sob carga — ainda MUITO
+      // abaixo do limite de 400s mesmo somado ao tempo já gasto no principal.
+      return await callImageModel(IMAGE_MODEL_FALLBACK, prompt, images, { timeoutMs: 90_000 });
     } catch (fallbackErr) {
       console.warn(`[generate-image] ${IMAGE_MODEL_FALLBACK} também falhou:`, (fallbackErr as Error)?.message);
       // Mensagem única e amigável quando os DOIS modelos falham — não expõe
