@@ -205,19 +205,25 @@ function TryOnPage() {
 
       // 1) Visão (OpenAI) — descreve as peças para dar fidelidade ao look (reforço
       //    em TEXTO, além das fotos reais que vão juntas na geração abaixo).
-      setBusyLabel("Analisando as peças…");
+      //    Pulado pra 1 peça só: nesse caso o Gemini já recebe a foto da peça
+      //    direto, então o reforço em texto é redundante — e essa chamada
+      //    roda em SÉRIE antes da geração de imagem (~3-6s a menos no caso
+      //    mais comum). Mantido pra 2+ peças, onde ajuda a combinar o look.
       let pieces = "";
-      try {
-        pieces = await AIService.describe(
-          "Analise as imagens a seguir. Para cada peça de roupa ou calçado, escreva uma linha em " +
-            "pt-BR com: tipo, cor, tecido/estilo, MODELO/CORTE (ex.: calça reta/skinny/jogger/social, " +
-            "camisa slim/oversized) e DETALHES CONSTRUTIVOS visíveis (posição do fechamento/braguilha " +
-            "— reto e centralizado, ou lateral, com botão ou zíper; bolsos; costuras; tipo de bainha). " +
-            "Seja objetivo, sem introdução.",
-          garments.slice(0, 6),
-        );
-      } catch {
-        /* segue sem descrição se a visão falhar */
+      if (garments.length > 1) {
+        setBusyLabel("Analisando as peças…");
+        try {
+          pieces = await AIService.describe(
+            "Analise as imagens a seguir. Para cada peça de roupa ou calçado, escreva uma linha em " +
+              "pt-BR com: tipo, cor, tecido/estilo, MODELO/CORTE (ex.: calça reta/skinny/jogger/social, " +
+              "camisa slim/oversized) e DETALHES CONSTRUTIVOS visíveis (posição do fechamento/braguilha " +
+              "— reto e centralizado, ou lateral, com botão ou zíper; bolsos; costuras; tipo de bainha). " +
+              "Seja objetivo, sem introdução.",
+            garments.slice(0, 6),
+          );
+        } catch {
+          /* segue sem descrição se a visão falhar */
+        }
       }
 
       // 2) Aplica as peças. 1 peça = 1 chamada de imagem direta (como sempre).
