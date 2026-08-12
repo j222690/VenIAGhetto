@@ -338,15 +338,30 @@ export function buildQuadrantFromScratchClause(pieceCount: number, modelDesc: st
 // cada peça nova tem sua própria região liberada, e só as regiões SEM
 // nenhuma peça nova (ex.: sapato, quando só camisa+calça foram enviadas)
 // ficam ancoradas na foto original.
+// Reforço adicional (bug real relatado): num teste com cliente, um colete
+// (camada por cima do tronco) não foi removido ao trocar a camisa, e o
+// calçado enviado no quadrante não foi aplicado — o modelo "ancorou" na
+// camada visível por cima em vez de remover tudo daquela região, e ignorou
+// uma das peças da grade. Não foi possível reproduzir de forma consistente
+// (o Gemini não é 100% determinístico), mas o texto abaixo é explícito sobre
+// os dois pontos que falharam: (1) QUALQUER camada por cima (colete, jaqueta,
+// blazer, cardigã) na região de uma peça nova precisa sumir junto — "old
+// layering" já cobria isso de forma implícita, agora está literal; (2)
+// TODAS as peças da grade, sem excluir calçado, precisam aparecer.
 export const CLOTHING_MULTI_REARRANGE_CLAUSE =
   "CLOTHING SCOPE (mandatory, narrow): this rule applies to each body region covered by one of the NEW " +
   "garments shown in the quadrant grid (e.g. a pants quadrant frees ONLY the lower-body region; a shirt " +
   "quadrant frees ONLY the torso region). In each such region, nothing from the original photo is " +
-  "anchored except the person's face/body physiognomy — fully replace whatever was there (old garment, " +
-  "old layering) with the corresponding new garment, from scratch. ANY body region NOT covered by one " +
-  "of the new garments (e.g. shoes/accessories, if no shoe quadrant was provided) is OUTSIDE this rule " +
-  "and must stay 100% pixel-identical to the original photo — do not redesign, restyle or invent " +
-  "anything for a region no new garment covers.";
+  "anchored except the person's face/body physiognomy — fully replace whatever was there with the " +
+  "corresponding new garment, from scratch. This EXPLICITLY includes any OUTER LAYER on top of that " +
+  "region (vest, jacket, blazer, cardigan, coat) — if the torso quadrant is a shirt, ANY vest/jacket/" +
+  "blazer the person wears over their torso in the original photo must be REMOVED too, not kept on top " +
+  "of or peeking out from under the new shirt; do not treat an outer layer as separate from the region " +
+  "it covers. If one of the quadrants is a SHOE, the person's footwear in the result MUST be that exact " +
+  "shoe — do not skip it and do not leave the original footwear. ANY body region NOT covered by one of " +
+  "the new garments (e.g. shoes/accessories, if no shoe quadrant was provided) is OUTSIDE this rule and " +
+  "must stay 100% pixel-identical to the original photo — do not redesign, restyle or invent anything " +
+  "for a region no new garment covers.";
 
 // Pedido explícito do usuário: a única coisa que vem da foto original nessa
 // REGIÃO DO CORPO (a região da peça sendo trocada) é rosto/fisionomia — o
@@ -361,11 +376,14 @@ export const CLOTHING_FULL_REARRANGE_CLAUSE =
   "CLOTHING SCOPE (mandatory, narrow): this rule applies ONLY to the body region covered by the NEW " +
   "garment provided in this step (e.g. if the new garment is pants, this applies ONLY to the " +
   "lower-body region). In that specific region, nothing from the original photo is anchored except " +
-  "the person's face/body physiognomy — fully replace whatever was there (old garment, old layering) " +
-  "with the new garment, from scratch. EVERY OTHER garment the person is already wearing that is NOT " +
-  "being replaced in this step (e.g. their top/shirt, shoes, accessories) is OUTSIDE this rule and " +
-  "must stay 100% pixel-identical to the original photo — do not redesign, restyle or invent a new " +
-  "outfit for any region other than the one the new garment covers.";
+  "the person's face/body physiognomy — fully replace whatever was there with the new garment, from " +
+  "scratch. This EXPLICITLY includes any OUTER LAYER on top of that region (vest, jacket, blazer, " +
+  "cardigan, coat) — if the new garment is a shirt, ANY vest/jacket/blazer the person wears over their " +
+  "torso in the original photo must be REMOVED too, not kept on top of or peeking out from under the " +
+  "new shirt. EVERY OTHER garment the person is already wearing that is NOT being replaced in this step " +
+  "(e.g. their top/shirt, shoes, accessories) is OUTSIDE this rule and must stay 100% pixel-identical to " +
+  "the original photo — do not redesign, restyle or invent a new outfit for any region other than the " +
+  "one the new garment covers.";
 
 // Bug real observado: ao mudar o cenário/fundo (praia, festa, etc.), a luz
 // ambiente "vazava" pro tecido e mudava a cor da peça (calça azul saindo
