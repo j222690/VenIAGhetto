@@ -33,7 +33,7 @@ function OnboardingPage() {
   const last = step === STEPS.length - 1;
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pb-10 pt-14">
+    <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pb-10 pt-[max(3.5rem,env(safe-area-inset-top))]">
       <div className="flex gap-1.5">
         {STEPS.map((_, i) => (
           <div

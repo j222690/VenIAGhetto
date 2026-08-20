@@ -8,7 +8,7 @@ export const Route = createFileRoute("/terms")({
 
 function TermsPage() {
   return (
-    <div className="mx-auto min-h-screen max-w-2xl px-6 pb-20 pt-10">
+    <div className="mx-auto min-h-screen max-w-2xl px-6 pb-20 pt-[max(2.5rem,env(safe-area-inset-top))]">
       <Link to="/settings" className="inline-flex items-center gap-1 text-sm text-muted-foreground">
         <ArrowLeft className="h-4 w-4" /> Voltar
       </Link>

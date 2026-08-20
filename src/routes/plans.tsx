@@ -42,7 +42,7 @@ function PlansPage() {
   };
 
   return (
-    <div className="mx-auto max-w-md px-6 pb-10 pt-12">
+    <div className="mx-auto max-w-md px-6 pb-10 pt-[max(3rem,env(safe-area-inset-top))]">
       <button
         onClick={goBack}
         className="-ml-1 mb-5 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"

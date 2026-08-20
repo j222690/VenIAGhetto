@@ -18,7 +18,7 @@ export const Route = createFileRoute("/welcome")({
 function WelcomePage() {
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pb-10 pt-14">
+      <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pb-10 pt-[max(3.5rem,env(safe-area-inset-top))]">
         <p className="text-[11px] uppercase tracking-[0.25em] text-clay">Vest Ai</p>
         <h1 className="mt-4 font-display text-[2.5rem] leading-[1.05] font-semibold text-foreground">
           Conteúdo de moda profissional,

@@ -41,11 +41,9 @@ function ResetPasswordPage() {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pb-10 pt-14">
+    <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pb-10 pt-[max(3.5rem,env(safe-area-inset-top))]">
       <h1 className="font-display text-3xl font-semibold text-foreground">Definir nova senha</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Escolha uma nova senha para sua conta.
-      </p>
+      <p className="mt-2 text-sm text-muted-foreground">Escolha uma nova senha para sua conta.</p>
 
       <form onSubmit={submit} className="mt-8 grid gap-4">
         <label className="grid gap-1.5">

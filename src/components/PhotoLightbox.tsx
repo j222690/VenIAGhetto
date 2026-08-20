@@ -30,7 +30,9 @@ export function PhotoLightbox({ url, onClose }: Props) {
         type="button"
         aria-label="Fechar"
         onClick={onClose}
-        className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-background/85 text-foreground shadow-soft backdrop-blur"
+        // top usa env(safe-area-inset-top) — sem isso o botão ficava embaixo
+        // do notch/furo de câmera em celulares com entalhe no topo da tela.
+        className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] grid h-10 w-10 place-items-center rounded-full bg-background/85 text-foreground shadow-soft backdrop-blur"
       >
         <X className="h-5 w-5" />
       </button>

@@ -101,7 +101,7 @@ function RegisterPage() {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pb-10 pt-14">
+    <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pb-10 pt-[max(3.5rem,env(safe-area-inset-top))]">
       <Link to="/welcome" className="text-sm text-muted-foreground">
         ← Voltar
       </Link>

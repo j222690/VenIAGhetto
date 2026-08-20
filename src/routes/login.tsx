@@ -31,16 +31,14 @@ function LoginPage() {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pb-10 pt-14">
+    <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pb-10 pt-[max(3.5rem,env(safe-area-inset-top))]">
       <Link to="/welcome" className="text-sm text-muted-foreground">
         ← Voltar
       </Link>
       <h1 className="mt-6 font-display text-3xl font-semibold text-foreground">
         Entrar na sua loja
       </h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Acesse o painel da sua marca.
-      </p>
+      <p className="mt-2 text-sm text-muted-foreground">Acesse o painel da sua marca.</p>
 
       <form onSubmit={submit} className="mt-8 grid gap-4">
         <Field label="E-mail">
@@ -76,7 +74,9 @@ function LoginPage() {
               await AuthService.requestPasswordReset(value);
               toast.success("Enviamos um link de recuperação para seu e-mail.");
             } catch (err) {
-              toast.error(describeAuthError(err, "Não foi possível enviar o e-mail. Tente novamente."));
+              toast.error(
+                describeAuthError(err, "Não foi possível enviar o e-mail. Tente novamente."),
+              );
             }
           }}
           className="-mt-2 text-left text-sm text-muted-foreground hover:text-foreground"
