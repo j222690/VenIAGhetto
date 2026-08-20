@@ -529,12 +529,12 @@ function TryOnPage() {
               />
             ) : null}
           </div>
-          {!gridMode ? (
+          {!gridMode || garments.length < 4 ? (
             <button
               onClick={() => setSheet("item")}
               className="w-full text-center text-[11px] font-medium text-clay"
             >
-              ou escolher do catálogo
+              {gridMode ? "ou escolher look do catálogo" : "ou escolher do catálogo"}
             </button>
           ) : null}
         </section>
@@ -809,6 +809,7 @@ function TryOnPage() {
 
       {sheet === "item" ? (
         <CatalogSheet
+          gridMode={gridMode}
           onClose={() => setSheet(null)}
           onSelect={(url) => {
             addGarment(url);
@@ -898,15 +899,20 @@ function ClientSheet({
 }
 
 function CatalogSheet({
+  gridMode,
   onClose,
   onSelect,
 }: {
+  gridMode?: boolean;
   onClose: () => void;
   onSelect: (url: string) => void;
 }) {
   const items = CatalogService.listActive().filter((it) => it.imageUrl);
   return (
-    <SheetShell title="Escolher peça do catálogo" onClose={onClose}>
+    <SheetShell
+      title={gridMode ? "Escolher look do catálogo" : "Escolher peça do catálogo"}
+      onClose={onClose}
+    >
       {items.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">
           Catálogo vazio.{" "}
@@ -923,7 +929,13 @@ function CatalogSheet({
               className="overflow-hidden rounded-xl border border-border text-left"
             >
               <div className="aspect-square w-full overflow-hidden bg-secondary">
-                <img src={it.imageUrl} alt={it.name} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                <img
+                  src={it.imageUrl}
+                  alt={it.name}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                />
               </div>
               <p className="truncate px-1.5 py-1 text-[11px] font-medium text-foreground">
                 {it.name}
