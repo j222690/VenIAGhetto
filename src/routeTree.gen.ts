@@ -20,6 +20,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as PlansRouteImport } from './routes/plans'
+import { Route as PaginaRouteImport } from './routes/pagina'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LibraryRouteImport } from './routes/library'
@@ -85,6 +86,11 @@ const PlansRoute = PlansRouteImport.update({
   path: '/plans',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PaginaRoute = PaginaRouteImport.update({
+  id: '/pagina',
+  path: '/pagina',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
+  '/pagina': typeof PaginaRoute
   '/plans': typeof PlansRoute
   '/posts': typeof PostsRoute
   '/privacy': typeof PrivacyRoute
@@ -163,6 +170,7 @@ export interface FileRoutesByTo {
   '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
+  '/pagina': typeof PaginaRoute
   '/plans': typeof PlansRoute
   '/posts': typeof PostsRoute
   '/privacy': typeof PrivacyRoute
@@ -186,6 +194,7 @@ export interface FileRoutesById {
   '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
+  '/pagina': typeof PaginaRoute
   '/plans': typeof PlansRoute
   '/posts': typeof PostsRoute
   '/privacy': typeof PrivacyRoute
@@ -210,6 +219,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/login'
     | '/onboarding'
+    | '/pagina'
     | '/plans'
     | '/posts'
     | '/privacy'
@@ -232,6 +242,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/login'
     | '/onboarding'
+    | '/pagina'
     | '/plans'
     | '/posts'
     | '/privacy'
@@ -254,6 +265,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/login'
     | '/onboarding'
+    | '/pagina'
     | '/plans'
     | '/posts'
     | '/privacy'
@@ -277,6 +289,7 @@ export interface RootRouteChildren {
   LibraryRoute: typeof LibraryRoute
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
+  PaginaRoute: typeof PaginaRoute
   PlansRoute: typeof PlansRoute
   PostsRoute: typeof PostsRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -369,6 +382,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlansRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pagina': {
+      id: '/pagina'
+      path: '/pagina'
+      fullPath: '/pagina'
+      preLoaderRoute: typeof PaginaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/onboarding': {
       id: '/onboarding'
       path: '/onboarding'
@@ -445,6 +465,7 @@ const rootRouteChildren: RootRouteChildren = {
   LibraryRoute: LibraryRoute,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
+  PaginaRoute: PaginaRoute,
   PlansRoute: PlansRoute,
   PostsRoute: PostsRoute,
   PrivacyRoute: PrivacyRoute,
