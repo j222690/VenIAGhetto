@@ -141,6 +141,12 @@ export const REF_APP_FIDELITY_CLOSING_CLAUSE =
   "construction detail exactly as photographed. Only the person is being dressed — the garment itself " +
   "is copied unchanged. Garment fidelity ALWAYS wins over the beauty or polish of the image.";
 
+// Pedido explícito do usuário: peças novas fotografadas ainda com etiqueta
+// (preço, segurança, marca pendurada em barbante/pino) não podem sair com a
+// etiqueta no resultado — é uma foto de alguém vestindo/experimentando a
+// peça, não o produto em estoque. A regra de fidelidade abaixo pede pra
+// reproduzir a peça EXATAMENTE como na referência, o que sem essa exceção
+// faria a IA reproduzir a etiqueta também (ela está fielmente na referência).
 export const REF_APP_NO_INVENT_CLAUSE =
   "FAITHFUL GARMENTS (mandatory): reproduce each garment EXACTLY as shown in its reference image — " +
   "same color, knit, pattern and shape. This includes ALL construction details in their EXACT original " +
@@ -148,7 +154,11 @@ export const REF_APP_NO_INVENT_CLAUSE =
   "pockets, seams, stitching lines, collar and cuffs in the same place and style as shown. Do NOT " +
   "invent, add, draw or hallucinate ANY logo, brand mark, emblem, badge, symbol, icon, text, lettering, " +
   "monogram, print or graphic that is not clearly visible on the garment. If a garment is plain/solid, " +
-  "keep it completely plain — absolutely no added marks, chest logos or decorations of any kind.";
+  "keep it completely plain — absolutely no added marks, chest logos or decorations of any kind. " +
+  "EXCEPTION to fidelity: if the reference photo shows a price tag, security tag or brand hangtag " +
+  "physically attached to the garment (paper/plastic tag on a string, pin or plastic loop), do NOT " +
+  "reproduce that tag on the person — remove it completely, as if it had already been taken off before " +
+  "wearing. Everything else about the garment (color, cut, fabric, construction) stays exactly as shown.";
 
 // TESTE LOCAL (NÃO COMMITAR) — aplicação SEQUENCIAL de peças: bug real
 // observado quando várias peças vão numa ÚNICA chamada ("veste o look
@@ -348,6 +358,10 @@ export function buildQuadrantFromScratchClause(pieceCount: number, modelDesc: st
 // blazer, cardigã) na região de uma peça nova precisa sumir junto — "old
 // layering" já cobria isso de forma implícita, agora está literal; (2)
 // TODAS as peças da grade, sem excluir calçado, precisam aparecer.
+// Outro bug real relatado: cliente mandou um relógio novo, a pessoa na foto
+// original já usava um relógio, e o resultado saiu com OS DOIS (o antigo não
+// foi removido). Acessório não é uma "região do corpo" como torso/pernas, por
+// isso precisa de regra própria — abaixo, explícita.
 export const CLOTHING_MULTI_REARRANGE_CLAUSE =
   "CLOTHING SCOPE (mandatory, narrow): this rule applies to each body region covered by one of the NEW " +
   "garments shown in the quadrant grid (e.g. a pants quadrant frees ONLY the lower-body region; a shirt " +
@@ -358,10 +372,13 @@ export const CLOTHING_MULTI_REARRANGE_CLAUSE =
   "blazer the person wears over their torso in the original photo must be REMOVED too, not kept on top " +
   "of or peeking out from under the new shirt; do not treat an outer layer as separate from the region " +
   "it covers. If one of the quadrants is a SHOE, the person's footwear in the result MUST be that exact " +
-  "shoe — do not skip it and do not leave the original footwear. ANY body region NOT covered by one of " +
-  "the new garments (e.g. shoes/accessories, if no shoe quadrant was provided) is OUTSIDE this rule and " +
-  "must stay 100% pixel-identical to the original photo — do not redesign, restyle or invent anything " +
-  "for a region no new garment covers.";
+  "shoe — do not skip it and do not leave the original footwear. If one of the quadrants is an " +
+  "ACCESSORY (watch, bracelet, necklace, ring, glasses, hat, bag/purse), it REPLACES any accessory of " +
+  "the SAME type the person already has on in the original photo — remove that original accessory " +
+  "completely; the person ends up with ONLY the new one, never both at once (e.g. never two watches on " +
+  "the same wrist). ANY body region NOT covered by one of the new garments (e.g. shoes/accessories, if " +
+  "no shoe/accessory quadrant was provided) is OUTSIDE this rule and must stay 100% pixel-identical to " +
+  "the original photo — do not redesign, restyle or invent anything for a region no new garment covers.";
 
 // Pedido explícito do usuário: a única coisa que vem da foto original nessa
 // REGIÃO DO CORPO (a região da peça sendo trocada) é rosto/fisionomia — o
@@ -380,10 +397,13 @@ export const CLOTHING_FULL_REARRANGE_CLAUSE =
   "scratch. This EXPLICITLY includes any OUTER LAYER on top of that region (vest, jacket, blazer, " +
   "cardigan, coat) — if the new garment is a shirt, ANY vest/jacket/blazer the person wears over their " +
   "torso in the original photo must be REMOVED too, not kept on top of or peeking out from under the " +
-  "new shirt. EVERY OTHER garment the person is already wearing that is NOT being replaced in this step " +
-  "(e.g. their top/shirt, shoes, accessories) is OUTSIDE this rule and must stay 100% pixel-identical to " +
-  "the original photo — do not redesign, restyle or invent a new outfit for any region other than the " +
-  "one the new garment covers.";
+  "new shirt. If the new garment is an ACCESSORY (watch, bracelet, necklace, ring, glasses, hat, " +
+  "bag/purse), it REPLACES any accessory of the SAME type the person already has on in the original " +
+  "photo — remove that original accessory completely; the person ends up with ONLY the new one, never " +
+  "both at once (e.g. never two watches on the same wrist). EVERY OTHER garment the person is already " +
+  "wearing that is NOT being replaced in this step (e.g. their top/shirt, shoes, accessories) is OUTSIDE " +
+  "this rule and must stay 100% pixel-identical to the original photo — do not redesign, restyle or " +
+  "invent a new outfit for any region other than the one the new garment covers.";
 
 // Bug real observado: ao mudar o cenário/fundo (praia, festa, etc.), a luz
 // ambiente "vazava" pro tecido e mudava a cor da peça (calça azul saindo

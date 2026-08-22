@@ -10,7 +10,7 @@
 //       02/10/2026). Faz fallback pro modelo antigo se a chamada Pro falhar.
 //       body: { prompt: string, images?: { mimeType, data(base64) }[] }
 //       Faz upload do PNG no bucket `generated` e devolve { url }.
-//   • mode "text": texto com gemini-2.5-flash. body: { prompt, images? } → { text }
+//   • mode "text": texto com gemini-3.6-flash. body: { prompt, images? } → { text }
 // -----------------------------------------------------------------------------
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeadersFor } from "../_shared/cors.ts";
@@ -30,7 +30,10 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 // fidelidade no INÍCIO e no FIM), não pela escolha do modelo.
 const IMAGE_MODEL = "gemini-3.1-flash-image";
 const IMAGE_MODEL_FALLBACK = "gemini-2.5-flash-image";
-const TEXT_MODEL = "gemini-2.5-flash";
+// gemini-2.5-flash foi descontinuado pelo Google pra novos usuários (erro real
+// observado: "no longer available to new users"). gemini-3.6-flash foi o
+// substituto indicado pela própria mensagem de erro da API.
+const TEXT_MODEL = "gemini-3.6-flash";
 const GENAI = "https://generativelanguage.googleapis.com/v1beta/models";
 const OPENAI_VISION_MODEL = "gpt-4o";
 
