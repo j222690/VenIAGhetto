@@ -56,14 +56,24 @@ export const AIService = {
     feature: "tryon" | "post" | "refine" | "clean_image",
     refs?: ImageRefs,
   ): Promise<{ url: string; balance?: number }> {
-    return invoke<{ url: string; balance?: number }>({
-      mode: "image",
-      feature,
-      prompt,
-      imageUrls: refs?.imageUrls,
-      images: refs?.images,
-      aspectRatio: refs?.aspectRatio,
-    });
+    // Round-trip COMPLETO (rede + Gemini + upload no Storage). Comparado com
+    // o log do lado do servidor ([generate-image] <modelo> OK em Xms), mostra
+    // quanto do tempo é a IA de fato e quanto é overhead nosso — e denuncia
+    // quando uma geração levou o dobro por ter caído no modelo de fallback.
+    const startedAt = performance.now();
+    try {
+      return await invoke<{ url: string; balance?: number }>({
+        mode: "image",
+        feature,
+        prompt,
+        imageUrls: refs?.imageUrls,
+        images: refs?.images,
+        aspectRatio: refs?.aspectRatio,
+      });
+    } finally {
+      const ms = Math.round(performance.now() - startedAt);
+      console.info(`[AIService.image] ${feature}: ${ms}ms (prompt ${prompt.length} chars)`);
+    }
   },
 
   // Gera texto com o Gemini (gemini-2.5-flash). Aceita imagens de referência

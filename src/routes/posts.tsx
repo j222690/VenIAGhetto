@@ -114,11 +114,13 @@ function PostsPage() {
             ? "modelo feminino"
             : "modelo";
       const piecesPart = pieces ? ` Look completo (contexto): ${pieces}.` : "";
-      const specText = [
-        size ? `tamanho ${size}` : "",
-        fit ? FITS.find((f) => f.id === fit)?.desc : "",
-        length ? LENGTHS.find((l) => l.id === length)?.desc : "",
-      ]
+      // Mesma regra do Provador (ver tryon.tsx): tamanho sozinho não liga a
+      // fitExceptionClause — não descreve geometria e só custa tempo de
+      // geração. Entra junto quando há caimento/comprimento pedido.
+      const fitDesc = fit ? FITS.find((f) => f.id === fit)?.desc : "";
+      const lengthDesc = length ? LENGTHS.find((l) => l.id === length)?.desc : "";
+      const hasGeometry = Boolean(fitDesc || lengthDesc);
+      const specText = [hasGeometry && size ? `tamanho ${size}` : "", fitDesc, lengthDesc]
         .filter(Boolean)
         .join(", ");
       const specPart = specText ? fitExceptionClause(specText) : "";

@@ -182,6 +182,13 @@ async function callImageModel(
       ...(imageOpts.aspectRatio ? { aspectRatio: imageOpts.aspectRatio } : {}),
     };
   }
+  // Instrumentação de latência: sem isso não dá pra distinguir "a geração é
+  // um pouco mais lenta" de "estourou o timeout e recomeçou no fallback" —
+  // são problemas diferentes, com correções diferentes. Loga o tempo real de
+  // cada modelo, junto do tamanho do prompt e do nº de imagens de entrada
+  // (as duas variáveis que mais mexem no custo da chamada).
+  const startedAt = Date.now();
+  const shape = `prompt ${prompt.length} chars, ${images.length} img(s), aspectRatio ${imageOpts?.aspectRatio ?? "auto"}`;
   let res: Response;
   try {
     res = await fetch(`${GENAI}/${model}:generateContent`, {
@@ -200,6 +207,7 @@ async function callImageModel(
     });
   } catch (err) {
     if ((err as Error)?.name === "TimeoutError" || (err as Error)?.name === "AbortError") {
+      console.warn(`[generate-image] ${model} TIMEOUT após ${Date.now() - startedAt}ms — ${shape}`);
       throw new Error(`${model} não respondeu a tempo (sobrecarregado).`);
     }
     throw err;
@@ -210,6 +218,7 @@ async function callImageModel(
   const imgPart = parts.find((p: any) => p.inlineData ?? p.inline_data);
   const d = imgPart?.inlineData ?? imgPart?.inline_data;
   if (!d?.data) throw new Error(`${model} não retornou uma imagem.`);
+  console.log(`[generate-image] ${model} OK em ${Date.now() - startedAt}ms — ${shape}`);
   return { mimeType: d.mimeType ?? d.mime_type ?? "image/png", data: d.data as string };
 }
 
@@ -225,9 +234,12 @@ async function geminiImage(prompt: string, images: InputImage[], aspectRatio?: s
     // Supabase) — bem mais folga do que parecia. Um teto CURTO demais aqui
     // (25s) matava chamadas que estavam lentas mas iam terminar com SUCESSO
     // (observado: até 77s numa chamada saudável só que sob carga), forçando
-    // o fallback ou um erro final sem necessidade. 60s dá espaço real pro
-    // modelo principal se recuperar de uma sobrecarga passageira.
-    return await callImageModel(IMAGE_MODEL, prompt, images, { imageSize: "1K", aspectRatio, timeoutMs: 60_000 });
+    // o fallback ou um erro final sem necessidade. 90s (era 60s) porque o
+    // pior caso do teto curto é o mais caro que existe aqui: a chamada é
+    // abortada e RECOMEÇA DO ZERO no modelo legado, então o lojista espera
+    // 60s + o tempo do fallback em vez dos ~70s que a chamada original ia
+    // levar. Ainda MUITO abaixo do limite de 400s da Edge Function.
+    return await callImageModel(IMAGE_MODEL, prompt, images, { imageSize: "1K", aspectRatio, timeoutMs: 90_000 });
   } catch (err) {
     console.warn(`[generate-image] ${IMAGE_MODEL} falhou, caindo pro fallback:`, (err as Error)?.message);
     try {

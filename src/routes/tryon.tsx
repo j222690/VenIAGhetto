@@ -233,11 +233,20 @@ function TryOnPage() {
       //    da imagem. 5+ peças (raro) mantém o fluxo sequencial antigo, já
       //    que a grade só tem 4 quadrantes.
       const piecesPart = pieces ? ` Look completo (contexto): ${pieces}.` : "";
-      const specText = [
-        size ? `tamanho ${size}` : "",
-        fit ? FITS.find((f) => f.id === fit)?.desc : "",
-        length ? LENGTHS.find((l) => l.id === length)?.desc : "",
-      ]
+      // O tamanho SOZINHO não entra no specText. Motivo: "tamanho M" não
+      // descreve geometria nenhuma pro modelo (ele não sabe qual é o tamanho
+      // da peça na foto de referência, então não tem como saber se M é maior
+      // ou menor), mas mesmo assim ligava a fitExceptionClause INTEIRA — que
+      // tira o modelo do modo barato "copiar a peça como está" e o joga no
+      // modo caro "redesenhar a silhueta". Resultado: a geração ficava bem
+      // mais lenta sem mudança visual previsível em troca. Caimento e
+      // comprimento continuam entrando sempre (descrevem a mudança de forma
+      // concreta, ver FITS/LENGTHS), e o tamanho volta a acompanhá-los como
+      // complemento quando um deles foi pedido.
+      const fitDesc = fit ? FITS.find((f) => f.id === fit)?.desc : "";
+      const lengthDesc = length ? LENGTHS.find((l) => l.id === length)?.desc : "";
+      const hasGeometry = Boolean(fitDesc || lengthDesc);
+      const specText = [hasGeometry && size ? `tamanho ${size}` : "", fitDesc, lengthDesc]
         .filter(Boolean)
         .join(", ");
       const specPart = specText ? fitExceptionClause(specText) : "";
