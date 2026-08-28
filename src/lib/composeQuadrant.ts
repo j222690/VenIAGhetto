@@ -73,12 +73,14 @@ export async function composeQuadrant(
   const images = await Promise.all(urls.map(loadImage));
   images.forEach((img, i) => drawCover(ctx, img, QUAD_POSITIONS[i][0], QUAD_POSITIONS[i][1]));
 
-  const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
-  const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
-  return { mimeType: "image/jpeg", data: base64 };
+  // Mesmo orçamento de bytes da grade de looks: este quadrante é 1536x1536 e
+  // saía a qualidade 0.92 fixa, o que o deixava pesado. Ele é REFERÊNCIA de
+  // peça (o modelo copia cor, corte e fechos dali), não a base da saída — o
+  // teto de bytes vale aqui pelo mesmo motivo que vale lá.
+  return { mimeType: "image/jpeg", data: toJpegUnder(canvas, 150 * 1024) };
 }
 
-// EXPERIMENTAL (teste local) — composeLookGrid: usada só na Grade de Looks
+// composeLookGrid: usada só na Grade de Looks
 // (comparar looks completos, não peças). Diferente do composeQuadrant acima
 // (sempre 2x2, com espaço vazio se sobrar), o layout aqui se ADAPTA à
 // quantidade — 2 looks = lado a lado, 4 = grade 2x2 — pra nunca ter quadrante
@@ -156,15 +158,25 @@ export async function composeLookGrid(lookUrls: string[]): Promise<LookGridLayou
 // desta célula". Também encurta o prompt (ver buildLookGridClause), o que o
 // próprio prompts.ts defende como princípio.
 //
-// A foto original em tamanho CHEIO continua sendo enviada junto (mais o
-// close-up de rosto): a célula da grade é pequena, então ela ancora
-// pose/fundo/enquadramento, enquanto a foto cheia preserva detalhe fino.
+// Esta grade é a ÚNICA referência da pessoa enviada: a foto em tamanho cheio
+// e o close-up de rosto saíram da chamada quando o payload virou o gargalo
+// (a geração passava de 90s e falhava). A pessoa aparece em cada célula, o
+// que já cobre rosto, pose, enquadramento e fundo.
+
 // Formatos que o Gemini aceita na saída (espelha SUPPORTED_ASPECT_RATIOS da
 // Edge Function generate-image) — a grade precisa pedir o mais próximo do seu
 // formato real, senão o modelo espreme a imagem pra caber no padrão dele.
 const OUTPUT_RATIOS: [string, number][] = [
-  ["1:1", 1], ["2:3", 2 / 3], ["3:2", 3 / 2], ["3:4", 3 / 4], ["4:3", 4 / 3],
-  ["4:5", 4 / 5], ["5:4", 5 / 4], ["9:16", 9 / 16], ["16:9", 16 / 9], ["21:9", 21 / 9],
+  ["1:1", 1],
+  ["2:3", 2 / 3],
+  ["3:2", 3 / 2],
+  ["3:4", 3 / 4],
+  ["4:3", 4 / 3],
+  ["4:5", 4 / 5],
+  ["5:4", 5 / 4],
+  ["9:16", 9 / 16],
+  ["16:9", 16 / 9],
+  ["21:9", 21 / 9],
 ];
 function nearestRatio(w: number, h: number): string {
   const r = w / h;
@@ -232,7 +244,7 @@ export async function composePersonGrid(
   };
 }
 
-// EXPERIMENTAL (teste local) — cropFaceCloseup: recorta um close-up do ROSTO
+// cropFaceCloseup: recorta um close-up do ROSTO
 // da foto da pessoa pra usar como referência EXTRA de identidade na Grade de
 // Looks (o rosto tende a variar entre os painéis quando o modelo só tem a
 // foto de corpo inteiro, pequena, pra se basear). Tenta a Shape Detection API

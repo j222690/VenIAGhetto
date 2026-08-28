@@ -18,11 +18,7 @@ import { useTokens } from "@/hooks/useTokens";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import type { Client, Generation } from "@/types";
-import {
-  composeLookGrid,
-  composePersonGrid,
-  composeQuadrant,
-} from "@/lib/composeQuadrant";
+import { composeLookGrid, composePersonGrid, composeQuadrant } from "@/lib/composeQuadrant";
 import {
   buildBackgroundClause,
   buildLookGridClause,
@@ -85,7 +81,7 @@ function TryOnPage() {
   const [client, setClient] = useState<Client | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | undefined>();
   const [garments, setGarments] = useState<string[]>([]);
-  // EXPERIMENTAL (teste local): em vez de combinar peças num look só, compara
+  // Em vez de combinar peças num look só, compara
   // até 4 looks COMPLETOS numa grade só — ver buildLookGridClause.
   const [gridMode, setGridMode] = useState(false);
   const [size, setSize] = useState<string | null>(null);
@@ -148,7 +144,7 @@ function TryOnPage() {
     }
     setBusy(true);
     try {
-      // Modo EXPERIMENTAL de grade de looks — ver buildLookGridClause. Fluxo
+      // Modo grade de looks — ver buildLookGridClause. Fluxo
       // totalmente separado do combinar-peças normal: cada imagem enviada é
       // um LOOK COMPLETO (não uma peça), a saída é uma grade comparando todos.
       if (gridMode) {
@@ -462,7 +458,7 @@ function TryOnPage() {
           <span className="text-sm text-clay">{client ? "Trocar" : "Escolher"}</span>
         </button>
 
-        {/* EXPERIMENTAL — grade de looks (teste local, não é a Vest Ai "oficial" ainda) */}
+        {/* Grade de looks — compara vários looks completos numa imagem só. */}
         <button
           onClick={() => {
             setGridMode((v) => !v);
@@ -471,9 +467,7 @@ function TryOnPage() {
           className="flex w-full items-center justify-between rounded-2xl border border-dashed border-accent/40 bg-accent/5 p-4 text-left"
         >
           <span className="min-w-0">
-            <span className="block text-sm font-medium text-foreground">
-              Grade de looks (experimental)
-            </span>
+            <span className="block text-sm font-medium text-foreground">Grade de looks</span>
             <span className="block text-xs text-muted-foreground">
               Compare até 4 looks completos numa imagem só, em vez de vestir um look por vez.
             </span>
@@ -494,7 +488,7 @@ function TryOnPage() {
         </button>
 
         {/* Peças do look — uma ou várias (fotos separadas viram um look), OU
-            looks completos pra comparar (modo grade experimental) */}
+            looks completos pra comparar (modo grade) */}
         <section className="space-y-3">
           <div>
             <p className="text-sm font-semibold text-foreground">

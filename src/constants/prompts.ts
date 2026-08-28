@@ -91,7 +91,7 @@ export const PRESERVE_PHOTO_CLAUSE =
   "não reenquadre, não corte nem amplie a imagem.";
 
 // ---------------------------------------------------------------------------
-// TESTE LOCAL (NÃO COMMITAR) — cópia literal do prompt do app de referência
+// Cópia literal do prompt do app de referência
 // (repositorioghetto, função tryon-enqueue, Gemini direto), em inglês, sem
 // tradução. O usuário confirmou que essa versão funciona bem lá. Objetivo:
 // isolar se o problema de fidelidade de cor/textura é a REDAÇÃO do prompt
@@ -169,7 +169,7 @@ export const REF_APP_NO_INVENT_CLAUSE =
   "starched or plastic. " +
   "Everything else about the garment (color, cut, fabric, construction) stays exactly as shown.";
 
-// TESTE LOCAL (NÃO COMMITAR) — aplicação SEQUENCIAL de peças: bug real
+// Aplicação SEQUENCIAL de peças: bug real
 // observado quando várias peças vão numa ÚNICA chamada ("veste o look
 // completo") — o modelo aplica só uma e ignora as outras. O app de
 // referência NUNCA manda várias peças de uma vez: aplica uma peça por vez,
@@ -249,7 +249,7 @@ export function buildQuadrantClause(pieceCount: number): string {
   );
 }
 
-// EXPERIMENTAL (teste local) — grade de LOOKS COMPLETOS pra comparar, não
+// Grade de LOOKS COMPLETOS pra comparar, não
 // peças que se combinam num look só. O layout se ADAPTA à quantidade (ver
 // composeLookGrid): 2 looks = lado a lado, 4 = grade 2x2. 3 looks NÃO é
 // suportado (testado e descartado — rosto/roupa saíam inconsistentes mesmo
@@ -321,7 +321,7 @@ export function buildLookGridClause(
   );
 }
 
-// EXPERIMENTAL (teste local) — usada só na Grade de Looks, junto com
+// Usada só na Grade de Looks, junto com
 // buildLookGridClause. Há uma imagem extra anexada só com um CLOSE-UP do
 // rosto (recortada no cliente, ver cropFaceCloseup em @/lib/composeQuadrant)
 // — ela existe SÓ pra ancorar a identidade com mais precisão (a foto de
@@ -338,7 +338,7 @@ export const FACE_CLOSEUP_CLAUSE =
   "dele (a saída continua de corpo inteiro/enquadramento normal em cada posição, só o rosto precisa " +
   "bater com esse close-up).";
 
-// EXPERIMENTAL (teste local) — usada só na Grade de Looks. Bug real observado:
+// Usada só na Grade de Looks. Bug real observado:
 // com 4 looks (grade 2x2), o modelo afasta a câmera em cada posição (a pessoa
 // fica menor, com mais espaço vazio ao redor) em vez de manter a MESMA
 // distância da foto original — isso reduz a resolução efetiva da pessoa
@@ -452,7 +452,7 @@ export const COLOR_LIGHT_INDEPENDENCE_CLAUSE =
   "up, cool down, wash out or desaturate the garment to match the ambient light color. Only the " +
   "light/dark shading may change with the scene, never the underlying color itself.";
 
-// TESTE LOCAL (NÃO COMMITAR) — resolve uma contradição real: REF_APP_NO_INVENT_CLAUSE
+// Resolve uma contradição real: REF_APP_NO_INVENT_CLAUSE
 // manda manter o "shape" da peça EXATAMENTE igual à referência, o que cancela
 // qualquer pedido de caimento/comprimento (ex.: "mais justo"). Esta cláusula
 // abre uma exceção EXPLÍCITA, deixando claro que ajustar caimento não é
