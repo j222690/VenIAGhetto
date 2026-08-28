@@ -58,7 +58,7 @@ export const AIService = {
   // devolve o saldo já atualizado em `balance`.
   async image(
     prompt: string,
-    feature: "tryon" | "post" | "refine" | "clean_image",
+    feature: "tryon" | "post" | "refine" | "clean_image" | "criar_corpo",
     refs?: ImageRefs,
   ): Promise<{ url: string; balance?: number }> {
     // Round-trip COMPLETO (rede + Gemini + upload no Storage). Comparado com
@@ -101,6 +101,64 @@ export const AIService = {
     return text;
   },
 
+  // Guarda do "Criar corpo": classifica o ENQUADRAMENTO da foto antes de
+  // gastar token. Três casos, e os três importam:
+  //
+  //  • "completa" — já mostra da cabeça aos pés. Mandar completar uma foto que
+  //    não tem nada faltando é instrução contraditória: OBSERVADO na prática,
+  //    o modelo travou 120s e falhou. Além de cobrar por algo desnecessário.
+  //  • "curta"    — só rosto/close/cortada acima da cintura. Aí a IA teria que
+  //    inventar o corpo quase inteiro, e um corpo que não parece o do cliente
+  //    é pior que não ter a função — o lojista mostra isso pro cliente na
+  //    frente dele. Regra de produto: mínimo de meio corpo pra cima.
+  //  • "ok"       — meio corpo pra cima, sem os pés: é o caso que a função
+  //    existe pra resolver.
+  //
+  // Se a visão falhar, devolve "ok" — a guarda não pode virar um bloqueio
+  // acidental do lojista por indisponibilidade de um serviço auxiliar.
+  async bodyFramingCheck(
+    imageUrl: string,
+  ): Promise<{ status: "completa" | "curta" | "ok"; mensagem: string }> {
+    // Duas perguntas VISUAIS e concretas em vez de uma taxonomia abstrata.
+    // A versão anterior pedia pra classificar o enquadramento em COMPLETA /
+    // MEIA / CURTA e errou na prática: chamou de MEIA uma foto de corpo
+    // inteiro com os sapatos claramente visíveis, e o lojista pagou uma
+    // geração à toa. "Os pés aparecem?" é observação direta, não julgamento.
+    const prompt =
+      "Olhe esta foto e responda EXATAMENTE no formato PES=?,CINTURA=? sem nenhuma outra palavra.\n" +
+      "PES=SIM se os pés ou os sapatos da pessoa aparecem na foto; PES=NAO se não aparecem.\n" +
+      "CINTURA=SIM se a cintura/quadril da pessoa aparece; CINTURA=NAO se a foto corta acima da " +
+      "cintura (só rosto, só cabeça e ombros, ou close).\n" +
+      "Se não houver nenhuma pessoa na foto, responda PES=NAO,CINTURA=NAO.\n" +
+      "Exemplo de resposta válida: PES=NAO,CINTURA=SIM";
+    let text = "";
+    try {
+      text = await this.describe(prompt, [imageUrl]);
+    } catch {
+      return { status: "ok", mensagem: "" };
+    }
+    const t = (text || "").trim().toUpperCase();
+    const pes = /PES\s*=\s*SIM/.test(t);
+    const cintura = /CINTURA\s*=\s*SIM/.test(t);
+    // Resposta fora do formato: não bloqueia (segue e gera), pra a guarda não
+    // impedir o lojista por causa de um retorno mal formatado da visão.
+    const respondeu = /PES\s*=/.test(t) && /CINTURA\s*=/.test(t);
+    if (respondeu && pes) {
+      return {
+        status: "completa",
+        mensagem: "Esta foto já mostra o cliente de corpo inteiro — não precisa gerar.",
+      };
+    }
+    if (respondeu && !cintura) {
+      return {
+        status: "curta",
+        mensagem:
+          "A foto está cortada acima da cintura — a IA teria que inventar quase o corpo todo.",
+      };
+    }
+    return { status: "ok", mensagem: "" };
+  },
+
   // Avalia se a FOTO da peça é boa para a prova virtual. A IA reconstrói a peça,
   // então detalhe escondido (fecho/braguilha) ou peça dobrada saem infiéis.
   // Retorna um aviso curto em pt-BR se a foto for ruim, ou "" se estiver boa.
@@ -111,8 +169,8 @@ export const AIService = {
       "Responda com UMA frase curta em pt-BR APENAS se a foto for RUIM para isso — " +
       "por exemplo: peça dobrada/amassada/torta escondendo o corte; fecho, botão, " +
       "braguilha, zíper ou bolso não aparentes; foto de ângulo/lado, borrada, escura " +
-      "ou cortando a peça. Ex.: \"O fecho da calça não está aparente o suficiente, isso " +
-      "pode deixar a geração infiel à realidade.\" Se a foto estiver BOA (peça reta, de " +
+      'ou cortando a peça. Ex.: "O fecho da calça não está aparente o suficiente, isso ' +
+      'pode deixar a geração infiel à realidade." Se a foto estiver BOA (peça reta, de ' +
       "frente, detalhes visíveis), responda EXATAMENTE com: OK";
     let text = "";
     try {

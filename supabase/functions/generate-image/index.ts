@@ -325,6 +325,10 @@ const FEATURE_COST: Record<string, number> = {
   post: 1,
   refine: 1,
   clean_image: 1,
+  // Criar corpo: completa uma foto de meio corpo em corpo inteiro, pra a foto
+  // servir de base no Provador. 1 chamada de imagem, mesmo custo real das
+  // outras — por isso 1 token, como o resto.
+  criar_corpo: 1,
 };
 
 // Reembolsa (service_role) se o débito foi feito mas a chamada de IA falhou

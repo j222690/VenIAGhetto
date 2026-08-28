@@ -9,6 +9,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { mapClient, mapClientPhoto } from "@/integrations/supabase/mappers";
 import { StoreService } from "./StoreService";
 import { GenerationService } from "./GenerationService";
+import { AIService } from "./AIService";
+import { TokenService } from "./TokenService";
+import { CREATE_BODY_CLAUSE } from "@/constants/prompts";
+import { genUrl } from "@/lib/imageUrl";
 
 export interface ClientInput {
   name: string;
@@ -129,6 +133,26 @@ export const ClientService = {
   async removePhoto(id: string): Promise<void> {
     const { error } = await supabase.from("client_photos").delete().eq("id", id);
     if (error) throw error;
+  },
+
+  // CRIAR CORPO — a partir de uma foto de meio corpo, gera a MESMA pessoa em
+  // corpo inteiro e guarda o resultado na galeria do cliente.
+  //
+  // Existe porque o Provador precisa da pessoa inteira pra vestir a peça, e na
+  // prática o lojista quase sempre tem foto cortada. Segue o padrão do
+  // `clean_image` do catálogo: é só uma geração de imagem que devolve uma URL,
+  // sem virar linha em `generations` — o destino natural dessa foto é ser a
+  // foto-base do cliente, não um item de álbum. Por isso não precisou de
+  // migration nem de tipo novo no enum generation_type.
+  //
+  // O token é debitado no SERVIDOR (ver FEATURE_COST em generate-image); aqui
+  // só sincronizamos o saldo que ele devolve.
+  async createFullBodyPhoto(clientId: string, sourcePhotoUrl: string): Promise<ClientPhoto> {
+    const { url, balance } = await AIService.image(CREATE_BODY_CLAUSE, "criar_corpo", {
+      imageUrls: [genUrl(sourcePhotoUrl)],
+    });
+    TokenService.syncAfterServerDebit(1, "Geração: criar corpo", balance);
+    return this.addPhoto(clientId, url);
   },
 
   // Promove uma foto da galeria a foto-BASE (a que pré-preenche o Provador).

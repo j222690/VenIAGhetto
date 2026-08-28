@@ -10,6 +10,7 @@ import {
   Phone,
   Plus,
   Search,
+  Sparkles,
   Trash2,
 } from "@/lib/icons";
 import { AppLayout } from "@/layouts/AppLayout";
@@ -17,6 +18,9 @@ import { ImageUploadField } from "@/components/ImageUploadField";
 import { LookActions } from "@/components/LookActions";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { ClientService } from "@/services/ClientService";
+import { AIService } from "@/services/AIService";
+import { TokenService } from "@/services/TokenService";
+import { describeApiError } from "@/lib/apiErrors";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { Client, ClientPhoto, Generation } from "@/types";
 import { toast } from "sonner";
@@ -324,6 +328,8 @@ function ClientFolder({ client: initialClient, onBack }: { client: Client; onBac
   const [loading, setLoading] = useState(true);
   const [viewingUrl, setViewingUrl] = useState<string | null>(null);
   const [photos, setPhotos] = useState<ClientPhoto[]>([]);
+  // URL da foto que está gerando corpo inteiro (null = nenhuma).
+  const [creatingBody, setCreatingBody] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -369,6 +375,46 @@ function ClientFolder({ client: initialClient, onBack }: { client: Client; onBac
     }
   };
 
+  // CRIAR CORPO — o Provador precisa da pessoa de corpo inteiro, e na prática
+  // o lojista quase sempre tem foto cortada. Gera a mesma pessoa em corpo
+  // inteiro e guarda na galeria (ver ClientService.createFullBodyPhoto).
+  const createBody = async (sourceUrl: string) => {
+    if (!TokenService.hasBalance(1)) {
+      toast.error("Você já usou todas as gerações do mês. Adicione mais nas Configurações.");
+      return;
+    }
+    setCreatingBody(sourceUrl);
+    try {
+      // Confere o enquadramento ANTES de cobrar o token (ver bodyFramingCheck).
+      // Os dois desvios economizam uma geração que sairia ruim ou inútil.
+      const check = await AIService.bodyFramingCheck(sourceUrl);
+      if (check.status === "completa") {
+        toast.info(check.mensagem, {
+          duration: 8000,
+          description: "Pode usar esta foto direto no Provador.",
+        });
+        return;
+      }
+      if (check.status === "curta") {
+        toast.error(check.mensagem, {
+          duration: 9000,
+          description: "Use uma foto da cintura para cima — assim a IA completa só as pernas.",
+        });
+        return;
+      }
+      const photo = await ClientService.createFullBodyPhoto(client.id, sourceUrl);
+      setPhotos((prev) => [photo, ...prev]);
+      toast.success("Corpo inteiro gerado e salvo na galeria.", {
+        duration: 8000,
+        description: "A parte de baixo foi criada pela IA — confira antes de usar no Provador.",
+      });
+    } catch (e) {
+      toast.error(describeApiError(e, "Não foi possível gerar o corpo inteiro."));
+    } finally {
+      setCreatingBody(null);
+    }
+  };
+
   return (
     <AppLayout title={client.name} subtitle="Pasta do cliente">
       <div className="space-y-5">
@@ -405,6 +451,32 @@ function ClientFolder({ client: initialClient, onBack }: { client: Client; onBac
               <Check className="inline h-3 w-3" /> é a atual.
             </p>
           </div>
+
+          {/* CRIAR CORPO a partir da foto-BASE. O botão por foto (abaixo) só
+              aparece na galeria, e o caso mais comum é justamente o cliente que
+              tem só a foto-base e a galeria vazia — sem isto a função ficava
+              inalcançável pra ele. O Provador precisa da pessoa de corpo
+              inteiro; aqui o lojista completa uma foto cortada. */}
+          {client.photoUrl ? (
+            <button
+              type="button"
+              disabled={creatingBody !== null}
+              onClick={() => createBody(client.photoUrl!)}
+              className="flex w-full items-center justify-between rounded-2xl border border-dashed border-clay/40 bg-clay/5 px-4 py-3 text-left disabled:opacity-60"
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-foreground">
+                  {creatingBody === client.photoUrl
+                    ? "Gerando corpo inteiro…"
+                    : "Criar corpo inteiro"}
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  A foto atual está cortada? A IA completa até os pés. 1 geração.
+                </span>
+              </span>
+              <Sparkles className="h-5 w-5 shrink-0 text-clay" />
+            </button>
+          ) : null}
           <div className="grid grid-cols-3 gap-2">
             {photos.map((p) => {
               const isBase = client.photoUrl === p.url;
@@ -418,7 +490,13 @@ function ClientFolder({ client: initialClient, onBack }: { client: Client; onBac
                     onClick={() => applyAsBasePhoto(p.url)}
                     className="block aspect-square w-full"
                   >
-                    <img src={thumbUrl(p.url, { width: 200 })} alt="Foto do cliente" className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                    <img
+                      src={thumbUrl(p.url, { width: 200 })}
+                      alt="Foto do cliente"
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                    />
                   </button>
                   {isBase ? (
                     <span className="absolute left-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-clay text-clay-foreground shadow-soft">
@@ -432,6 +510,15 @@ function ClientFolder({ client: initialClient, onBack }: { client: Client; onBac
                     className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-background/85 text-foreground shadow-soft backdrop-blur"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Gerar corpo inteiro a partir desta foto"
+                    disabled={creatingBody !== null}
+                    onClick={() => createBody(p.url)}
+                    className="absolute inset-x-1.5 bottom-1.5 rounded-full bg-background/85 px-2 py-1 text-[10px] font-medium text-foreground shadow-soft backdrop-blur disabled:opacity-60"
+                  >
+                    {creatingBody === p.url ? "Gerando…" : "Criar corpo"}
                   </button>
                 </div>
               );
