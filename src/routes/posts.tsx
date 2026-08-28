@@ -16,6 +16,7 @@ import { useTokens } from "@/hooks/useTokens";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { thumbUrl } from "@/lib/imageUrl";
 import { composeQuadrant } from "@/lib/composeQuadrant";
 import {
   buildBackgroundClause,
@@ -467,7 +468,7 @@ function PostsPage() {
             {garments.map((url, i) => (
               <div key={url} className="relative overflow-hidden rounded-2xl border border-border">
                 <img
-                  src={url}
+                  src={thumbUrl(url, { width: 200 })}
                   alt={`Peça ${i + 1}`}
                   className="aspect-square w-full object-cover"
                   loading="lazy"
@@ -824,7 +825,7 @@ function ModelBankSheet({
               onClick={() => onSelect(m.url)}
               className="overflow-hidden rounded-xl border border-border"
             >
-              <img src={m.url} alt={m.label} className="aspect-[3/4] w-full object-cover" loading="lazy" decoding="async" />
+              <img src={thumbUrl(m.url, { width: 200 })} alt={m.label} className="aspect-[3/4] w-full object-cover" loading="lazy" decoding="async" />
             </button>
           ))}
         </div>

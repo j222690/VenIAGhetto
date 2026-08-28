@@ -106,7 +106,8 @@ export const REF_APP_TASK_CLAUSE =
   "wears in that area — their current/old clothing must be GONE and replaced by the new item(s). " +
   "The output MUST clearly differ from IMAGE 1 in the clothing — do NOT simply return image 1 " +
   "unchanged. Keep ONLY the person's face, hair, skin tone, body shape, pose and background the same; " +
-  "fit the new garment(s) naturally with realistic folds, lighting and shadows. Output only the final " +
+  "fit the new garment(s) naturally on the body, with the soft folds that come from the fabric draping " +
+  "on that body, plus realistic lighting and shadows. Output only the final " +
   "edited image.";
 
 export const REF_APP_ANATOMY_CLAUSE =
@@ -158,7 +159,15 @@ export const REF_APP_NO_INVENT_CLAUSE =
   "EXCEPTION to fidelity: if the reference photo shows a price tag, security tag or brand hangtag " +
   "physically attached to the garment (paper/plastic tag on a string, pin or plastic loop), do NOT " +
   "reproduce that tag on the person — remove it completely, as if it had already been taken off before " +
-  "wearing. Everything else about the garment (color, cut, fabric, construction) stays exactly as shown.";
+  "wearing. SECOND EXCEPTION to fidelity — STORAGE CREASES: if the reference photo shows the garment " +
+  "folded, stacked, bagged, hung crumpled or laid flat on a surface, it carries creases that exist " +
+  "ONLY because of how it was stored and photographed — sharp straight fold lines, packing wrinkles " +
+  "and crumpled patches. Do NOT copy those onto the person. Render the garment as if it had just come " +
+  "off the hanger and been put on: a smooth, well-kept fabric surface. Keep the soft natural folds " +
+  "that come from the fabric draping on a real body (at the elbows, waist, knees and wherever it " +
+  "gathers) — this removes STORAGE creases only, and must NEVER make the fabric look flat, stiff, " +
+  "starched or plastic. " +
+  "Everything else about the garment (color, cut, fabric, construction) stays exactly as shown.";
 
 // TESTE LOCAL (NÃO COMMITAR) — aplicação SEQUENCIAL de peças: bug real
 // observado quando várias peças vão numa ÚNICA chamada ("veste o look
@@ -181,7 +190,8 @@ export function buildSequentialStepClause(stepIndex: number): string {
     "remove, alter or replace any other already-applied garment. The output MUST clearly show this new " +
     "garment on the person — do not simply return IMAGE 1 unchanged. Keep the person's face, hair, " +
     "skin tone, body shape, pose, camera framing and background identical. Fit the new garment " +
-    "naturally with realistic folds, lighting and shadows. Output only the final edited image. " +
+    "naturally on the body, with the soft folds that come from the fabric draping on that body, plus " +
+    "realistic lighting and shadows. Output only the final edited image. " +
     CLOTHING_FULL_REARRANGE_CLAUSE
   );
 }
@@ -254,42 +264,60 @@ function positionLabels(cols: number, rows: number): string[] {
   return QUADRANT_LABELS; // 2x2
 }
 
-export function buildLookGridClause(lookCount: number, cols: number, rows: number): string {
+// Reescrita pra trabalhar com DUAS grades de entrada (ver composePersonGrid em
+// @/lib/composeQuadrant). Antes existia só a grade de looks, e o texto PEDIA
+// que o modelo repetisse rosto/corpo/pose/enquadramento/fundo iguais em cada
+// posição — por isso o bloco gigante de "memorize com atenção MÁXIMA", o
+// GRID_FRAMING_LOCK_CLAUSE e o "revise antes de finalizar". Tudo isso era
+// instrução tentando garantir algo que o modelo reconstruía de memória, e
+// vazava na prática (rosto mudando entre painéis, fundo virando branco).
+// Agora a grade da pessoa entra pronta na ENTRADA: essas cinco coisas já são
+// verdade em pixel antes do modelo começar, e o prompt só precisa dizer "troque
+// a roupa de cada célula". Bem mais curto, que é o princípio declarado no topo
+// deste arquivo.
+// `keepBackground`: false quando o lojista pediu troca de cenário — aí o fundo
+// PODE mudar, e travá-lo aqui brigaria com buildBackgroundClause.
+export function buildLookGridClause(
+  lookCount: number,
+  cols: number,
+  rows: number,
+  keepBackground: boolean,
+): string {
   const labels = positionLabels(cols, rows).slice(0, lookCount);
   const layoutDesc =
     rows === 1
       ? `${lookCount} imagens lado a lado (${labels.join(", ")})`
       : `grade 2x2 (${labels.join(", ")})`;
-  const orderList = labels
-    .map((label, i) => `${i + 1}ª imagem de referência = posição ${label}`)
-    .join(", ");
+  const orderList = labels.map((label) => `${label} → ${label}`).join("; ");
+  const bgPart = keepBackground
+    ? "e o MESMO fundo/cenário da grade da pessoa, idêntico em todas as posições — NÃO troque, não " +
+      "limpe, não apague e não substitua o fundo por estúdio, parede lisa, branco ou cinza: é o fundo " +
+      "real da foto que precisa aparecer atrás da pessoa em cada posição"
+    : "e a iluminação do cenário pedido mais adiante (além da roupa, o fundo é a única coisa que muda)";
   return (
-    "Isto é uma EDIÇÃO de fotos reais, não a criação de pessoas novas. A PRIMEIRA imagem anexada " +
-    "mostra a PESSOA que será vestida. Memorize com atenção MÁXIMA, antes de gerar qualquer coisa: " +
-    "(1) ROSTO — formato do rosto, olhos, sobrancelhas, nariz, boca, queixo, tom de pele, textura e " +
-    "corte do cabelo; (2) CORPO — altura, proporção ombro/quadril, tipo físico, comprimento de " +
-    "braços e pernas; (3) POSE — ângulo do corpo em relação à câmera, posição dos braços e mãos, " +
-    "inclinação da cabeça. Esses três pontos (rosto, corpo, pose) precisam ser IDÊNTICOS — não só " +
-    `parecidos, o MESMO — em TODAS as ${lookCount} posições do resultado, como se fosse a MESMA foto ` +
-    "da pessoa parada no mesmo lugar, só trocando de roupa a cada posição (tipo um provador de loja: " +
-    "a pessoa não muda, só o look). Isso facilita a COMPARAÇÃO entre os looks — se a pose ou o rosto " +
-    "mudar entre posições, a comparação fica inválida. " +
-    `Outra imagem anexada é uma grade de referência dividida em ${layoutDesc} — reconheça-a pelo ` +
-    `layout, não pela ordem de anexo. Cada posição preenchida mostra um LOOK COMPLETO diferente (se ` +
-    "tiver outra pessoa nessa referência, IGNORE completamente o rosto/corpo/pose dela — olhe só a " +
-    `roupa que ela veste). Ordem: ${orderList}. TASK: gere UMA IMAGEM DE SAÍDA dividida no MESMO ` +
-    `layout (${layoutDesc}) — CONTAGEM EXATA: ${lookCount} posições no TOTAL, nem mais nem menos. NÃO ` +
-    `adicione nenhuma linha, coluna, painel, ângulo de câmera extra ou repetição da pessoa além dessas ` +
-    `${lookCount} posições — mesmo que isso signifique cada posição ficar menor ou mais apertada, o ` +
-    `layout (${layoutDesc}) é FIXO e não pode ser duplicado ou expandido. Em cada posição de saída, ` +
-    `mostre a PESSOA da PRIMEIRA imagem — mesmo ` +
-    `rosto, corpo e pose IDÊNTICOS nas ${lookCount} posições (revise antes de finalizar: compare ` +
-    "mentalmente rosto, corpo e pose de cada posição gerada com a primeira imagem) — vestindo o look " +
-    "da posição CORRESPONDENTE da grade de entrada (mesma ordem esquerda-para-direita). NÃO misture " +
-    "looks entre posições — cada posição de saída tem APENAS o look da sua posição correspondente, " +
-    "reproduzido fielmente (cor, tecido, corte, calçado, botões e fechos exatamente como na " +
-    "referência, sem redesenhar ou simplificar a peça). NÃO adicione nenhum acessório que não esteja " +
-    "no look de referência. Fotografia realista e profissional, sem aparência plástica."
+    "Isto é uma EDIÇÃO de fotos reais, não a criação de pessoas novas. Há DUAS grades de referência " +
+    `anexadas, as duas no MESMO layout (${layoutDesc}) — diferencie uma da outra pelo CONTEÚDO, nunca ` +
+    "pela ordem em que foram anexadas: (A) a GRADE DA PESSOA, em que TODAS as posições mostram a MESMA " +
+    "pessoa, na mesma pose e no mesmo fundo (é literalmente a mesma foto repetida); (B) a GRADE DE " +
+    "LOOKS, em que cada posição mostra um look COMPLETO DIFERENTE, vestido por outra pessoa qualquer. " +
+    `TASK: devolva UMA imagem no mesmo layout (${layoutDesc}), com EXATAMENTE ${lookCount} posições. ` +
+    "Cada posição da saída reproduz a posição CORRESPONDENTE da GRADE DA PESSOA (A) — mesmo rosto, " +
+    "mesmo corpo, mesma pose, mesmo enquadramento e mesma distância de câmera, " +
+    bgPart +
+    " — com UMA única alteração: a ROUPA passa a ser o look da posição correspondente da GRADE DE " +
+    `LOOKS (B). Correspondência posição a posição: ${orderList}. Da grade de looks copie SOMENTE as ` +
+    "roupas: IGNORE por completo o rosto, o corpo, a pose e o fundo de quem as veste — essa pessoa não " +
+    "pode aparecer no resultado nem se misturar com a pessoa da grade (A). " +
+    `CONTAGEM EXATA: ${lookCount} posições no total, nem mais nem menos — não acrescente linha, coluna, ` +
+    "painel, ângulo de câmera extra nem repetição da pessoa além dessas posições, mesmo que isso " +
+    "signifique cada posição ficar menor. NÃO misture looks entre posições. Reproduza cada look " +
+    "fielmente (cor, tecido, corte, calçado, botões e fechos como na referência, sem redesenhar nem " +
+    "simplificar) e não adicione nenhum acessório que não esteja no look de referência. Se um look de " +
+    "referência não mostrar o calçado, mantenha o calçado que a pessoa já usa na grade (A) — a pessoa " +
+    "NUNCA pode sair descalça ou só de meia. As roupas não podem sair amassadas: se a peça de " +
+    "referência tiver vincos de dobra ou de armazenamento, não copie esses vincos — vista a peça lisa " +
+    "e bem cuidada, mantendo só as dobras naturais de como o tecido cai no corpo. Fotografia realista " +
+    "e profissional, sem aparência plástica."
   );
 }
 
@@ -365,7 +393,9 @@ export function buildQuadrantFromScratchClause(pieceCount: number, modelDesc: st
 export const CLOTHING_MULTI_REARRANGE_CLAUSE =
   "CLOTHING SCOPE (mandatory, narrow): this rule applies to each body region covered by one of the NEW " +
   "garments shown in the quadrant grid (e.g. a pants quadrant frees ONLY the lower-body region; a shirt " +
-  "quadrant frees ONLY the torso region). In each such region, nothing from the original photo is " +
+  "quadrant frees ONLY the torso region). A pants/shorts/skirt/dress quadrant frees the lower body " +
+  "ONLY DOWN TO THE ANKLES — feet and footwear are never freed by it, and the person must NEVER come " +
+  "out barefoot or in socks when no SHOE quadrant was provided. In each such region, nothing from the original photo is " +
   "anchored except the person's face/body physiognomy — fully replace whatever was there with the " +
   "corresponding new garment, from scratch. This EXPLICITLY includes any OUTER LAYER on top of that " +
   "region (vest, jacket, blazer, cardigan, coat) — if the torso quadrant is a shirt, ANY vest/jacket/" +
@@ -394,7 +424,12 @@ export const CLOTHING_FULL_REARRANGE_CLAUSE =
   "garment provided in this step (e.g. if the new garment is pants, this applies ONLY to the " +
   "lower-body region). In that specific region, nothing from the original photo is anchored except " +
   "the person's face/body physiognomy — fully replace whatever was there with the new garment, from " +
-  "scratch. This EXPLICITLY includes any OUTER LAYER on top of that region (vest, jacket, blazer, " +
+  "scratch. FEET AND FOOTWEAR ARE NEVER FREED BY A NON-FOOTWEAR GARMENT: if the new garment is pants, " +
+  "shorts, a skirt or a dress, the lower-body region ENDS AT THE ANKLES — the person's shoes, socks " +
+  "and feet stay EXACTLY as in the original photo, pixel-identical. Unless the new garment IS itself " +
+  "footwear, the person must NEVER come out barefoot, in socks only, or wearing different shoes than " +
+  "they had on: if the original photo shows shoes, the SAME shoes are still on their feet in the " +
+  "result. This EXPLICITLY includes any OUTER LAYER on top of that region (vest, jacket, blazer, " +
   "cardigan, coat) — if the new garment is a shirt, ANY vest/jacket/blazer the person wears over their " +
   "torso in the original photo must be REMOVED too, not kept on top of or peeking out from under the " +
   "new shirt. If the new garment is an ACCESSORY (watch, bracelet, necklace, ring, glasses, hat, " +

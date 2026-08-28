@@ -188,7 +188,7 @@ async function callImageModel(
   // cada modelo, junto do tamanho do prompt e do nº de imagens de entrada
   // (as duas variáveis que mais mexem no custo da chamada).
   const startedAt = Date.now();
-  const shape = `prompt ${prompt.length} chars, ${images.length} img(s), aspectRatio ${imageOpts?.aspectRatio ?? "auto"}`;
+  const shape = `prompt ${prompt.length} chars, ${images.length} img(s), aspectRatio ${imageOpts?.aspectRatio ?? "auto"}, size ${imageOpts?.imageSize ?? "default"}`;
   let res: Response;
   try {
     res = await fetch(`${GENAI}/${model}:generateContent`, {
@@ -222,38 +222,58 @@ async function callImageModel(
   return { mimeType: d.mimeType ?? d.mime_type ?? "image/png", data: d.data as string };
 }
 
-async function geminiImage(prompt: string, images: InputImage[], aspectRatio?: string) {
-  try {
-    // 1K: resolução padrão do modelo — 2K custaria ~50% mais caro ($0,101 vs
-    // $0,067/imagem) por pouco ganho real de detalhe. aspectRatio: sem isso o
-    // modelo usa um formato padrão dele (~quadrado) em vez do formato da foto
-    // original, forçando a pessoa a ser espremida/cortada — distorcia a
-    // fisionomia. Só o modelo principal suporta imageConfig — o fallback
-    // (gemini-2.5-flash-image, legado) não aceita esse parâmetro.
-    // timeoutMs: o wall-clock limit real da Edge Function é 400s (doc da
-    // Supabase) — bem mais folga do que parecia. Um teto CURTO demais aqui
-    // (25s) matava chamadas que estavam lentas mas iam terminar com SUCESSO
-    // (observado: até 77s numa chamada saudável só que sob carga), forçando
-    // o fallback ou um erro final sem necessidade. 90s (era 60s) porque o
-    // pior caso do teto curto é o mais caro que existe aqui: a chamada é
-    // abortada e RECOMEÇA DO ZERO no modelo legado, então o lojista espera
-    // 60s + o tempo do fallback em vez dos ~70s que a chamada original ia
-    // levar. Ainda MUITO abaixo do limite de 400s da Edge Function.
-    return await callImageModel(IMAGE_MODEL, prompt, images, { imageSize: "1K", aspectRatio, timeoutMs: 90_000 });
-  } catch (err) {
-    console.warn(`[generate-image] ${IMAGE_MODEL} falhou, caindo pro fallback:`, (err as Error)?.message);
+async function geminiImage(
+  prompt: string,
+  images: InputImage[],
+  aspectRatio?: string,
+  imageSize: "1K" | "2K" = "1K",
+) {
+  // ESTRATÉGIA (medida, não chutada): num lote de 5 gerações de Grade de
+  // Looks, 3 falharam — e nas 3 o modelo principal estourou o teto E o
+  // gemini-2.5-flash-image (legado, que o Google vai desligar) também não
+  // entregou. O legado NÃO está servindo de rede de segurança hoje.
+  //
+  // Então a ordem virou: principal → principal de novo → legado só em último
+  // caso. Uma segunda tentativa no modelo BOM vale mais que uma primeira no
+  // ruim. E repetir NÃO custa nada no caminho feliz: a 2ª tentativa só existe
+  // quando a alternativa era devolver erro pro lojista.
+  //
+  // Tetos curtos de propósito (alvo de produto: geração em menos de 1 minuto).
+  // A 2ª tentativa tem teto MENOR: se a 1ª já demorou o teto inteiro, o
+  // provedor está ruim, e insistir muito só faz o lojista esperar mais.
+  // 1K: 2K custaria ~50% mais caro ($0,101 vs $0,067/imagem) por pouco ganho
+  // real. aspectRatio: sem isso o modelo usa o formato padrão dele (~quadrado)
+  // e espreme a pessoa. Só o principal aceita imageConfig — o legado não.
+  const tentativas: { modelo: string; timeoutMs: number; comConfig: boolean }[] = [
+    { modelo: IMAGE_MODEL, timeoutMs: 70_000, comConfig: true },
+    { modelo: IMAGE_MODEL, timeoutMs: 50_000, comConfig: true },
+    { modelo: IMAGE_MODEL_FALLBACK, timeoutMs: 45_000, comConfig: false },
+  ];
+
+  let ultimoErro: unknown = null;
+  for (let i = 0; i < tentativas.length; i++) {
+    const t = tentativas[i];
     try {
-      // 90s: modelo legado, geralmente mais lento sob carga — ainda MUITO
-      // abaixo do limite de 400s mesmo somado ao tempo já gasto no principal.
-      return await callImageModel(IMAGE_MODEL_FALLBACK, prompt, images, { timeoutMs: 90_000 });
-    } catch (fallbackErr) {
-      console.warn(`[generate-image] ${IMAGE_MODEL_FALLBACK} também falhou:`, (fallbackErr as Error)?.message);
-      // Mensagem única e amigável quando os DOIS modelos falham — não expõe
-      // nome de modelo/erro técnico pro lojista, e cobre o cenário real
-      // observado (provedor de IA sobrecarregado nos dois modelos ao mesmo tempo).
-      throw new Error("O serviço de IA está sobrecarregado no momento. Tente novamente em alguns instantes.");
+      return await callImageModel(
+        t.modelo,
+        prompt,
+        images,
+        t.comConfig
+          ? { imageSize, aspectRatio, timeoutMs: t.timeoutMs }
+          : { timeoutMs: t.timeoutMs },
+      );
+    } catch (err) {
+      ultimoErro = err;
+      console.warn(
+        `[generate-image] tentativa ${i + 1}/${tentativas.length} (${t.modelo}) falhou:`,
+        (err as Error)?.message,
+      );
     }
   }
+  // Mensagem única e amigável quando TODAS as tentativas falham — não expõe
+  // nome de modelo nem erro técnico pro lojista.
+  console.warn("[generate-image] todas as tentativas falharam:", (ultimoErro as Error)?.message);
+  throw new Error("O serviço de IA está sobrecarregado no momento. Tente novamente em alguns instantes.");
 }
 
 // Visão via OpenAI (gpt-4o): descreve peças/looks a partir das URLs públicas.
@@ -399,9 +419,14 @@ Deno.serve(async (req) => {
       const base = inputImages[0];
       if (base?.width && base?.height) aspectRatio = nearestAspectRatio(base.width, base.height);
     }
+    // Resolução: só "2K" é aceito como alternativa ao padrão. Validado aqui
+    // (allowlist), nunca confiando no valor do cliente — 2K custa ~50% mais
+    // caro por imagem, então um valor arbitrário vindo do front viraria custo
+    // nosso. Qualquer outra coisa (inclusive "4K") cai no padrão 1K.
+    const imageSize: "1K" | "2K" = body.imageSize === "2K" ? "2K" : "1K";
     let mimeType: string, data: string;
     try {
-      ({ mimeType, data } = await geminiImage(prompt, inputImages, aspectRatio));
+      ({ mimeType, data } = await geminiImage(prompt, inputImages, aspectRatio, imageSize));
     } catch (e) {
       await refundTokens(admin, user.id, cost);
       throw e;

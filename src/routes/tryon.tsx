@@ -18,16 +18,18 @@ import { useTokens } from "@/hooks/useTokens";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import type { Client, Generation } from "@/types";
-import { composeLookGrid, composeQuadrant, cropFaceCloseup } from "@/lib/composeQuadrant";
+import {
+  composeLookGrid,
+  composePersonGrid,
+  composeQuadrant,
+} from "@/lib/composeQuadrant";
 import {
   buildBackgroundClause,
   buildLookGridClause,
   buildQuadrantClause,
   buildSequentialStepClause,
   COLOR_LIGHT_INDEPENDENCE_CLAUSE,
-  FACE_CLOSEUP_CLAUSE,
   fitExceptionClause,
-  GRID_FRAMING_LOCK_CLAUSE,
   POSE_LOCK_CLAUSE,
   PRESERVE_PHOTO_CLAUSE,
   REALISM_CLAUSE,
@@ -38,6 +40,7 @@ import {
 } from "@/constants/prompts";
 import { BACKGROUNDS, FITS, LENGTHS, SIZES } from "@/constants/lookOptions";
 import { cn } from "@/lib/utils";
+import { thumbUrl } from "@/lib/imageUrl";
 
 export const Route = createFileRoute("/tryon")({
   head: () => ({ meta: [{ title: "Provador — Vest Ai" }] }),
@@ -150,43 +153,50 @@ function TryOnPage() {
       // um LOOK COMPLETO (não uma peça), a saída é uma grade comparando todos.
       if (gridMode) {
         setBusyLabel("Montando a grade de looks…");
-        // Sem cenário escolhido, cai no Estúdio de verdade (descrição rica +
-        // foto de referência) em vez de uma linha genérica — que antes saía
-        // com fundo "inventado" (parede decorada, plantas) em vez de neutro.
-        const selectedBg = changeSceneOn
-          ? BACKGROUNDS.find((b) => b.id === background)
-          : BACKGROUNDS.find((b) => b.id === "estudio");
-        const effectiveBgRefUrl = changeSceneOn ? bgRefUrl : selectedBg?.refs[0]?.url;
-        const bgRefUrls = selectedBg && effectiveBgRefUrl ? [effectiveBgRefUrl] : [];
-        const scenePart =
-          (selectedBg ? buildBackgroundClause(selectedBg.desc, !!effectiveBgRefUrl) : "") +
-          (changeSceneOn && bgCustom.trim() ? ` Detalhes do cenário: ${bgCustom.trim()}.` : "") +
-          " " +
-          COLOR_LIGHT_INDEPENDENCE_CLAUSE;
-        const { composite, cols, rows, aspectRatio } = await composeLookGrid(garments);
-        // Recorte extra do rosto (ver cropFaceCloseup) — ancora a identidade
-        // com mais precisão do que só a foto de corpo inteiro, que é pequena
-        // demais pra fixar detalhe fino de rosto repetido em várias posições.
-        let faceCloseup: { mimeType: string; data: string } | null = null;
-        try {
-          faceCloseup = await cropFaceCloseup(photoUrl);
-        } catch {
-          /* segue sem o close-up se o recorte falhar */
-        }
+        // Cenário só entra quando o lojista PEDE. Antes, sem pedir, isso caía
+        // à força no cenário "estudio" (fundo infinito cinza-claro) — que era
+        // exatamente o "fundo branco" reclamado: a grade apagava o fundo real
+        // da foto do cliente sempre. Agora, sem pedido de cenário, o fundo
+        // original é preservado (PRESERVE_PHOTO_CLAUSE, igual ao fluxo normal
+        // de peças) e nenhuma foto de cenário é anexada.
+        const selectedBg = changeSceneOn ? BACKGROUNDS.find((b) => b.id === background) : undefined;
+        const bgRefUrls = selectedBg && bgRefUrl ? [bgRefUrl] : [];
+        const scenePart = changeSceneOn
+          ? (selectedBg ? buildBackgroundClause(selectedBg.desc, !!bgRefUrl) : "") +
+            (bgCustom.trim() ? ` Detalhes do cenário: ${bgCustom.trim()}.` : "") +
+            " " +
+            COLOR_LIGHT_INDEPENDENCE_CLAUSE
+          : " " + PRESERVE_PHOTO_CLAUSE;
+        const { composite, cols, rows } = await composeLookGrid(garments);
+        // Grade da PESSOA: a mesma foto repetida em todas as posições, no
+        // mesmo layout da grade de looks (ver composePersonGrid). Faz rosto,
+        // pose, enquadramento e FUNDO chegarem prontos na entrada em vez de
+        // serem pedidos por texto — que era como o fundo/rosto escapavam.
+        const personGrid = await composePersonGrid(photoUrl, cols, rows);
+        // ENTRADA MÍNIMA (requisito: geração abaixo de 1 minuto). Antes iam 4
+        // imagens: foto do cliente em tamanho cheio, grade da pessoa, grade de
+        // looks e close-up de rosto. MEDIDO: a chamada passava de 90s e o
+        // modelo principal nunca terminava. As duas primeiras viraram
+        // redundância quando a grade da pessoa passou a existir — ela já tem a
+        // pessoa INTEIRA, com rosto, em cada célula. Sobraram 2 imagens: a
+        // grade da pessoa e a grade de looks. Menos imagem de entrada = menos
+        // token de entrada pro modelo processar = resposta mais rápida.
+        // Por isso também saíram GRID_FRAMING_LOCK_CLAUSE (enquadramento já
+        // vem pronto na grade) e FACE_CLOSEUP_CLAUSE (não há mais close-up).
         const gridPrompt =
-          buildLookGridClause(Math.min(garments.length, 4), cols, rows) +
+          buildLookGridClause(Math.min(garments.length, 4), cols, rows, !changeSceneOn) +
           " " +
           REF_APP_ANATOMY_CLAUSE +
-          " " +
-          GRID_FRAMING_LOCK_CLAUSE +
-          (faceCloseup ? " " + FACE_CLOSEUP_CLAUSE : "") +
           scenePart +
           " " +
           REALISM_CLAUSE;
         const { url, balance } = await AIService.image(gridPrompt, "tryon", {
-          imageUrls: [photoUrl, ...bgRefUrls],
-          images: faceCloseup ? [composite, faceCloseup] : [composite],
-          aspectRatio,
+          imageUrls: bgRefUrls,
+          images: [personGrid, composite],
+          // Formato de saída vem da grade da PESSOA (é ela que é replicada),
+          // não da grade de looks — que tem célula 3:4 fixa e formato próprio.
+          aspectRatio: personGrid.aspectRatio,
+          imageSize: "1K",
         });
         TokenService.syncAfterServerDebit(cost, "Geração: tryon (grade de looks)", balance);
         const gen = await GenerationService.generate({
@@ -511,7 +521,7 @@ function TryOnPage() {
             {garments.map((url, i) => (
               <div key={url} className="relative overflow-hidden rounded-2xl border border-border">
                 <img
-                  src={url}
+                  src={thumbUrl(url, { width: 200 })}
                   alt={`${gridMode ? "Look" : "Peça"} ${i + 1}`}
                   className="aspect-square w-full object-cover"
                   loading="lazy"
@@ -939,7 +949,7 @@ function CatalogSheet({
             >
               <div className="aspect-square w-full overflow-hidden bg-secondary">
                 <img
-                  src={it.imageUrl}
+                  src={thumbUrl(it.imageUrl, { width: 200 })}
                   alt={it.name}
                   className="h-full w-full object-cover"
                   loading="lazy"

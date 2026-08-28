@@ -22,6 +22,7 @@ import { TokenService } from "@/services/TokenService";
 import { useTokens } from "@/hooks/useTokens";
 import type { CatalogItem } from "@/types";
 import { cn } from "@/lib/utils";
+import { thumbUrl } from "@/lib/imageUrl";
 import { toast } from "sonner";
 
 // Custo em tokens por item importado (foto ou link). O link tem um mínimo para
@@ -367,7 +368,7 @@ function CatalogPage() {
             {importPhotos.map((url, i) => (
               <div key={url} className="relative overflow-hidden rounded-2xl border border-border">
                 <img
-                  src={url}
+                  src={thumbUrl(url, { width: 200 })}
                   alt={`Produto ${i + 1}`}
                   className="aspect-square w-full object-cover"
                   loading="lazy"
@@ -625,7 +626,7 @@ function CatalogPage() {
               >
                 <div className="relative aspect-[3/4] w-full overflow-hidden bg-secondary">
                   {it.imageUrl ? (
-                    <img src={it.imageUrl} alt={it.name} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                    <img src={thumbUrl(it.imageUrl, { width: 200 })} alt={it.name} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                   ) : null}
                   {!it.active ? (
                     <span className="absolute left-2 top-2 rounded-full bg-foreground/70 px-2 py-0.5 text-[10px] font-medium text-background">

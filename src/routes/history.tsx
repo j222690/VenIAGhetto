@@ -7,6 +7,7 @@ import { GenerationService } from "@/services/GenerationService";
 import { ClientService } from "@/services/ClientService";
 import { CatalogService } from "@/services/CatalogService";
 import { cn } from "@/lib/utils";
+import { thumbUrl } from "@/lib/imageUrl";
 import { toast } from "sonner";
 import type { Generation, GenerationType } from "@/types";
 
@@ -106,7 +107,7 @@ function HistoryPage() {
                   className="shrink-0"
                 >
                   <img
-                    src={g.resultUrl}
+                    src={thumbUrl(g.resultUrl, { width: 200 })}
                     alt={g.type}
                     className="h-16 w-16 rounded-xl object-cover"
                     loading="lazy"

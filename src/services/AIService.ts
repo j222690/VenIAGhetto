@@ -14,6 +14,11 @@ export interface ImageRefs {
   // Formato de saída (ex.: "3:4" pra foto de pessoa) — sem isso o Gemini usa
   // um formato padrão dele, podendo espremer/cortar a pessoa da referência.
   aspectRatio?: string;
+  // Resolução de saída. Padrão "1K" (mais barato). "2K" só vale a pena quando
+  // a imagem de saída é SUBDIVIDIDA em painéis (Grade de Looks): aí cada painel
+  // fica com uma fração dos pixels e o rosto degrada. Custa ~50% mais caro por
+  // imagem, então não use no fluxo normal de 1 pessoa por imagem.
+  imageSize?: "1K" | "2K";
 }
 
 async function invoke<T>(body: Record<string, unknown>): Promise<T> {
@@ -69,6 +74,7 @@ export const AIService = {
         imageUrls: refs?.imageUrls,
         images: refs?.images,
         aspectRatio: refs?.aspectRatio,
+        imageSize: refs?.imageSize,
       });
     } finally {
       const ms = Math.round(performance.now() - startedAt);

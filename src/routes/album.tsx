@@ -6,6 +6,7 @@ import { LookActions } from "@/components/LookActions";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { GenerationService } from "@/services/GenerationService";
 import { cn } from "@/lib/utils";
+import { thumbUrl } from "@/lib/imageUrl";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/album")({
@@ -69,7 +70,7 @@ function AlbumPage() {
                     className="block h-full w-full"
                   >
                     <img
-                      src={look.resultUrl}
+                      src={thumbUrl(look.resultUrl, { width: 200 })}
                       alt={TYPE_LABEL[look.type] ?? "Look"}
                       className="h-full w-full object-cover"
                       loading="lazy"

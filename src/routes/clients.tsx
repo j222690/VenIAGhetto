@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { thumbUrl } from "@/lib/imageUrl";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
@@ -253,7 +254,7 @@ function ClientsPage() {
               >
                 {c.photoUrl ? (
                   <img
-                    src={c.photoUrl}
+                    src={thumbUrl(c.photoUrl, { width: 96 })}
                     alt={c.name}
                     className="h-11 w-11 shrink-0 rounded-full object-cover"
                     loading="lazy"
@@ -417,7 +418,7 @@ function ClientFolder({ client: initialClient, onBack }: { client: Client; onBac
                     onClick={() => applyAsBasePhoto(p.url)}
                     className="block aspect-square w-full"
                   >
-                    <img src={p.url} alt="Foto do cliente" className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                    <img src={thumbUrl(p.url, { width: 200 })} alt="Foto do cliente" className="h-full w-full object-cover" loading="lazy" decoding="async" />
                   </button>
                   {isBase ? (
                     <span className="absolute left-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-clay text-clay-foreground shadow-soft">
@@ -470,7 +471,7 @@ function ClientFolder({ client: initialClient, onBack }: { client: Client; onBac
                     className="block h-full w-full"
                   >
                     <img
-                      src={g.resultUrl}
+                      src={thumbUrl(g.resultUrl, { width: 200 })}
                       alt="Look do cliente"
                       className="h-full w-full object-cover"
                       loading="lazy"
