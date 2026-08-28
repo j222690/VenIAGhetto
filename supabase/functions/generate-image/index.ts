@@ -294,6 +294,46 @@ async function openaiVision(prompt: string, imageUrls: string[]) {
   return (j.choices?.[0]?.message?.content ?? "").toString().trim();
 }
 
+// Visão com FALLBACK: OpenAI primeiro, Gemini quando ela falhar.
+//
+// Por que existe: a chave da OpenAI ficou sem crédito e TODA a visão do app
+// parou — o aviso de foto de peça ruim (garmentPhotoTip), a legenda por IA
+// dos posts (generatePostCopy) e a guarda do Criar corpo (bodyFramingCheck).
+// Os três engolem o erro de propósito, pra um serviço auxiliar fora do ar não
+// travar o lojista; o efeito colateral é que pararam EM SILÊNCIO e ninguém
+// percebeu até alguém investigar.
+//
+// A OpenAI segue como PRINCIPAL de propósito: quem paga essa conta é o cliente
+// do lojista, e trocar a ordem transferiria o custo pra chave do Gemini (que é
+// nossa). O Gemini só entra quando a alternativa seria não funcionar.
+async function visionWithFallback(prompt: string, imageUrls: string[]): Promise<string> {
+  try {
+    return await openaiVision(prompt, imageUrls);
+  } catch (err) {
+    console.warn(
+      `[generate-image] visão OpenAI falhou, caindo pro Gemini:`,
+      (err as Error)?.message,
+    );
+    // O Gemini precisa da imagem inline (base64), não por URL como a OpenAI.
+    const images: InputImage[] = [];
+    for (const u of imageUrls) images.push(await urlToInline(u));
+    // Duas tentativas: MEDIDO que o próprio Gemini às vezes responde
+    // "This model is currently experiencing high demand" — 1 de 3 chamadas no
+    // teste. Repetir custa tempo só quando a alternativa era falhar.
+    for (let i = 1; i <= 2; i++) {
+      try {
+        const text = await geminiText(prompt, images);
+        console.log(`[generate-image] visão atendida pelo Gemini (${text.length} chars)`);
+        return text;
+      } catch (e) {
+        console.warn(`[generate-image] visão Gemini tentativa ${i}/2 falhou:`, (e as Error)?.message);
+        if (i === 2) throw e;
+      }
+    }
+    throw new Error("Visão indisponível.");
+  }
+}
+
 async function geminiText(prompt: string, images: InputImage[]) {
   const res = await fetch(`${GENAI}/${TEXT_MODEL}:generateContent`, {
     method: "POST",
@@ -385,7 +425,7 @@ Deno.serve(async (req) => {
       if (!(await hasAnyBalance())) return json({ error: "Saldo de tokens insuficiente." }, 402);
       const urls: string[] = body.imageUrls ?? [];
       urls.forEach(assertAllowedImageUrl);
-      const text = await openaiVision(prompt, urls);
+      const text = await visionWithFallback(prompt, urls);
       return json({ text });
     }
 
