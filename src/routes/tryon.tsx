@@ -40,7 +40,7 @@ import {
 } from "@/constants/prompts";
 import { BACKGROUNDS, FITS, LENGTHS, SIZES } from "@/constants/lookOptions";
 import { cn } from "@/lib/utils";
-import { thumbUrl } from "@/lib/imageUrl";
+import { genUrl, thumbUrl } from "@/lib/imageUrl";
 
 export const Route = createFileRoute("/tryon")({
   head: () => ({ meta: [{ title: "Provador — Vest Ai" }] }),
@@ -191,7 +191,7 @@ function TryOnPage() {
           " " +
           REALISM_CLAUSE;
         const { url, balance } = await AIService.image(gridPrompt, "tryon", {
-          imageUrls: bgRefUrls,
+          imageUrls: bgRefUrls.map(genUrl),
           images: [personGrid, composite],
           // Formato de saída vem da grade da PESSOA (é ela que é replicada),
           // não da grade de looks — que tem célula 3:4 fixa e formato próprio.
@@ -311,14 +311,14 @@ function TryOnPage() {
 
         if (garments.length === 1) {
           const { url, balance } = await AIService.image(stepPrompt, "tryon", {
-            imageUrls: [photoUrl, garments[0], ...bgRefUrls],
+            imageUrls: [photoUrl, garments[0], ...bgRefUrls].map(genUrl),
           });
           currentUrl = url;
           TokenService.syncAfterServerDebit(cost, "Geração: tryon", balance);
         } else {
           const composite = await composeQuadrant(garments);
           const { url, balance } = await AIService.image(stepPrompt, "tryon", {
-            imageUrls: [photoUrl, ...bgRefUrls],
+            imageUrls: [photoUrl, ...bgRefUrls].map(genUrl),
             images: [composite],
           });
           currentUrl = url;
@@ -346,7 +346,7 @@ function TryOnPage() {
           stepPrompt += " " + REF_APP_FIDELITY_CLOSING_CLAUSE;
           const stepImgs = isLast ? [running, garments[i], ...bgRefUrls] : [running, garments[i]];
           const { url, balance } = await AIService.image(stepPrompt, "tryon", {
-            imageUrls: stepImgs,
+            imageUrls: stepImgs.map(genUrl),
           });
           running = url;
           TokenService.syncAfterServerDebit(cost, "Geração: tryon", balance);

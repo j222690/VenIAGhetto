@@ -16,7 +16,7 @@ import { useTokens } from "@/hooks/useTokens";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { thumbUrl } from "@/lib/imageUrl";
+import { genUrl, thumbUrl } from "@/lib/imageUrl";
 import { composeQuadrant } from "@/lib/composeQuadrant";
 import {
   buildBackgroundClause,
@@ -198,7 +198,7 @@ function PostsPage() {
         if (hasOwnPhoto) {
           if (garments.length === 1) {
             const { url, balance } = await AIService.image(stepPrompt, "post", {
-              imageUrls: [modelUrl!, garments[0], ...bgRefUrls],
+              imageUrls: [modelUrl!, garments[0], ...bgRefUrls].map(genUrl),
               aspectRatio: outputAspectRatio,
             });
             currentUrl = url;
@@ -206,7 +206,7 @@ function PostsPage() {
           } else {
             const composite = await composeQuadrant(garments);
             const { url, balance } = await AIService.image(stepPrompt, "post", {
-              imageUrls: [modelUrl!, ...bgRefUrls],
+              imageUrls: [modelUrl!, ...bgRefUrls].map(genUrl),
               images: [composite],
               aspectRatio: outputAspectRatio,
             });
@@ -215,7 +215,7 @@ function PostsPage() {
           }
         } else if (garments.length === 1) {
           const { url, balance } = await AIService.image(stepPrompt, "post", {
-            imageUrls: [garments[0], ...bgRefUrls],
+            imageUrls: [garments[0], ...bgRefUrls].map(genUrl),
             aspectRatio: outputAspectRatio,
           });
           currentUrl = url;
@@ -223,7 +223,7 @@ function PostsPage() {
         } else {
           const composite = await composeQuadrant(garments);
           const { url, balance } = await AIService.image(stepPrompt, "post", {
-            imageUrls: bgRefUrls,
+            imageUrls: bgRefUrls.map(genUrl),
             images: [composite],
             aspectRatio: outputAspectRatio,
           });
@@ -272,7 +272,7 @@ function PostsPage() {
             stepAspectRatio = outputAspectRatio;
           }
           const { url, balance } = await AIService.image(stepPrompt, "post", {
-            imageUrls: imgs,
+            imageUrls: imgs.map(genUrl),
             aspectRatio: stepAspectRatio,
           });
           running = url;
