@@ -54,9 +54,9 @@ async function generatePostCopy(
     "geral da foto (cenário, clima, ocasião)." +
     audienceLine +
     ctxLine +
-    " Para CADA canal (instagram, whatsapp, facebook) devolva um objeto com: \"hook\" (uma frase " +
+    ' Para CADA canal (instagram, whatsapp, facebook) devolva um objeto com: "hook" (uma frase ' +
     "curta e chamativa, ex.: 'Novidade fresca na loja — vem dar uma olhada nessa peça incrível!') e " +
-    "\"desc\" (descreva as peças que aparecem com o MÁXIMO de detalhes que você conseguir identificar " +
+    '"desc" (descreva as peças que aparecem com o MÁXIMO de detalhes que você conseguir identificar ' +
     "na imagem — tipo, cor E o tecido/material quando der para notar, ex.: 'camisa de linho branca, " +
     "calça de camurça marrom, tênis casual de couro'. Só cite o material se tiver razoável certeza " +
     `pela textura; não invente. Separe por vírgula e termine com a marca: ${brand}). ` +
@@ -65,7 +65,10 @@ async function generatePostCopy(
     '"facebook":{"hook":"","desc":""},"hashtags":["#..."],"cta":""}. hashtags: array com 4 a 6.';
   // Visão (OpenAI gpt-4o) sobre a imagem gerada.
   const raw = await AIService.describe(prompt, [imageUrl]);
-  const clean = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+  const clean = raw
+    .replace(/```json/gi, "")
+    .replace(/```/g, "")
+    .trim();
   const start = clean.indexOf("{");
   const end = clean.lastIndexOf("}");
   const parsed = JSON.parse(clean.slice(start, end + 1)) as {
@@ -244,9 +247,95 @@ export const GenerationService = {
         isFavorite: false,
         clientId: params.clientId,
         createdAt: new Date().toISOString(),
+        status: "pronta",
       };
       generations = [created, ...generations];
       return created;
+    }
+  },
+
+  // GERAÇÃO EM SEGUNDO PLANO.
+  //
+  // O fluxo síncrono prendia o lojista na tela e esbarrava no limite de 150s
+  // da Edge Function — que fica DENTRO da faixa normal do Gemini (11s a 131s
+  // medidos), então gerações lentas viravam erro. Pior: o Google cobra a
+  // imagem mesmo quando desistimos de esperar (7 de 7 verificadas), então
+  // cada erro desses era dinheiro pago e perdido.
+  //
+  // Aqui a linha nasce com status "processando" e o servidor a completa depois
+  // (ver mode "image_async" em generate-image). O lojista pode sair da tela.
+  async startAsync(params: {
+    type: GenerationType;
+    inputs: GenerationInputs;
+    userId: string;
+    storeId: string;
+    clientId?: string;
+    prompt: string;
+    feature: "tryon" | "post";
+    imageUrls?: string[];
+    images?: { mimeType: string; data: string }[];
+    aspectRatio?: string;
+    tokenCost?: number;
+  }): Promise<Generation> {
+    const cost = params.tokenCost ?? TOKEN_COST[params.type];
+    if (!TokenService.hasBalance(cost)) throw new Error("INSUFFICIENT_TOKENS");
+
+    // 1) Cria a linha ANTES de pedir a geração: é ela que o lojista vai
+    //    acompanhar, e é o id que o servidor usa pra gravar o resultado.
+    const { data, error } = await supabase
+      .from("generations")
+      .insert({
+        store_id: params.storeId,
+        user_id: params.userId,
+        type: GENERATION_TYPE_TO_DB[params.type],
+        input_refs: params.inputs as unknown as Json,
+        output_url: null,
+        tokens_used: cost,
+        is_favorite: false,
+        client_id: params.clientId ?? null,
+        status: "processando",
+      })
+      .select("*")
+      .single();
+    if (error) throw error;
+    const criada = mapGeneration(data);
+    generations = [criada, ...generations];
+
+    // 2) Dispara. O servidor responde na hora e termina em background.
+    const { balance } = await AIService.imageAsync(params.prompt, params.feature, criada.id, {
+      imageUrls: params.imageUrls,
+      images: params.images,
+      aspectRatio: params.aspectRatio,
+    });
+    TokenService.syncAfterServerDebit(cost, `Geração: ${params.type}`, balance);
+    return criada;
+  },
+
+  // Acompanha uma geração até terminar. Consulta a cada `intervaloMs`; chama
+  // `onTick` a cada checagem com os segundos decorridos, pra a tela poder
+  // avisar que está demorando. Sondagem em vez de realtime: o app não usa
+  // realtime em nenhum outro lugar, e isso evita introduzir uma dependência
+  // nova por causa de uma tela só.
+  async waitFor(
+    id: string,
+    onTick?: (segundos: number) => void,
+    intervaloMs = 3000,
+    limiteMs = 420_000,
+  ): Promise<Generation> {
+    const inicio = Date.now();
+    for (;;) {
+      const { data, error } = await supabase.from("generations").select("*").eq("id", id).single();
+      if (!error && data) {
+        const g = mapGeneration(data);
+        if (g.status !== "processando") {
+          generations = generations.map((x) => (x.id === id ? g : x));
+          return g;
+        }
+      }
+      const decorrido = Date.now() - inicio;
+      if (decorrido > limiteMs) throw new Error("A geração demorou mais que o esperado.");
+      onTick?.(Math.round(decorrido / 1000));
+      await new Promise((r) => setTimeout(r, intervaloMs));
     }
   },
 

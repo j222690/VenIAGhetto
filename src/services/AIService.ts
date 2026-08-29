@@ -82,6 +82,32 @@ export const AIService = {
     }
   },
 
+  // Dispara a geração em SEGUNDO PLANO e devolve na hora. O servidor grava o
+  // resultado na linha `generationId` quando terminar (ver mode "image_async"
+  // em generate-image) — quem chama acompanha com GenerationService.waitFor.
+  //
+  // Existe porque a Edge Function SÍNCRONA é encerrada pela Supabase em 150s,
+  // e o Gemini leva de 11s a 131s: o limite fica dentro da faixa normal de
+  // operação. Como o Google cobra a imagem mesmo se desistirmos de esperar,
+  // cada estouro de teto era imagem paga e jogada fora.
+  async imageAsync(
+    prompt: string,
+    feature: "tryon" | "post",
+    generationId: string,
+    refs?: ImageRefs,
+  ): Promise<{ generationId: string; balance?: number }> {
+    return invoke<{ generationId: string; balance?: number }>({
+      mode: "image_async",
+      feature,
+      prompt,
+      generationId,
+      imageUrls: refs?.imageUrls,
+      images: refs?.images,
+      aspectRatio: refs?.aspectRatio,
+      imageSize: refs?.imageSize,
+    });
+  },
+
   // Gera texto com o Gemini (gemini-2.5-flash). Aceita imagens de referência
   // (visão) — usado, por exemplo, para descrever/analisar uma peça.
   async complete(prompt: string, refs?: ImageRefs): Promise<string> {

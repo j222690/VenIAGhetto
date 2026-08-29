@@ -149,6 +149,9 @@ export interface Database {
           client_id: string | null;
           copies: Json | null;
           created_at: string;
+          status: string;
+          error_message: string | null;
+          finished_at: string | null;
         };
         Insert: {
           id?: string;
@@ -162,6 +165,9 @@ export interface Database {
           client_id?: string | null;
           copies?: Json | null;
           created_at?: string;
+          status?: string;
+          error_message?: string | null;
+          finished_at?: string | null;
         };
         Update: {
           id?: string;
@@ -175,6 +181,9 @@ export interface Database {
           client_id?: string | null;
           copies?: Json | null;
           created_at?: string;
+          status?: string;
+          error_message?: string | null;
+          finished_at?: string | null;
         };
         Relationships: [];
       };
@@ -333,6 +342,33 @@ export interface Database {
           store_id?: string;
           client_id?: string;
           url?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      push_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          endpoint?: string;
+          p256dh?: string;
+          auth?: string;
           created_at?: string;
         };
         Relationships: [];

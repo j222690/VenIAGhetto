@@ -34,9 +34,7 @@ export function displayNameFromEmail(email: string): string {
     .split(/\s+/)
     .filter(Boolean);
   if (words.length === 0) return email;
-  return words
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
+  return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
 export function mapAsset(row: AssetRow): Asset {
@@ -101,6 +99,10 @@ export function mapGeneration(row: GenerationRow): Generation {
     isFavorite: row.is_favorite,
     clientId: row.client_id ?? undefined,
     createdAt: row.created_at,
+    // Linhas anteriores à migration 0025 não têm status — todas já tinham
+    // imagem, então valem como prontas.
+    status: ((row as { status?: string }).status ?? "pronta") as Generation["status"],
+    errorMessage: (row as { error_message?: string | null }).error_message ?? undefined,
   };
 }
 

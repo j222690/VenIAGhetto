@@ -46,12 +46,8 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Algo deu errado
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Tente novamente ou volte para a home.
-        </p>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">Algo deu errado</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Tente novamente ou volte para a home.</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -140,6 +136,19 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  // Service Worker: existe só para entregar o aviso de "imagem pronta" com o
+  // app FECHADO (ver public/sw.js e usePushNotifications). Registrado apenas
+  // em produção — em dev ele intercepta as respostas do Vite e passa a servir
+  // versão obsoleta do app.
+  useEffect(() => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+    const ehDev = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+    if (ehDev) return;
+    navigator.serviceWorker.register("/sw.js").catch((e) => {
+      console.warn("[sw] não registrou:", (e as Error)?.message);
+    });
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -36,6 +36,7 @@ import {
 } from "@/constants/prompts";
 import { BACKGROUNDS, FITS, LENGTHS, SIZES } from "@/constants/lookOptions";
 import { cn } from "@/lib/utils";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { genUrl, thumbUrl } from "@/lib/imageUrl";
 
 export const Route = createFileRoute("/tryon")({
@@ -100,6 +101,7 @@ function TryOnPage() {
   const [busyLabel, setBusyLabel] = useState("Gerando…");
   const [result, setResult] = useState<Generation | null>(null);
   const [viewingUrl, setViewingUrl] = useState<string | null>(null);
+  const push = usePushNotifications(session?.user.id);
 
   useEffect(() => {
     void ClientService.load().catch(() => {});
@@ -129,6 +131,29 @@ function TryOnPage() {
   const toggleRetouch = (id: string) =>
     setRetouches((prev) => (prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]));
 
+  // Acompanha uma geração em segundo plano até terminar, atualizando o rótulo
+  // do overlay. Depois de 60s avisa que está lento — sem culpar a internet do
+  // lojista: MEDIDO que a mesma entrada varia de 11s a 131s no Gemini, na
+  // mesma rede. Dizer "conexão ruim" faria ele trocar de wi-fi à toa.
+  const acompanhar = async (pedida: Generation): Promise<Generation> => {
+    setBusyLabel("Gerando sua imagem…");
+    const pronta = await GenerationService.waitFor(pedida.id, (seg) => {
+      setBusyLabel(
+        seg < 60
+          ? `Gerando sua imagem… ${seg}s`
+          : `O serviço de IA está mais lento agora (${seg}s). Sua geração continua rodando — ` +
+              `pode sair desta tela, avisamos quando ficar pronta.`,
+      );
+    });
+    if (pronta.status === "falhou") {
+      throw new Error(pronta.errorMessage ?? "Não foi possível gerar o look.");
+    }
+    // O aviso de "imagem pronta" sai do SERVIDOR via Web Push (ver
+    // _shared/push.ts), pra chegar mesmo com o app fechado. Não avisamos de
+    // novo aqui: duplicaria a notificação quando a tela estiver aberta.
+    return pronta;
+  };
+
   const run = async () => {
     if (!photoUrl) {
       toast.error("Envie a foto do cliente.");
@@ -143,6 +168,10 @@ function TryOnPage() {
       return;
     }
     setBusy(true);
+    // Permissão + inscrição pedidas AQUI, dentro do gesto de tocar em "gerar":
+    // fora de um gesto o iOS simplesmente ignora o pedido. Não bloqueia — se
+    // ele negar, a geração roda igual, só sem aviso.
+    void push.ativar();
     try {
       // Modo grade de looks — ver buildLookGridClause. Fluxo
       // totalmente separado do combinar-peças normal: cada imagem enviada é
@@ -186,26 +215,22 @@ function TryOnPage() {
           scenePart +
           " " +
           REALISM_CLAUSE;
-        const { url, balance } = await AIService.image(gridPrompt, "tryon", {
+        const pedida = await GenerationService.startAsync({
+          type: "tryon",
+          feature: "tryon",
+          prompt: gridPrompt,
+          inputs: { clientPhotoUrl: photoUrl, notes: "Grade de looks" },
+          tokenCost: cost,
+          userId: session.user.id,
+          storeId: session.store.id,
+          clientId: client?.id,
           imageUrls: bgRefUrls.map(genUrl),
           images: [personGrid, composite],
           // Formato de saída vem da grade da PESSOA (é ela que é replicada),
           // não da grade de looks — que tem célula 3:4 fixa e formato próprio.
           aspectRatio: personGrid.aspectRatio,
-          imageSize: "1K",
         });
-        TokenService.syncAfterServerDebit(cost, "Geração: tryon (grade de looks)", balance);
-        const gen = await GenerationService.generate({
-          type: "tryon",
-          alreadyDebited: true,
-          inputs: { clientPhotoUrl: photoUrl, notes: "Grade de looks" },
-          resultUrl: url,
-          tokenCost: cost,
-          userId: session.user.id,
-          storeId: session.store.id,
-          clientId: client?.id,
-        });
-        setResult(gen);
+        setResult(await acompanhar(pedida));
         return;
       }
 
@@ -305,21 +330,30 @@ function TryOnPage() {
           " " +
           REF_APP_FIDELITY_CLOSING_CLAUSE;
 
-        if (garments.length === 1) {
-          const { url, balance } = await AIService.image(stepPrompt, "tryon", {
-            imageUrls: [photoUrl, garments[0], ...bgRefUrls].map(genUrl),
-          });
-          currentUrl = url;
-          TokenService.syncAfterServerDebit(cost, "Geração: tryon", balance);
-        } else {
-          const composite = await composeQuadrant(garments);
-          const { url, balance } = await AIService.image(stepPrompt, "tryon", {
-            imageUrls: [photoUrl, ...bgRefUrls].map(genUrl),
-            images: [composite],
-          });
-          currentUrl = url;
-          TokenService.syncAfterServerDebit(cost, "Geração: tryon", balance);
-        }
+        const refs =
+          garments.length === 1
+            ? { imageUrls: [photoUrl, garments[0], ...bgRefUrls].map(genUrl) }
+            : {
+                imageUrls: [photoUrl, ...bgRefUrls].map(genUrl),
+                images: [await composeQuadrant(garments)],
+              };
+        const pedida = await GenerationService.startAsync({
+          type: "tryon",
+          feature: "tryon",
+          prompt: stepPrompt,
+          inputs: {
+            clientPhotoUrl: photoUrl,
+            notes:
+              `${changeSceneOn ? `${background} ${bgCustom}` : ""} ${refineOn ? retouchCustom : ""} ${size ?? ""} ${fit ?? ""} ${length ?? ""}`.trim(),
+          },
+          tokenCost: cost,
+          userId: session.user.id,
+          storeId: session.store.id,
+          clientId: client?.id,
+          ...refs,
+        });
+        setResult(await acompanhar(pedida));
+        return;
       } else {
         // Fallback sequencial pra 5+ peças (fora do escopo da grade 2x2). Cada
         // peça é 1 chamada de IA = 1 token cobrado no servidor (mais caro que

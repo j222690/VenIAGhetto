@@ -14,6 +14,7 @@
 // -----------------------------------------------------------------------------
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeadersFor } from "../_shared/cors.ts";
+import { avisarUsuario } from "../_shared/push.ts";
 
 const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY")!;
 const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY")!;
@@ -383,6 +384,30 @@ async function refundTokens(admin: ReturnType<typeof createClient>, userId: stri
   await admin.from("token_transactions").insert({ store_id: storeId, type: "credit", amount });
 }
 
+// Gera a imagem e sobe no Storage. Usado tanto pelo modo síncrono quanto pelo
+// assíncrono — a diferença entre os dois é QUANDO isso roda, não o que faz.
+async function gerarESubir(
+  admin: ReturnType<typeof createClient>,
+  userId: string,
+  prompt: string,
+  inputImages: InputImage[],
+  aspectRatio: string | undefined,
+  imageSize: "1K" | "2K",
+): Promise<string> {
+  const { mimeType, data } = await geminiImage(prompt, inputImages, aspectRatio, imageSize);
+  const ext = mimeType.includes("png") ? "png" : mimeType.includes("webp") ? "webp" : "jpg";
+  const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+  const { error: upErr } = await admin.storage
+    .from("generated")
+    .upload(path, base64ToBytes(data), {
+      contentType: mimeType,
+      upsert: false,
+      cacheControl: "31536000",
+    });
+  if (upErr) throw upErr;
+  return admin.storage.from("generated").getPublicUrl(path).data.publicUrl;
+}
+
 Deno.serve(async (req) => {
   const cors = corsHeadersFor(req);
   const json = (body: unknown, status = 200) =>
@@ -437,6 +462,87 @@ Deno.serve(async (req) => {
       return json({ text });
     }
 
+    // mode === "image_async" — MESMA geração, mas sem prender o lojista.
+    //
+    // POR QUE EXISTE (medido nesta base):
+    //  • A Supabase encerra uma Edge Function SÍNCRONA em 150s, em qualquer
+    //    plano. O Gemini leva de 11s a 131s — o limite está DENTRO da faixa
+    //    normal de operação, então gerações lentas viravam erro de gateway.
+    //  • O Google cobra a imagem mesmo quando desistimos de esperar: 7 de 7
+    //    requisições abandonadas voltaram COM imagem completa. Toda geração
+    //    morta no teto era dinheiro pago e jogado fora.
+    //
+    // Respondendo na hora e terminando com EdgeRuntime.waitUntil, o orçamento
+    // vai a 400s (acima do pior caso já medido), nenhuma imagem paga se perde,
+    // e some a necessidade de repetir — o que devolve o custo a 1 chamada por
+    // geração. O cliente cria a linha em `generations` com status
+    // 'processando' e passa o id aqui; nós a completamos quando terminar.
+    if (mode === "image_async") {
+      const feature: string = (body.feature ?? "").toString();
+      const cost = FEATURE_COST[feature];
+      if (cost === undefined) return json({ error: "Feature de geração inválida." }, 400);
+      const generationId: string = (body.generationId ?? "").toString();
+      if (!generationId) return json({ error: "generationId obrigatório." }, 400);
+
+      const { data: newBalance, error: debitErr } = await authed.rpc("debit_tokens", {
+        p_amount: cost,
+        p_reason: `Geração: ${feature}`,
+      });
+      if (debitErr) return json({ error: "Saldo de tokens insuficiente." }, 402);
+
+      const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
+      let aspectRatio: string | undefined = body.aspectRatio;
+      if (!aspectRatio) {
+        const base = inputImages[0];
+        if (base?.width && base?.height) aspectRatio = nearestAspectRatio(base.width, base.height);
+      }
+      const imageSize: "1K" | "2K" = body.imageSize === "2K" ? "2K" : "1K";
+
+      const trabalho = (async () => {
+        const t0 = Date.now();
+        try {
+          const url = await gerarESubir(admin, user.id, prompt, inputImages, aspectRatio, imageSize);
+          await admin
+            .from("generations")
+            .update({ output_url: url, status: "pronta", finished_at: new Date().toISOString() })
+            .eq("id", generationId);
+          console.log(`[async] ${generationId} PRONTA em ${Date.now() - t0}ms`);
+          // Avisa mesmo com o app FECHADO (Web Push). Se o lojista estiver com
+          // a tela aberta, ele já viu o resultado — o service worker não
+          // duplica porque a sondagem some com o overlay antes.
+          await avisarUsuario(admin, user.id, {
+            title: "Vest Ai",
+            body: "Sua imagem está pronta!",
+            url: "/album",
+          });
+        } catch (e) {
+          const msg = (e as Error)?.message ?? String(e);
+          console.warn(`[async] ${generationId} FALHOU em ${Date.now() - t0}ms: ${msg}`);
+          await refundTokens(admin, user.id, cost);
+          await admin
+            .from("generations")
+            .update({ status: "falhou", error_message: msg, finished_at: new Date().toISOString() })
+            .eq("id", generationId);
+          await avisarUsuario(admin, user.id, {
+            title: "Vest Ai",
+            body: "Não foi possível gerar sua imagem. Seu token foi devolvido.",
+            url: "/tryon",
+          });
+        }
+      })();
+
+      // Mantém a função viva além da resposta. Sem isso o worker é encerrado
+      // e a geração morre junto — paga e perdida, que é o que queremos evitar.
+      try {
+        (globalThis as { EdgeRuntime?: { waitUntil: (p: Promise<unknown>) => void } })
+          .EdgeRuntime?.waitUntil(trabalho);
+      } catch {
+        /* sem waitUntil: cai no comportamento antigo, a promessa segue solta */
+      }
+
+      return json({ generationId, status: "processando", balance: newBalance });
+    }
+
     // mode === "image" — a única chamada realmente cara (Gemini image gen).
     // Cobra o token ANTES de chamar a IA, com o custo determinado pelo
     // SERVIDOR (nunca pelo cliente) a partir de `feature`.
@@ -468,26 +574,14 @@ Deno.serve(async (req) => {
     // caro por imagem, então um valor arbitrário vindo do front viraria custo
     // nosso. Qualquer outra coisa (inclusive "4K") cai no padrão 1K.
     const imageSize: "1K" | "2K" = body.imageSize === "2K" ? "2K" : "1K";
-    let mimeType: string, data: string;
+    let url: string;
     try {
-      ({ mimeType, data } = await geminiImage(prompt, inputImages, aspectRatio, imageSize));
+      url = await gerarESubir(admin, user.id, prompt, inputImages, aspectRatio, imageSize);
     } catch (e) {
       await refundTokens(admin, user.id, cost);
       throw e;
     }
-    const ext = mimeType.includes("png") ? "png" : mimeType.includes("webp") ? "webp" : "jpg";
-    const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-
-    const { error: upErr } = await admin.storage
-      .from("generated")
-      .upload(path, base64ToBytes(data), { contentType: mimeType, upsert: false, cacheControl: "31536000" });
-    if (upErr) {
-      await refundTokens(admin, user.id, cost);
-      throw upErr;
-    }
-
-    const { data: pub } = admin.storage.from("generated").getPublicUrl(path);
-    return json({ url: pub.publicUrl, balance: newBalance });
+    return json({ url, balance: newBalance });
   } catch (e) {
     return json({ error: (e as Error)?.message ?? String(e) }, 500);
   }

@@ -120,7 +120,14 @@ export interface Generation {
   isFavorite: boolean;
   clientId?: string;
   createdAt: string;
+  // Geração em segundo plano (ver migration 0025): "processando" enquanto o
+  // Gemini trabalha, "pronta" quando resultUrl existe, "falhou" com o motivo
+  // em errorMessage (o token já foi reembolsado nesse caso).
+  status: GenerationStatus;
+  errorMessage?: string;
 }
+
+export type GenerationStatus = "processando" | "pronta" | "falhou";
 
 // Peça do catálogo da loja (a loja cadastra o que vende).
 export interface CatalogItem {
