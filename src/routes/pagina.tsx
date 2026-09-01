@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/pagina")({
@@ -59,12 +60,11 @@ function SalesPage() {
           <div>
             <p className="eyebrow">Vest Ai · para lojas e vendedores de moda</p>
             <h1>
-              Conteúdo de moda profissional, <span className="grad-text">em segundos.</span>
+              A IA criada para lojas de moda <span className="grad-text">venderem mais.</span>
             </h1>
             <p className="hero-sub">
-              Chega de agendar ensaio pra cada peça nova. O Vest Ai veste sua roupa em modelos
-              gerados por IA — prontos pra loja, pro feed e pro WhatsApp, com a estética da sua
-              marca.
+              Vista suas peças em modelos, crie looks para seus clientes e produza conteúdo
+              profissional em segundos — tudo em um só lugar.
             </p>
             <div className="hero-ctas">
               <Link to="/welcome" className="btn btn-primary">
@@ -93,9 +93,12 @@ function SalesPage() {
               <span className="app-name">Provador IA</span>
               <span className="app-tag">Vest Ai</span>
             </div>
-            <div className="look-cell hero-photo">
-              <img src="/marketing/cliente.jpg" alt="Foto gerada pelo Vest Ai" loading="lazy" />
-            </div>
+            <BeforeAfter
+              antes="/marketing/antes.jpg"
+              depois="/marketing/depois.jpg"
+              rotuloAntes="Antes"
+              rotuloDepois="Depois"
+            />
             <div className="phone-nav">
               <span className="active"></span>
               <span></span>
@@ -104,6 +107,30 @@ function SalesPage() {
             </div>
           </div>
         </div>
+
+        <hr className="divider" />
+
+        <section id="beneficios">
+          <div className="wrap">
+            <div className="benefit-grid">
+              <BenefitCard
+                numero="1"
+                titulo="Venda mais"
+                desc="Mostre para o cliente como aquela peça ou combinação pode ficar, inclusive durante um atendimento pelo WhatsApp."
+              />
+              <BenefitCard
+                numero="2"
+                titulo="Produza mais conteúdo"
+                desc="Transforme foto de produto em conteúdo profissional sem depender de fotógrafo, modelo, estúdio ou agenda."
+              />
+              <BenefitCard
+                numero="3"
+                titulo="Economize tempo e dinheiro"
+                desc="Uma ferramenta que entra na rotina do vendedor e da loja, não apenas do marketing."
+              />
+            </div>
+          </div>
+        </section>
 
         <hr className="divider" />
 
@@ -517,6 +544,89 @@ function SalesPage() {
   );
 }
 
+// Comparador ANTES/DEPOIS com divisória arrastável.
+//
+// As duas fotos são a MESMA cena (mesma pessoa, pose, fundo e enquadramento),
+// mudando só a roupa — por isso o efeito de arrastar funciona: o olho lê como
+// uma foto só se transformando, que é exatamente a promessa do produto.
+//
+// Acessibilidade: além do arraste, é um <input type="range"> de verdade por
+// baixo, então funciona por teclado e leitor de tela. Muitos comparadores
+// dessa página só respondem a mouse e ficam inutilizáveis assim.
+function BeforeAfter({
+  antes,
+  depois,
+  rotuloAntes,
+  rotuloDepois,
+}: {
+  antes: string;
+  depois: string;
+  rotuloAntes: string;
+  rotuloDepois: string;
+}) {
+  const [pos, setPos] = useState(50);
+
+  return (
+    <div className="phone reveal">
+      <div className="phone-bar">
+        <span className="app-name">Provador IA</span>
+        <span className="app-tag">Vest Ai</span>
+      </div>
+
+      <div className="ba-slider" style={{ ["--pos" as string]: `${pos}%` }}>
+        {/* Base: a foto DEPOIS ocupa o quadro inteiro. */}
+        <img className="ba-img" src={depois} alt="A mesma pessoa com o look gerado pelo Vest Ai" />
+        {/* Por cima, a foto ANTES recortada até a divisória. */}
+        <div className="ba-clip">
+          <img className="ba-img" src={antes} alt="A mesma pessoa antes da troca de roupa" />
+        </div>
+
+        <span className="ba-label left">{rotuloAntes}</span>
+        <span className="ba-label right">{rotuloDepois}</span>
+
+        <div className="ba-handle" aria-hidden="true">
+          <span className="ba-grip">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M15 6l-6 6 6 6M9 6l6 6-6 6" />
+            </svg>
+          </span>
+        </div>
+
+        <input
+          className="ba-range"
+          type="range"
+          min={0}
+          max={100}
+          value={pos}
+          onChange={(e) => setPos(Number(e.target.value))}
+          aria-label="Arraste para comparar antes e depois"
+        />
+      </div>
+
+      <p className="ba-hint">Arraste para comparar</p>
+    </div>
+  );
+}
+
+function BenefitCard({ numero, titulo, desc }: { numero: string; titulo: string; desc: string }) {
+  return (
+    <div className="benefit-card reveal">
+      <span className="benefit-num">{numero}</span>
+      <h3>{titulo}</h3>
+      <p>{desc}</p>
+    </div>
+  );
+}
+
 function CheckIcon() {
   return (
     <svg
@@ -762,6 +872,35 @@ const CSS = `
 }
 .pv .look-cell img { width: 100%; height: 100%; object-fit: cover; }
 .pv .look-cell.hero-photo { aspect-ratio: 3/4; border-radius: 1.4rem; }
+/* ── Comparador antes/depois (topo) ────────────────────────────────────── */
+.pv .ba-slider { position: relative; aspect-ratio: 3/4; border-radius: 1.4rem; overflow: hidden; border: 1px solid var(--line); background: var(--card-2); touch-action: pan-y; }
+.pv .ba-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; user-select: none; -webkit-user-drag: none; }
+/* Revela a foto "antes" até a divisória com clip-path, NÃO com largura.
+   Estreitar o contêiner espremia a imagem (medido: 238px em vez de 476px) e
+   as duas deixavam de casar — que é justamente o que faz o efeito funcionar.
+   Com clip-path a imagem continua em tamanho cheio e só é mascarada. */
+.pv .ba-clip { position: absolute; inset: 0; clip-path: inset(0 calc(100% - var(--pos)) 0 0); }
+.pv .ba-label { position: absolute; top: 0.7rem; font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; padding: 0.3rem 0.6rem; border-radius: 999px; background: rgba(0,0,0,0.55); backdrop-filter: blur(6px); color: var(--fg); pointer-events: none; }
+.pv .ba-label.left { left: 0.7rem; }
+.pv .ba-label.right { right: 0.7rem; }
+.pv .ba-handle { position: absolute; top: 0; bottom: 0; left: var(--pos); width: 2px; background: rgba(255,255,255,0.9); transform: translateX(-1px); pointer-events: none; box-shadow: 0 0 12px rgba(0,0,0,0.6); }
+.pv .ba-grip { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 2.4rem; height: 2.4rem; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); box-shadow: var(--glow); }
+/* O range é a interação REAL (funciona por toque, mouse e teclado); fica
+   invisível por cima do quadro inteiro. */
+.pv .ba-range { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; -webkit-appearance: none; appearance: none; background: transparent; }
+.pv .ba-range::-webkit-slider-thumb { -webkit-appearance: none; width: 3rem; height: 100%; cursor: ew-resize; }
+.pv .ba-range::-moz-range-thumb { width: 3rem; height: 100%; border: 0; background: transparent; cursor: ew-resize; }
+.pv .ba-range:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 3px; border-radius: 1.4rem; }
+.pv .ba-hint { text-align: center; font-size: 0.75rem; color: var(--fg-faint); padding-top: 0.9rem; margin: 0; }
+
+/* ── Três benefícios ───────────────────────────────────────────────────── */
+.pv .benefit-grid { display: grid; gap: 1rem; padding: 1rem 0 0.5rem; }
+@media (min-width: 860px) { .pv .benefit-grid { grid-template-columns: repeat(3, 1fr); gap: 1.2rem; } }
+.pv .benefit-card { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 1.2rem; padding: 1.6rem 1.4rem 1.4rem; box-shadow: var(--shadow-soft); }
+.pv .benefit-num { display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: 50%; font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--accent-ink); background-image: linear-gradient(120deg, var(--accent), var(--accent-3)); box-shadow: var(--glow); }
+.pv .benefit-card h3 { margin-top: 0.9rem; font-size: 1.15rem; }
+.pv .benefit-card p { margin-top: 0.5rem; color: var(--fg-soft); font-size: 0.95rem; line-height: 1.6; }
+
 .pv .phone-nav { display: flex; justify-content: center; gap: 1.6rem; padding-top: 1rem; }
 .pv .phone-nav span { width: 0.4rem; height: 0.4rem; border-radius: 50%; background: var(--line-strong); }
 .pv .phone-nav span.active { background: var(--accent); box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.7); }
