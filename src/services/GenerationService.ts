@@ -311,6 +311,26 @@ export const GenerationService = {
     return criada;
   },
 
+  // Pede ao servidor que resgate gerações presas em "processando".
+  //
+  // A tarefa em segundo plano da Supabase é encerrada aos 400s; se isso pegar
+  // a geração no meio, ela morre sem marcar a linha como falha e sem devolver
+  // o token (visto num teste: linha parada em 356s). Chamado no bootstrap do
+  // app, que é quando o lojista voltaria e notaria.
+  //
+  // O trabalho acontece no SERVIDOR de propósito: o reembolso mexe em saldo, e
+  // deixar o cliente creditar tokens seria dar saldo infinito a quem chamasse
+  // a API direto. Aqui só pedimos.
+  async rescueStuck(): Promise<number> {
+    try {
+      const { resgatadas } = await AIService.rescueStuck();
+      if (resgatadas > 0) await this.load();
+      return resgatadas;
+    } catch {
+      return 0; // serviço fora do ar não pode travar a abertura do app
+    }
+  },
+
   // Acompanha uma geração até terminar. Consulta a cada `intervaloMs`; chama
   // `onTick` a cada checagem com os segundos decorridos, pra a tela poder
   // avisar que está demorando. Sondagem em vez de realtime: o app não usa

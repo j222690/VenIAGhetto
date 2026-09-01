@@ -228,6 +228,12 @@ async function geminiImage(
   images: InputImage[],
   aspectRatio?: string,
   imageSize: "1K" | "2K" = "1K",
+  // "sincrono": a Supabase encerra a função em 150s, então as tentativas
+  // precisam caber nisso. "assincrono": rodando em background o orçamento é
+  // 400s, e cortar o modelo aos 70s desperdiça justamente a folga que a
+  // geração em segundo plano foi criada pra ter — MEDIDO: uma geração
+  // assíncrona morreu aos 125s por causa desses tetos antigos.
+  orcamento: "sincrono" | "assincrono" = "sincrono",
 ) {
   // ESTRATÉGIA (medida, não chutada): num lote de 5 gerações de Grade de
   // Looks, 3 falharam — e nas 3 o modelo principal estourou o teto E o
@@ -245,11 +251,29 @@ async function geminiImage(
   // 1K: 2K custaria ~50% mais caro ($0,101 vs $0,067/imagem) por pouco ganho
   // real. aspectRatio: sem isso o modelo usa o formato padrão dele (~quadrado)
   // e espreme a pessoa. Só o principal aceita imageConfig — o legado não.
-  const tentativas: { modelo: string; timeoutMs: number; comConfig: boolean }[] = [
-    { modelo: IMAGE_MODEL, timeoutMs: 70_000, comConfig: true },
-    { modelo: IMAGE_MODEL, timeoutMs: 50_000, comConfig: true },
-    { modelo: IMAGE_MODEL_FALLBACK, timeoutMs: 45_000, comConfig: false },
-  ];
+  // ASSÍNCRONO: UMA tentativa só, sem abortar-e-recomeçar.
+  //
+  // MEDIDO (7 de 7): quando paramos de esperar, o Gemini NÃO para — ele
+  // termina e devolve a imagem completa mesmo assim, e cobra por ela. Então
+  // abortar aos 70s pra tentar de novo jogava fora uma imagem já paga e
+  // comprava outra: 2 imagens pagas pra entregar 1.
+  //
+  // Como aqui a função já respondeu ao lojista e o trabalho segue em segundo
+  // plano, não existe pressa de tela: dá pra simplesmente ESPERAR a primeira
+  // chegar. Uma geração pedida = uma imagem paga.
+  //
+  // 300s deixa ~100s de folga até o limite de 400s da tarefa em background —
+  // margem pro download das imagens de entrada e o upload do resultado.
+  // ERRO REAL que essa folga corrige: com 360s de tetos somados, a função foi
+  // morta no meio e a linha ficou presa em "processando" (medido: 356s).
+  const tentativas: { modelo: string; timeoutMs: number; comConfig: boolean }[] =
+    orcamento === "assincrono"
+      ? [{ modelo: IMAGE_MODEL, timeoutMs: 300_000, comConfig: true }]
+      : [
+          { modelo: IMAGE_MODEL, timeoutMs: 70_000, comConfig: true },
+          { modelo: IMAGE_MODEL, timeoutMs: 50_000, comConfig: true },
+          { modelo: IMAGE_MODEL_FALLBACK, timeoutMs: 45_000, comConfig: false },
+        ];
 
   let ultimoErro: unknown = null;
   for (let i = 0; i < tentativas.length; i++) {
@@ -393,8 +417,15 @@ async function gerarESubir(
   inputImages: InputImage[],
   aspectRatio: string | undefined,
   imageSize: "1K" | "2K",
+  orcamento: "sincrono" | "assincrono" = "sincrono",
 ): Promise<string> {
-  const { mimeType, data } = await geminiImage(prompt, inputImages, aspectRatio, imageSize);
+  const { mimeType, data } = await geminiImage(
+    prompt,
+    inputImages,
+    aspectRatio,
+    imageSize,
+    orcamento,
+  );
   const ext = mimeType.includes("png") ? "png" : mimeType.includes("webp") ? "webp" : "jpg";
   const path = `${userId}/${crypto.randomUUID()}.${ext}`;
   const { error: upErr } = await admin.storage
@@ -434,7 +465,11 @@ Deno.serve(async (req) => {
     const mode: string = body.mode ?? "image";
     const prompt: string = (body.prompt ?? "").toString();
 
-    if (!prompt.trim()) return json({ error: "Prompt vazio." }, 400);
+    // "rescue_stuck" é o único modo que não gera nada — é limpeza, e não tem
+    // prompt. A validação abaixo vale para todos os outros.
+    if (mode !== "rescue_stuck" && !prompt.trim()) {
+      return json({ error: "Prompt vazio." }, 400);
+    }
 
     // Saldo > 0 exigido pra visão/texto (não cobram token próprio — ficam
     // embutidos no custo da feature principal — mas sem esse mínimo dava pra
@@ -446,6 +481,49 @@ Deno.serve(async (req) => {
     }
 
     // Visão (OpenAI) — analisa imagens por URL, não precisa baixar/inline.
+    // RESGATE de gerações presas em "processando".
+    //
+    // A tarefa em segundo plano é encerrada aos 400s. Se isso pegar a geração
+    // no meio, ela morre sem rodar o tratamento de erro: a linha fica
+    // "processando" pra sempre e o token NÃO volta (aconteceu num teste, linha
+    // parada em 356s). Nenhum teto elimina isso — pode ser limite de CPU, de
+    // memória, ou um deploy no meio da geração.
+    //
+    // Roda AQUI, e não no frontend, porque o reembolso mexe em saldo: dar ao
+    // cliente a capacidade de creditar tokens seria dar saldo infinito a
+    // qualquer um que chamasse a API direto. O cliente só PEDE o resgate; a
+    // verificação de quais linhas realmente estão presas é nossa.
+    if (mode === "rescue_stuck") {
+      const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
+      const { data: u } = await admin.from("users").select("store_id").eq("id", user.id).single();
+      const storeId = (u as { store_id?: string } | null)?.store_id;
+      if (!storeId) return json({ resgatadas: 0 });
+
+      // 10 minutos: acima do teto de 300s da geração mais o overhead, então
+      // não mata nada que ainda pudesse terminar sozinho.
+      const limite = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const { data: presas } = await admin
+        .from("generations")
+        .update({
+          status: "falhou",
+          error_message: "A geração foi interrompida antes de terminar. Seu token foi devolvido.",
+          finished_at: new Date().toISOString(),
+        })
+        .eq("store_id", storeId)
+        .eq("status", "processando")
+        .lt("created_at", limite)
+        .select("id,tokens_used");
+
+      const linhas = (presas ?? []) as { id: string; tokens_used: number | null }[];
+      for (const g of linhas) {
+        await refundTokens(admin, user.id, g.tokens_used ?? 1);
+      }
+      if (linhas.length) {
+        console.log(`[rescue] ${linhas.length} geração(ões) presa(s) resgatada(s) na loja ${storeId}`);
+      }
+      return json({ resgatadas: linhas.length });
+    }
+
     if (mode === "vision") {
       if (!(await hasAnyBalance())) return json({ error: "Saldo de tokens insuficiente." }, 402);
       const urls: string[] = body.imageUrls ?? [];
@@ -501,7 +579,15 @@ Deno.serve(async (req) => {
       const trabalho = (async () => {
         const t0 = Date.now();
         try {
-          const url = await gerarESubir(admin, user.id, prompt, inputImages, aspectRatio, imageSize);
+          const url = await gerarESubir(
+            admin,
+            user.id,
+            prompt,
+            inputImages,
+            aspectRatio,
+            imageSize,
+            "assincrono",
+          );
           await admin
             .from("generations")
             .update({ output_url: url, status: "pronta", finished_at: new Date().toISOString() })

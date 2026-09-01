@@ -108,6 +108,12 @@ export const AIService = {
     });
   },
 
+  // Pede ao servidor que marque como falha (e reembolse) as gerações que
+  // ficaram presas em "processando" — ver mode "rescue_stuck".
+  async rescueStuck(): Promise<{ resgatadas: number }> {
+    return invoke<{ resgatadas: number }>({ mode: "rescue_stuck" });
+  },
+
   // Gera texto com o Gemini (gemini-2.5-flash). Aceita imagens de referência
   // (visão) — usado, por exemplo, para descrever/analisar uma peça.
   async complete(prompt: string, refs?: ImageRefs): Promise<string> {

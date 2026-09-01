@@ -72,7 +72,7 @@ function AlbumPage() {
                     <img
                       src={thumbUrl(look.resultUrl, { width: 200 })}
                       alt={TYPE_LABEL[look.type] ?? "Look"}
-                      className="h-full w-full object-contain"
+                      className="h-full w-full object-cover object-top"
                       loading="lazy"
                       decoding="async"
                     />

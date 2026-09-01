@@ -66,6 +66,12 @@ async function buildSession(): Promise<Session | null> {
     AssetService.load(store.id),
   ]);
 
+  // Resgata gerações que ficaram presas em "processando" (ver
+  // GenerationService.rescueStuck). Fora do Promise.all de propósito: é uma
+  // limpeza oportunista, e uma falha aqui não pode derrubar a montagem da
+  // sessão — o catch em AuthContext trataria isso como "deslogado".
+  void GenerationService.rescueStuck().catch(() => {});
+
   sessionCache = { user: mapUser(userRow), store };
   return sessionCache;
 }

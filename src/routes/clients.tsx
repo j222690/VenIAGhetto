@@ -260,7 +260,7 @@ function ClientsPage() {
                   <img
                     src={thumbUrl(c.photoUrl, { width: 96 })}
                     alt={c.name}
-                    className="h-11 w-11 shrink-0 rounded-full object-cover"
+                    className="h-11 w-11 shrink-0 rounded-full object-cover object-top"
                     loading="lazy"
                     decoding="async"
                   />
@@ -429,7 +429,7 @@ function ClientFolder({ client: initialClient, onBack }: { client: Client; onBac
           <img
             src={client.photoUrl}
             alt={client.name}
-            className="mx-auto h-28 w-28 rounded-full object-cover"
+            className="mx-auto h-28 w-28 rounded-full object-cover object-top"
           />
         ) : null}
 
@@ -493,7 +493,7 @@ function ClientFolder({ client: initialClient, onBack }: { client: Client; onBac
                     <img
                       src={thumbUrl(p.url, { width: 200 })}
                       alt="Foto do cliente"
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover object-top"
                       loading="lazy"
                       decoding="async"
                     />
@@ -560,7 +560,7 @@ function ClientFolder({ client: initialClient, onBack }: { client: Client; onBac
                     <img
                       src={thumbUrl(g.resultUrl, { width: 200 })}
                       alt="Look do cliente"
-                      className="h-full w-full object-contain"
+                      className="h-full w-full object-cover object-top"
                       loading="lazy"
                       decoding="async"
                     />
