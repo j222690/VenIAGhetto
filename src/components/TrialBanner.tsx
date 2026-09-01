@@ -38,8 +38,8 @@ export function TrialBanner() {
           </p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             {balance > 0
-              ? `Você tem ${balance} ${balance === 1 ? "geração" : "gerações"} para usar hoje. A cota renova todo dia até o fim do teste.`
-              : "Você já usou as gerações de hoje. Amanhã entram novas — ou assine para liberar o mês inteiro."}
+              ? `Você ganhou 35 créditos para testar e ainda tem ${balance} ${balance === 1 ? "geração" : "gerações"}. Use como quiser durante o teste.`
+              : "Seus créditos de teste acabaram. Assine um plano para continuar gerando."}
           </p>
           <Link
             to="/plans"

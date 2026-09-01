@@ -131,14 +131,14 @@ export const TokenService = {
     notify();
   },
 
-  // Pede a cota DIÁRIA do teste grátis. O servidor decide se a loja tem
+  // Pede os créditos do teste grátis (lote único de 35, ver migration 0028). O servidor decide se a loja tem
   // direito (ver grant_trial_tokens na migration 0027) — aqui só chamamos e
   // refletimos o saldo. Precisa ser assim porque conceder token é mexer em
   // saldo: se o cliente pudesse fazer isso, qualquer um chamando a API direto
   // se daria tokens infinitos.
   //
-  // Chamado no bootstrap: a cota do dia entra quando o lojista abre o app.
-  async claimTrialDaily(): Promise<void> {
+  // Chamado no bootstrap. A função é idempotente: só concede uma vez por loja.
+  async claimTrial(): Promise<void> {
     try {
       const { data, error } = await supabase.rpc("grant_trial_tokens");
       if (error || typeof data !== "number") return;

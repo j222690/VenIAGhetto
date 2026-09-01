@@ -57,9 +57,9 @@ async function buildSession(): Promise<Session | null> {
   }
 
   const store = await StoreService.getCurrentStore();
-  // Cota diária do teste grátis ANTES de carregar o extrato, pra o saldo já
-  // aparecer certo na primeira tela (ver migration 0027).
-  await TokenService.claimTrialDaily();
+  // Créditos do teste grátis ANTES de carregar o extrato, pra o saldo já
+  // aparecer certo na primeira tela (ver migration 0028).
+  await TokenService.claimTrial();
   // Hidrata listas/extrato da loja. GenerationService.load não lança (cai no
   // seed se a tabela não existir), por isso é seguro no Promise.all.
   await Promise.all([
