@@ -82,6 +82,9 @@ export interface Store {
   planId: PlanId;
   segment: StoreSegment;
   tokensBalance: number;
+  /** Fim do teste grátis de 7 dias. undefined = loja sem teste (assinante
+   *  ou criada antes da migration 0027). */
+  trialEndsAt?: string;
   tokensUsedThisMonth: number;
 }
 

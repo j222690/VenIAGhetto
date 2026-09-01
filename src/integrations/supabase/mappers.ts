@@ -75,6 +75,7 @@ export function mapStore(row: StoreRow, tokensUsedThisMonth = 0): Store {
     planId: row.plan,
     segment: row.segment ?? "feminina",
     tokensBalance: row.tokens_balance,
+    trialEndsAt: (row as { trial_ends_at?: string | null }).trial_ends_at ?? undefined,
     tokensUsedThisMonth,
   };
 }

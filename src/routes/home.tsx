@@ -6,6 +6,7 @@ import { FeatureCard } from "@/components/FeatureCard";
 import { LookActions } from "@/components/LookActions";
 import { SectionTitle } from "@/components/SectionTitle";
 import { PushPrompt } from "@/components/PushPrompt";
+import { TrialBanner } from "@/components/TrialBanner";
 import { useTokens } from "@/hooks/useTokens";
 import { GenerationService } from "@/services/GenerationService";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,6 +32,8 @@ function HomePage() {
             O que vamos criar hoje?
           </h1>
         </section>
+
+        <TrialBanner />
 
         <PushPrompt />
 

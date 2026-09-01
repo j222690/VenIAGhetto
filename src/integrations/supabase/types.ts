@@ -10,20 +10,10 @@ export type AssetType = "model" | "look" | "background" | "generated";
 export type GenerationTypeDb = "provador" | "post" | "scanner";
 export type TransactionType = "credit" | "debit";
 export type InviteStatusDb = "pending" | "accepted" | "revoked";
-export type SubscriptionStatus =
-  | "trialing"
-  | "active"
-  | "past_due"
-  | "canceled";
+export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled";
 
 // JSON serializável (para colunas jsonb).
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[];
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export interface Database {
   public: {
@@ -35,6 +25,8 @@ export interface Database {
           cnpj: string | null;
           plan: PlanType;
           tokens_balance: number;
+          trial_ends_at: string | null;
+          trial_last_grant_on: string | null;
           segment: StoreSegmentDb;
           logo_url: string | null;
           description: string | null;
@@ -50,6 +42,8 @@ export interface Database {
           cnpj?: string | null;
           plan?: PlanType;
           tokens_balance?: number;
+          trial_ends_at?: string | null;
+          trial_last_grant_on?: string | null;
           segment?: StoreSegmentDb;
           logo_url?: string | null;
           description?: string | null;
@@ -65,6 +59,8 @@ export interface Database {
           cnpj?: string | null;
           plan?: PlanType;
           tokens_balance?: number;
+          trial_ends_at?: string | null;
+          trial_last_grant_on?: string | null;
           segment?: StoreSegmentDb;
           logo_url?: string | null;
           description?: string | null;
@@ -465,6 +461,10 @@ export interface Database {
         Args: Record<never, never>;
         Returns: UserRoleDb;
       };
+      grant_trial_tokens: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
       debit_tokens: {
         Args: { p_amount: number; p_reason?: string | null; p_ref?: string | null };
         Returns: number;
@@ -495,18 +495,11 @@ export type StoreRow = Database["public"]["Tables"]["stores"]["Row"];
 export type UserRow = Database["public"]["Tables"]["users"]["Row"];
 export type AssetRow = Database["public"]["Tables"]["assets"]["Row"];
 export type GenerationRow = Database["public"]["Tables"]["generations"]["Row"];
-export type ProductSheetRow =
-  Database["public"]["Tables"]["product_sheets"]["Row"];
-export type TokenTransactionRow =
-  Database["public"]["Tables"]["token_transactions"]["Row"];
-export type SubscriptionRow =
-  Database["public"]["Tables"]["subscriptions"]["Row"];
-export type StoreInviteRow =
-  Database["public"]["Tables"]["store_invites"]["Row"];
+export type ProductSheetRow = Database["public"]["Tables"]["product_sheets"]["Row"];
+export type TokenTransactionRow = Database["public"]["Tables"]["token_transactions"]["Row"];
+export type SubscriptionRow = Database["public"]["Tables"]["subscriptions"]["Row"];
+export type StoreInviteRow = Database["public"]["Tables"]["store_invites"]["Row"];
 export type ClientRow = Database["public"]["Tables"]["clients"]["Row"];
-export type ClientPhotoRow =
-  Database["public"]["Tables"]["client_photos"]["Row"];
-export type CatalogItemRow =
-  Database["public"]["Tables"]["catalog_items"]["Row"];
-export type CatalogCategoryRow =
-  Database["public"]["Tables"]["catalog_categories"]["Row"];
+export type ClientPhotoRow = Database["public"]["Tables"]["client_photos"]["Row"];
+export type CatalogItemRow = Database["public"]["Tables"]["catalog_items"]["Row"];
+export type CatalogCategoryRow = Database["public"]["Tables"]["catalog_categories"]["Row"];
