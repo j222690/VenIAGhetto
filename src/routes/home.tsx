@@ -5,6 +5,7 @@ import { AppLayout } from "@/layouts/AppLayout";
 import { FeatureCard } from "@/components/FeatureCard";
 import { LookActions } from "@/components/LookActions";
 import { SectionTitle } from "@/components/SectionTitle";
+import { PushPrompt } from "@/components/PushPrompt";
 import { useTokens } from "@/hooks/useTokens";
 import { GenerationService } from "@/services/GenerationService";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,6 +31,8 @@ function HomePage() {
             O que vamos criar hoje?
           </h1>
         </section>
+
+        <PushPrompt />
 
         <section className="rounded-3xl border border-border bg-card p-5 shadow-soft">
           <div className="flex items-baseline justify-between">
@@ -106,7 +109,13 @@ function HomePage() {
                   className="overflow-hidden rounded-2xl border border-border bg-card"
                 >
                   <div className="relative aspect-[3/4] w-full overflow-hidden bg-secondary">
-                    <img src={g.resultUrl} alt={g.type} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                    <img
+                      src={g.resultUrl}
+                      alt={g.type}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                    />
                     <LookActions
                       look={g}
                       actions={["favorite", "save", "download", "share"]}
