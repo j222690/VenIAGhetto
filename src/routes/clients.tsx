@@ -560,7 +560,7 @@ function ClientFolder({ client: initialClient, onBack }: { client: Client; onBac
                     <img
                       src={thumbUrl(g.resultUrl, { width: 200 })}
                       alt="Look do cliente"
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain"
                       loading="lazy"
                       decoding="async"
                     />

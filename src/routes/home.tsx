@@ -112,7 +112,7 @@ function HomePage() {
                     <img
                       src={g.resultUrl}
                       alt={g.type}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain"
                       loading="lazy"
                       decoding="async"
                     />

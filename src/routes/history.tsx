@@ -109,7 +109,7 @@ function HistoryPage() {
                   <img
                     src={thumbUrl(g.resultUrl, { width: 200 })}
                     alt={g.type}
-                    className="h-16 w-16 rounded-xl object-cover"
+                    className="h-16 w-16 rounded-xl object-contain"
                     loading="lazy"
                     decoding="async"
                   />
