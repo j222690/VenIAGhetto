@@ -126,7 +126,7 @@ export const ShowcaseService = {
   },
 
   // Imagem de anúncio criada do zero. Custa 1 geração (feature "post").
-  async imagemTema(tema: string, formato: "feed" | "story"): Promise<string> {
+  async imagemTema(tema: string, formato: "feed" | "story" | "carrossel"): Promise<string> {
     const prompt =
       "Fotografia publicitária realista para um anúncio de aplicativo voltado a lojas de moda no " +
       "Brasil. " +
