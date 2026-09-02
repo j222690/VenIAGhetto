@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { SALES_PHONE, SUPPORT_PHONE_LABEL, SUPPORT_WHATSAPP, waLink } from "@/constants/contact";
 
 export const Route = createFileRoute("/pagina")({
   head: () => ({
@@ -15,8 +16,9 @@ export const Route = createFileRoute("/pagina")({
   component: SalesPage,
 });
 
-const WHATSAPP_URL =
-  "https://wa.me/5549989033938?text=Ol%C3%A1!%20Quero%20saber%20mais%20sobre%20o%20Vest%20Ai.";
+// Dois numeros, dois propositos: o botao flutuante e VENDAS (quem ainda nao
+// e cliente); o do rodape e SUPORTE (quem ja usa e precisa de ajuda).
+const WHATSAPP_URL = waLink(SALES_PHONE, "Olá! Quero saber mais sobre o Vest Ai.");
 
 function SalesPage() {
   return (
@@ -537,7 +539,12 @@ function SalesPage() {
             </a>
             <span className="footer-tag">Conteúdo de moda profissional, em segundos.</span>
           </div>
-          <span className="footer-copy">© 2026 Vest Ai</span>
+          <span className="footer-copy">
+            <a className="footer-support" href={SUPPORT_WHATSAPP} target="_blank" rel="noreferrer">
+              Suporte: {SUPPORT_PHONE_LABEL}
+            </a>
+            <span className="footer-sep">·</span>© 2026 Vest Ai
+          </span>
         </div>
       </footer>
     </div>
@@ -1051,6 +1058,9 @@ const CSS = `
 .pv .footer-tag { color: var(--fg-faint); font-size: 0.85rem; }
 .pv .footer-copy { color: var(--fg-faint); font-size: 0.82rem; }
 
+.pv .footer-support { color: inherit; text-decoration: none; border-bottom: 1px solid currentColor; padding-bottom: 1px; }
+.pv .footer-support:hover { color: var(--accent-2); }
+.pv .footer-sep { margin: 0 .5rem; opacity: .5; }
 .pv .whatsapp-fab {
   position: fixed; right: 1.3rem; bottom: 1.3rem; z-index: 50;
   width: 3.4rem; height: 3.4rem; border-radius: 999px;

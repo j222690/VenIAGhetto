@@ -234,9 +234,12 @@ export const CatalogService = {
         "Analise a peça de roupa/produto de moda na imagem e responda APENAS um JSON válido " +
         '(sem markdown, sem crases) com: "name" (nome curto do produto em pt-BR), "category" (a ' +
         `mais próxima entre: ${CATALOG_CATEGORIES.join(", ")}), "price" (número em reais estimado ` +
-        'ou null). Baseie-se só no que é visível.';
+        "ou null). Baseie-se só no que é visível.";
       const raw = await AIService.describe(prompt, [imageUrl]);
-      const clean = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+      const clean = raw
+        .replace(/```json/gi, "")
+        .replace(/```/g, "")
+        .trim();
       const parsed = JSON.parse(clean.slice(clean.indexOf("{"), clean.lastIndexOf("}") + 1)) as {
         name?: string;
         category?: string;
@@ -260,6 +263,25 @@ export const CatalogService = {
   // quem chama sincronizar o cache local (ver catalog.tsx).
   async cleanPieceImage(imageUrl: string): Promise<{ url: string; balance?: number }> {
     return AIService.image(GARMENT_ISOLATION_PROMPT, "clean_image", { imageUrls: [imageUrl] });
+  },
+
+  // Copia para o NOSSO Storage uma imagem que está hospedada no site de
+  // origem, e devolve a URL nossa. Devolve null se não der — aí a peça entra
+  // sem foto, que é melhor do que entrar com uma foto que nunca aparece.
+  //
+  // A cópia precisa acontecer no servidor: buscar a imagem daqui do navegador
+  // esbarra na mesma Content-Security-Policy que impede exibi-la.
+  async mirrorImage(imageUrl: string): Promise<string | null> {
+    try {
+      const { data, error } = await supabase.functions.invoke("import-catalog", {
+        body: { action: "mirror", imageUrl },
+      });
+      if (error) return null;
+      const url = (data as { url?: string })?.url;
+      return url ?? null;
+    } catch {
+      return null;
+    }
   },
 
   // Importa o catálogo a partir de um LINK (e-commerce, Instagram, etc.). A

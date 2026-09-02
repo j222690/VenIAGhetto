@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { BookImage, RotateCw, Sparkles, Trash2, Users } from "@/lib/icons";
+import { BookImage, Expand, RotateCw, Sparkles, Trash2, Users } from "@/lib/icons";
 import { describeApiError } from "@/lib/apiErrors";
 import { AppLayout } from "@/layouts/AppLayout";
 import { BackgroundRefPicker } from "@/components/BackgroundRefPicker";
@@ -41,6 +41,11 @@ import { genUrl, thumbUrl } from "@/lib/imageUrl";
 
 export const Route = createFileRoute("/tryon")({
   head: () => ({ meta: [{ title: "Provador — Vest Ai" }] }),
+  // ?g=<id> abre direto no resultado daquela geração. É por aqui que entra
+  // quem clicou no aviso de "sua imagem está pronta" (ver public/sw.js).
+  validateSearch: (busca: Record<string, unknown>) => ({
+    g: typeof busca.g === "string" ? busca.g : undefined,
+  }),
   component: TryOnPage,
 });
 
@@ -107,6 +112,20 @@ function TryOnPage() {
     void ClientService.load().catch(() => {});
     void CatalogService.load().catch(() => {});
   }, []);
+
+  // Chegou pelo aviso de imagem pronta: mostra aquela geração.
+  const { g: generationId } = Route.useSearch();
+  useEffect(() => {
+    if (!generationId) return;
+    void GenerationService.byId(generationId)
+      .then((gen) => {
+        if (gen?.status === "pronta") setResult(gen);
+        else if (gen?.status === "falhou") {
+          toast.error(gen.errorMessage ?? "A geração não foi concluída.");
+        }
+      })
+      .catch(() => {});
+  }, [generationId]);
 
   // Custo é flat: 1 geração, não importa o nº de peças (ver GenerationService.ts).
   const cost = GenerationService.tryonCost(garments.length);
@@ -862,10 +881,14 @@ function TryOnPage() {
             addGarment(url);
             setSheet(null);
           }}
+          onView={(url) => setViewingUrl(url)}
         />
       ) : null}
 
       {busy ? <LoadingOverlay label={busyLabel} /> : null}
+      {/* Também aqui, e não só na tela de resultado: é neste return que vive
+          o seletor de peças, de onde a lupa abre a foto inteira. */}
+      <PhotoLightbox url={viewingUrl} onClose={() => setViewingUrl(null)} />
     </AppLayout>
   );
 }
@@ -949,10 +972,12 @@ function CatalogSheet({
   gridMode,
   onClose,
   onSelect,
+  onView,
 }: {
   gridMode?: boolean;
   onClose: () => void;
   onSelect: (url: string) => void;
+  onView: (url: string) => void;
 }) {
   const items = CatalogService.listActive().filter((it) => it.imageUrl);
   return (
@@ -978,24 +1003,36 @@ function CatalogSheet({
         // preenche a miniatura inteira sem perder nada.
         <div className="grid grid-cols-4 gap-2">
           {items.map((it) => (
-            <button
-              key={it.id}
-              onClick={() => onSelect(it.imageUrl!)}
-              className="overflow-hidden rounded-xl border border-border text-left"
-            >
-              <div className="aspect-[3/4] w-full overflow-hidden bg-secondary">
-                <img
-                  src={thumbUrl(it.imageUrl, { width: 160 })}
-                  alt={it.name}
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                  decoding="async"
-                />
-              </div>
-              <p className="truncate px-1.5 py-1 text-[11px] font-medium text-foreground">
-                {it.name}
-              </p>
-            </button>
+            <div key={it.id} className="relative">
+              {/* Tocar na miniatura ESCOLHE a peça. A lupa mostra a foto
+                  inteira antes de decidir: a miniatura é recortada para a
+                  grade ficar alinhada, e parte do look fica de fora. */}
+              <button
+                type="button"
+                aria-label={`Ver foto de ${it.name}`}
+                onClick={() => onView(it.imageUrl!)}
+                className="absolute right-1 top-1 z-10 grid h-6 w-6 place-items-center rounded-full bg-background/85 text-foreground shadow-soft backdrop-blur"
+              >
+                <Expand className="h-3 w-3" />
+              </button>
+              <button
+                onClick={() => onSelect(it.imageUrl!)}
+                className="w-full overflow-hidden rounded-xl border border-border text-left"
+              >
+                <div className="aspect-[3/4] w-full overflow-hidden bg-secondary">
+                  <img
+                    src={thumbUrl(it.imageUrl, { width: 160 })}
+                    alt={it.name}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+                <p className="truncate px-1.5 py-1 text-[11px] font-medium text-foreground">
+                  {it.name}
+                </p>
+              </button>
+            </div>
           ))}
         </div>
       )}

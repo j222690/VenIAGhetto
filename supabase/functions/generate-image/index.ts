@@ -599,7 +599,10 @@ Deno.serve(async (req) => {
           await avisarUsuario(admin, user.id, {
             title: "Vest Ai",
             body: "Sua imagem está pronta!",
-            url: "/album",
+            // Leva ao RESULTADO daquela geração, não ao álbum: quem toca no
+            // aviso quer ver a imagem que acabou de ficar pronta, e no álbum
+            // ainda teria de procurá-la no meio das outras.
+            url: `/tryon?g=${generationId}`,
           });
         } catch (e) {
           const msg = (e as Error)?.message ?? String(e);

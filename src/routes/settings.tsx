@@ -6,6 +6,7 @@ import {
   CreditCard,
   FileText,
   LogOut,
+  MessageCircle,
   Plus,
   Shield,
   Shirt,
@@ -13,6 +14,7 @@ import {
 } from "@/lib/icons";
 import { AppLayout } from "@/layouts/AppLayout";
 import { SectionTitle } from "@/components/SectionTitle";
+import { SUPPORT_PHONE_LABEL, SUPPORT_WHATSAPP } from "@/constants/contact";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { StoreService } from "@/services/StoreService";
@@ -135,6 +137,27 @@ function SettingsPage() {
         </section>
 
         {showTokens ? <TokenPacksSheet onClose={() => setShowTokens(false)} /> : null}
+
+        <section className="space-y-2">
+          <SectionTitle eyebrow="Ajuda" title="Suporte" />
+          <a
+            href={SUPPORT_WHATSAPP}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-between rounded-2xl border border-border bg-card p-4"
+          >
+            <span className="flex items-center gap-3">
+              <MessageCircle className="h-5 w-5 text-clay" />
+              <span>
+                <span className="font-medium">Falar no WhatsApp</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  {SUPPORT_PHONE_LABEL}
+                </span>
+              </span>
+            </span>
+            <ArrowUpRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+          </a>
+        </section>
 
         <section className="space-y-2">
           <SectionTitle eyebrow="Sobre" title="Legal" />

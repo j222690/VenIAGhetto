@@ -15,6 +15,7 @@ import { describeApiError } from "@/lib/apiErrors";
 import { AppLayout } from "@/layouts/AppLayout";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { CatalogService, categoriesForSegment } from "@/services/CatalogService";
@@ -79,6 +80,8 @@ function CatalogPage() {
   const [form, setForm] = useState<ItemForm>(EMPTY_FORM);
   const [busy, setBusy] = useState(false);
   const [cleaningImage, setCleaningImage] = useState(false);
+  // Foto aberta em tela cheia (sem corte). null = fechada.
+  const [viewing, setViewing] = useState<string | null>(null);
   // categoriesForSegment lê um cache mutável (customCategories); esse contador
   // só existe pra forçar o React a re-renderizar quando ele muda.
   const [, setCatVersion] = useState(0);
@@ -202,11 +205,16 @@ function CatalogPage() {
       let done = 0;
       for (const p of products) {
         setImportLabel(`Importando… ${done + 1}/${products.length}`);
+        // A foto vem hospedada no site de origem. Guardamos uma cópia nossa
+        // ANTES de criar a peça: a política de segurança do app só exibe
+        // imagem do nosso domínio, então salvar o link de fora criava peça com
+        // foto invisível.
+        const imageUrl = p.imageUrl ? await CatalogService.mirrorImage(p.imageUrl) : null;
         await CatalogService.add({
           name: p.name,
           category: p.category || null,
           price: p.price,
-          imageUrl: p.imageUrl || null,
+          imageUrl,
           active: true,
         });
         done++;
@@ -626,13 +634,23 @@ function CatalogPage() {
               >
                 <div className="relative aspect-[3/4] w-full overflow-hidden bg-secondary">
                   {it.imageUrl ? (
-                    <img
-                      src={thumbUrl(it.imageUrl, { width: 200 })}
-                      alt={it.name}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                      decoding="async"
-                    />
+                    // A miniatura é recortada para a grade ficar alinhada;
+                    // tocar nela abre a foto INTEIRA, que é a única forma de
+                    // conferir o look completo sem abrir a edição da peça.
+                    <button
+                      type="button"
+                      aria-label={`Ver foto de ${it.name}`}
+                      onClick={() => setViewing(it.imageUrl ?? null)}
+                      className="h-full w-full"
+                    >
+                      <img
+                        src={thumbUrl(it.imageUrl, { width: 200 })}
+                        alt={it.name}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </button>
                   ) : null}
                   {!it.active ? (
                     <span className="absolute left-2 top-2 rounded-full bg-foreground/70 px-2 py-0.5 text-[10px] font-medium text-background">
@@ -676,6 +694,8 @@ function CatalogPage() {
           </div>
         )}
       </div>
+
+      <PhotoLightbox url={viewing} onClose={() => setViewing(null)} />
     </AppLayout>
   );
 }

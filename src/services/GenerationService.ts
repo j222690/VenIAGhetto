@@ -336,6 +336,21 @@ export const GenerationService = {
   // avisar que está demorando. Sondagem em vez de realtime: o app não usa
   // realtime em nenhum outro lugar, e isso evita introduzir uma dependência
   // nova por causa de uma tela só.
+  // Carrega UMA geração pelo id. Usado quando o lojista chega pelo aviso de
+  // "sua imagem está pronta": o app abre direto no resultado daquela geração,
+  // e não numa lista onde ele teria de procurá-la.
+  async byId(id: string): Promise<Generation | null> {
+    const emCache = generations.find((g) => g.id === id);
+    if (emCache && emCache.status === "pronta") return emCache;
+    const { data, error } = await supabase.from("generations").select("*").eq("id", id).single();
+    if (error || !data) return null;
+    const g = mapGeneration(data);
+    generations = generations.some((x) => x.id === g.id)
+      ? generations.map((x) => (x.id === g.id ? g : x))
+      : [g, ...generations];
+    return g;
+  },
+
   async waitFor(
     id: string,
     onTick?: (segundos: number) => void,

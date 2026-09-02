@@ -18,6 +18,7 @@ import { corsHeadersFor } from "../_shared/cors.ts";
 const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 // gemini-2.5-flash foi descontinuado pelo Google ("no longer available to new
 // users") e derrubava TODA importação por link, mesmo quando a página era lida
 // sem problema. Mesma troca já feita na generate-image.
@@ -80,7 +81,70 @@ Deno.serve(async (req) => {
       return json({ error: "Saldo de tokens insuficiente." }, 402);
     }
 
-    const { url } = await req.json().catch(() => ({}));
+    const corpo = await req.json().catch(() => ({}));
+    const { url } = corpo;
+
+    // ------------------------------------------------------------------
+    // action "mirror": baixa UMA imagem do site de origem e guarda no nosso
+    // Storage, devolvendo a URL nossa.
+    //
+    // Existe porque a importação salvava o link do site de origem, e a
+    // Content-Security-Policy do app (img-src) só libera o nosso domínio: a
+    // peça entrava no catálogo e a foto simplesmente não aparecia. Afrouxar a
+    // CSP resolveria a tela e abriria o app para carregar imagem de qualquer
+    // servidor — troca ruim. Guardar a foto conosco resolve de vez: a imagem
+    // também para de sumir quando a loja de origem apaga o arquivo, e passa a
+    // ter miniatura (URL externa não passa pelo redimensionador).
+    //
+    // Uma imagem por chamada, e não todas dentro da extração: 48 downloads
+    // dentro de uma requisição estourariam o limite de 150s da plataforma.
+    // ------------------------------------------------------------------
+    if (corpo.action === "mirror") {
+      const alvo: string = (corpo.imageUrl ?? "").toString();
+      if (!/^https?:\/\//i.test(alvo)) return json({ error: "Imagem inválida." }, 400);
+      if (isBlockedHost(new URL(alvo).hostname)) return json({ error: "Endereço não permitido." }, 400);
+
+      const { data: me } = await authed.from("users").select("store_id").eq("id", user.id).single();
+      const storeId = (me as { store_id?: string } | null)?.store_id;
+      if (!storeId) return json({ error: "Loja não encontrada." }, 400);
+
+      let bytes: Uint8Array;
+      let tipo: string;
+      try {
+        const img = await fetch(alvo, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+            Accept: "image/avif,image/webp,image/*,*/*;q=0.8",
+          },
+        });
+        if (!img.ok) throw new Error(`HTTP ${img.status}`);
+        tipo = img.headers.get("content-type") ?? "image/jpeg";
+        if (!tipo.startsWith("image/")) throw new Error("não é imagem");
+        const buf = new Uint8Array(await img.arrayBuffer());
+        // 8 MB: mesmo teto do envio manual (ver StorageService).
+        if (buf.byteLength > 8 * 1024 * 1024) throw new Error("imagem grande demais");
+        bytes = buf;
+      } catch (e) {
+        return json({ error: `Não foi possível baixar a imagem: ${(e as Error).message}` }, 502);
+      }
+
+      const ext = tipo.includes("png") ? "png" : tipo.includes("webp") ? "webp" : "jpg";
+      // store_id como primeira pasta: é o que a policy do Storage exige.
+      const caminho = `${storeId}/${crypto.randomUUID()}.${ext}`;
+      const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
+      const { error: upErr } = await admin.storage.from("catalog").upload(caminho, bytes, {
+        contentType: tipo,
+        cacheControl: "31536000",
+        upsert: false,
+      });
+      if (upErr) return json({ error: "Não foi possível guardar a imagem." }, 500);
+
+      const { data: pub } = admin.storage.from("catalog").getPublicUrl(caminho);
+      return json({ url: pub.publicUrl });
+    }
+
+
     if (!url || !/^https?:\/\//i.test(url)) {
       return json({ error: "Informe um link válido (começando com http)." }, 400);
     }

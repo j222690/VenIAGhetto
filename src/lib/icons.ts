@@ -67,6 +67,7 @@ export {
   Briefcase,
   PartyPopper,
   Megaphone,
+  Expand,
 } from "lucide-react";
 
 export type { LucideIcon } from "lucide-react";
