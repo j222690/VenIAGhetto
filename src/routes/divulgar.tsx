@@ -124,13 +124,14 @@ function DivulgarPage() {
         // descobre o depois no gesto. Lado a lado num slide só entregaria tudo
         // de uma vez e desperdiçaria o formato.
         imagens = [
-          await composeSlide({
-            url: principal.clientPhotoUrl,
+          await composePair({
+            antesUrl: principal.clientPhotoUrl,
+            depoisUrl: principal.resultUrl,
             formato,
-            rotulo: "ANTES",
-            assinar: false,
+            titulo,
+            chamada: "Deslize e veja >>>",
           }),
-          await composeSlide({ url: principal.resultUrl, formato, rotulo: "DEPOIS" }),
+          await composeSlide({ url: principal.resultUrl, formato, semTarja: true }),
           await composeBrandCard(formato, CHAMADA),
         ];
       } else {
@@ -140,10 +141,12 @@ function DivulgarPage() {
             antesUrl: principal.clientPhotoUrl,
             depoisUrl: principal.resultUrl,
             formato,
+            titulo,
+            chamada: "Deslize e veja >>>",
           }),
         ];
         for (const m of escolhidos.slice(1)) {
-          slides.push(await composeSlide({ url: m.resultUrl, formato, assinar: false }));
+          slides.push(await composeSlide({ url: m.resultUrl, formato, semTarja: true }));
         }
         slides.push(await composeBrandCard(formato, CHAMADA));
         imagens = slides;
@@ -170,10 +173,10 @@ function DivulgarPage() {
       const imagens =
         formato === "carrossel"
           ? [
-              await composeSlide({ url, formato, assinar: false }),
+              await composeSlide({ url, formato, titulo, chamada: "Deslize e veja >>>" }),
               await composeBrandCard(formato, CHAMADA),
             ]
-          : [await composeSlide({ url, formato })];
+          : [await composeSlide({ url, formato, titulo })];
 
       setBusyLabel("Escrevendo a legenda…");
       const copies = await ShowcaseService.copyTema(tema);
@@ -239,6 +242,16 @@ function DivulgarPage() {
             </button>
           ))}
         </div>
+
+        {/* Fora das abas de propósito: a manchete é a maior peça da arte nos
+            dois caminhos. Ficando só na aba de antes/depois, o post "do zero"
+            herdava calado o título do post anterior. */}
+        <input
+          value={titulo}
+          onChange={(e) => setTitulo(e.target.value)}
+          placeholder="Manchete do post: ex. Sua cliente prova a roupa sem sair de casa"
+          className="w-full rounded-2xl border border-input bg-card px-4 py-3 text-sm outline-none focus:border-clay"
+        />
 
         {formato === "carrossel" && aba === "par" ? (
           <Segmentado
@@ -314,15 +327,6 @@ function DivulgarPage() {
                 ). Peça autorização à loja e à pessoa antes de publicar — é a imagem de alguém, não
                 um material seu.
               </p>
-            ) : null}
-
-            {formato === "story" ? (
-              <input
-                value={titulo}
-                onChange={(e) => setTitulo(e.target.value)}
-                placeholder="Frase no story (opcional): ex. A mesma pessoa. A roupa da sua loja."
-                className="w-full rounded-2xl border border-input bg-card px-4 py-3 text-sm outline-none focus:border-clay"
-              />
             ) : null}
 
             <input
