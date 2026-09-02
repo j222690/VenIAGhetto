@@ -12,6 +12,13 @@
 //   original            487.045 bytes
 //   ?width=200&quality=70   3.777 bytes   (129x menor)
 //
+// CUIDADO com o parâmetro resize (custou um defeito em produção): com
+// resize=cover e SÓ a largura, o Storage não corta a sobra — ele mantém a
+// altura original e ESPREME a imagem. Uma foto 900x1600 voltava 200x1600, e a
+// peça chegava achatada; com o object-cover da célula por cima, o lojista via
+// só uma faixa do look (a camisa, sem a calça). O padrão aqui é "contain", que
+// escala proporcionalmente; quem enquadra é o CSS.
+//
 // Só mexe em URL pública do Storage DESTE projeto: qualquer outra coisa
 // (arquivo local em /public, data: URL, URL externa, URL já transformada)
 // volta intacta, então usar isso nunca quebra uma imagem.
@@ -24,11 +31,18 @@ export interface ThumbOptions {
   /** 20–100. Padrão 70: em miniatura a diferença pra 100 não é perceptível. */
   quality?: number;
   /**
-   * "cover" (padrão) preenche a área cortando a sobra — certo para grades
-   * quadradas. "contain" cabe inteira, sem cortar — use quando a peça/pessoa
-   * não pode ser cortada.
+   * "contain" (padrão) escala proporcionalmente, sem cortar nem deformar.
+   *
+   * NÃO use "cover" sem passar `height` junto. MEDIDO numa foto 900x1600 do
+   * catálogo:
+   *   width=200&resize=cover    → 200x1600   ← ESPREMIDA (mantém a altura!)
+   *   width=200&resize=contain  → 200x356    ← proporcional, correta
+   * Com "cover" e só a largura, o Storage não corta: ele achata a imagem. O
+   * enquadramento é do CSS (object-cover na célula), não do servidor.
    */
   resize?: "cover" | "contain";
+  /** Só com "cover": sem ela o "cover" deforma a imagem (ver acima). */
+  height?: number;
 }
 
 // Imagens de ENTRADA da geração (foto do cliente, peça, referência de
@@ -61,7 +75,8 @@ export function thumbUrl(url: string | undefined | null, opts: ThumbOptions): st
   const params = new URLSearchParams({
     width: String(width),
     quality: String(opts.quality ?? 70),
-    resize: opts.resize ?? "cover",
+    resize: opts.resize ?? "contain",
   });
+  if (opts.height) params.set("height", String(Math.round(opts.height * dpr)));
   return url.replace(OBJECT_SEGMENT, RENDER_SEGMENT) + "?" + params.toString();
 }
