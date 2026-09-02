@@ -18,7 +18,10 @@ import { corsHeadersFor } from "../_shared/cors.ts";
 const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-const TEXT_MODEL = "gemini-2.5-flash";
+// gemini-2.5-flash foi descontinuado pelo Google ("no longer available to new
+// users") e derrubava TODA importação por link, mesmo quando a página era lida
+// sem problema. Mesma troca já feita na generate-image.
+const TEXT_MODEL = "gemini-3.6-flash";
 const GENAI = "https://generativelanguage.googleapis.com/v1beta/models";
 
 // Bloqueia hosts internos/privados (anti-SSRF). Cobre os casos óbvios; não
@@ -87,26 +90,83 @@ Deno.serve(async (req) => {
     }
 
     // Busca a página como um navegador comum.
+    //
+    // A mensagem de erro DIZ O QUE ACONTECEU. Antes, link errado, site fora do
+    // ar e bloqueio devolviam todos "Não foi possível acessar o link", e o
+    // lojista repetia a mesma tentativa sem saber o que corrigir.
     let html = "";
     try {
       const res = await fetch(url, {
         headers: {
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-          "Accept": "text/html,application/xhtml+xml",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
         },
+        redirect: "follow",
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const motivo =
+          res.status === 404
+            ? "Essa página não existe (404). Confira se o link está completo e abre no navegador."
+            : res.status === 401 || res.status === 403
+              ? "O site recusou nosso acesso. Páginas que exigem login — o Instagram, por exemplo — não podem ser lidas por link."
+              : res.status === 429
+                ? "O site pediu para esperarmos (limite de acessos). Tente de novo daqui a alguns minutos."
+                : `O site respondeu com erro ${res.status}. Tente novamente mais tarde.`;
+        return json({ error: motivo }, 502);
+      }
       html = await res.text();
     } catch {
-      return json({ error: "Não foi possível acessar o link. Verifique o endereço." }, 502);
+      return json(
+        {
+          error:
+            "Não conseguimos abrir esse endereço. Confira se o link está certo e se a página abre no navegador.",
+        },
+        502,
+      );
     }
 
-    // Limita o tamanho para caber no contexto do modelo (Gemini 2.5 Flash
-    // aguenta ~1M tokens — 900k caracteres de HTML cabe folgado). Era 200k
-    // antes, o que cortava páginas de catálogo reais no meio da lista de
-    // produtos (o resto nunca chegava a ser visto pela IA).
-    const clipped = html.slice(0, 900_000);
+    // Tira do HTML o que não descreve produto: <script>, <style>, <svg>,
+    // <noscript> e comentários. Numa loja real isso é a maior parte do arquivo
+    // — e ia inteiro para a IA, que levava de 60s a mais de 150s para ler.
+    // Acima de 150s a Supabase encerra a função e o lojista via um erro sem
+    // explicação (546). Limpar reduz o texto em ~80% e devolve a leitura para
+    // a faixa de segundos, sem perder nome, preço nem imagem.
+    const limpo = html
+      // Script de CODIGO sai; script de DADOS fica. Muitas lojas guardam o
+      // catalogo inteiro num bloco JSON (JSON-LD, __NEXT_DATA__) em vez de no
+      // HTML visivel; apagar tudo levaria o catalogo junto. Esses blocos ainda
+      // trazem a URL da imagem limpa, enquanto o <img> costuma vir com um
+      // placeholder por causa do lazy-load.
+      .replace(/<script([^>]*)>([\s\S]*?)<\/script>/gi, (_m, attrs, corpo) =>
+        /application\/(ld\+)?json|__NEXT_DATA__|__NUXT__/i.test(attrs)
+          ? `<script${attrs}>${corpo}</script>`
+          : " ",
+      )
+      .replace(/<style([^>]*)>[\s\S]*?<\/style>/gi, " ")
+      .replace(/<svg([^>]*)>[\s\S]*?<\/svg>/gi, " ")
+      .replace(/<noscript([^>]*)>[\s\S]*?<\/noscript>/gi, " ")
+      .replace(/<!--[\s\S]*?-->/g, " ")
+      .replace(/\s{2,}/g, " ");
+
+    // 400k depois da limpeza cobre catálogo grande com folga e segura o tempo
+    // de leitura dentro do limite de 150s da plataforma.
+    const clipped = limpo.slice(0, 400_000);
+    console.log(`[import-catalog] html ${html.length} → limpo ${limpo.length} → enviado ${clipped.length}`);
+
+    // Página praticamente sem texto DEPOIS de tirar script e estilo: é uma loja
+    // que monta a vitrine por JavaScript. A checagem tem de vir aqui — no HTML
+    // cru, o próprio código JS conta como conteúdo e a página passaria.
+    if (clipped.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().length < 500) {
+      return json(
+        {
+          error:
+            "A página abriu, mas veio sem conteúdo — ela monta os produtos depois de carregar, e não conseguimos ler assim. Tente o link de uma categoria ou de um produto específico.",
+        },
+        422,
+      );
+    }
     const origin = new URL(url).origin;
 
     const prompt =
