@@ -4,15 +4,22 @@ import { useAuth } from "@/hooks/useAuth";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { Sidebar } from "@/components/Sidebar";
+import { cn } from "@/lib/utils";
 
 interface Props {
   title?: string;
   subtitle?: string;
   showTokens?: boolean;
+  /**
+   * Container largo no desktop. O padrão (3xl) é uma coluna de leitura, certa
+   * para formulário e texto. Numa GRADE de imagens ele vira desperdício: no
+   * notebook sobrava metade da tela vazia à direita.
+   */
+  wide?: boolean;
   children: ReactNode;
 }
 
-export function AppLayout({ title, subtitle, showTokens, children }: Props) {
+export function AppLayout({ title, subtitle, showTokens, wide, children }: Props) {
   const { session, loading } = useAuth();
 
   // Aplica o esquema de cores neon conforme o segmento da loja (feminina/masculina).
@@ -36,7 +43,12 @@ export function AppLayout({ title, subtitle, showTokens, children }: Props) {
       <Sidebar />
       <div className="lg:pl-64">
         <AppHeader title={title} subtitle={subtitle} showTokens={showTokens} />
-        <main className="mx-auto max-w-md px-5 pb-28 pt-5 lg:max-w-3xl lg:pb-10 lg:pt-8">
+        <main
+          className={cn(
+            "mx-auto max-w-md px-5 pb-28 pt-5 lg:pb-10 lg:pt-8",
+            wide ? "lg:max-w-6xl" : "lg:max-w-3xl",
+          )}
+        >
           {children}
         </main>
       </div>

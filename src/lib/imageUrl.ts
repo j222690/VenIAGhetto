@@ -43,6 +43,8 @@ export interface ThumbOptions {
   resize?: "cover" | "contain";
   /** Só com "cover": sem ela o "cover" deforma a imagem (ver acima). */
   height?: number;
+  /** Força a densidade. 1 no srcset, onde quem multiplica é o navegador. */
+  dpr?: number;
 }
 
 // Imagens de ENTRADA da geração (foto do cliente, peça, referência de
@@ -62,6 +64,27 @@ export function genUrl(url: string): string {
   return thumbUrl(url, { width: 1280, quality: 85, resize: "contain" }) ?? url;
 }
 
+// Conjunto de larguras para o navegador escolher (srcset). Existe porque uma
+// largura única não serve às duas pontas: a que fica boa no notebook pesa à
+// toa no celular, e a que serve ao celular chega BORRADA no notebook — foi o
+// que aconteceu no Álbum, com miniatura de 200px num cartão de ~350px.
+//
+// Use junto de `sizes`, dizendo quanto o cartão ocupa em cada largura de tela.
+export function thumbSrcSet(
+  url: string | undefined | null,
+  larguras: number[],
+  quality?: number,
+): string | undefined {
+  if (!url) return undefined;
+  const partes = larguras
+    .map((w) => {
+      const u = thumbUrl(url, { width: w, quality, dpr: 1 });
+      return u ? `${u} ${w}w` : "";
+    })
+    .filter(Boolean);
+  return partes.length ? partes.join(", ") : undefined;
+}
+
 export function thumbUrl(url: string | undefined | null, opts: ThumbOptions): string | undefined {
   if (!url) return undefined;
   if (!url.includes(OBJECT_SEGMENT)) return url;
@@ -69,7 +92,8 @@ export function thumbUrl(url: string | undefined | null, opts: ThumbOptions): st
   // Densidade de tela: num display 2x/3x, pedir a largura CSS deixa a
   // miniatura borrada. 2x cobre a maioria dos celulares sem explodir o peso
   // (o custo cresce com a área, então limitamos em 2x mesmo em telas 3x).
-  const dpr = typeof window !== "undefined" ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+  const dpr =
+    opts.dpr ?? (typeof window !== "undefined" ? Math.min(window.devicePixelRatio || 1, 2) : 1);
   const width = Math.round(opts.width * dpr);
 
   const params = new URLSearchParams({

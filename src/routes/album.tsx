@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Copy, Heart } from "@/lib/icons";
 import { AppLayout } from "@/layouts/AppLayout";
 import { LookActions } from "@/components/LookActions";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { GenerationService } from "@/services/GenerationService";
 import { cn } from "@/lib/utils";
-import { thumbUrl } from "@/lib/imageUrl";
+import { thumbSrcSet, thumbUrl } from "@/lib/imageUrl";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/album")({
@@ -28,6 +28,15 @@ function AlbumPage() {
   // hora sem precisar navegar pra fora e voltar.
   const [all, setAll] = useState(GenerationService.history());
   const [onlyFavorites, setOnlyFavorites] = useState(false);
+
+  // O estado acima é só a primeira pintura, a partir do que já estava em
+  // cache. Entrando direto nesta URL, a carga da loja ainda está a caminho e
+  // a tela ficava em "Nada por aqui ainda" até sair e voltar.
+  useEffect(() => {
+    void GenerationService.load()
+      .then(setAll)
+      .catch(() => {});
+  }, []);
   const [viewingUrl, setViewingUrl] = useState<string | null>(null);
 
   // `onlyFavorites` recalcula a partir do estado atual do service ao alternar.
@@ -37,7 +46,7 @@ function AlbumPage() {
   );
 
   return (
-    <AppLayout title="Álbum de Looks" subtitle="Tudo que você criou">
+    <AppLayout title="Álbum de Looks" subtitle="Tudo que você criou" wide>
       <div className="space-y-5">
         <div className="flex gap-2">
           <FilterChip active={!onlyFavorites} onClick={() => setOnlyFavorites(false)}>
@@ -56,7 +65,9 @@ function AlbumPage() {
               : "Nada por aqui ainda. Gere seu primeiro look."}
           </p>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          // 4 colunas a partir do notebook: com 2, cada cartão virava um
+          // retrato gigante e cabiam quatro looks na tela inteira.
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {looks.map((look) => (
               <article
                 key={look.id}
@@ -70,7 +81,12 @@ function AlbumPage() {
                     className="block h-full w-full"
                   >
                     <img
-                      src={thumbUrl(look.resultUrl, { width: 200 })}
+                      src={thumbUrl(look.resultUrl, { width: 400 })}
+                      // O cartão vai de ~170px no celular a ~330px no
+                      // notebook: com uma largura fixa pequena a imagem
+                      // chegava esticada e borrada na tela grande.
+                      srcSet={thumbSrcSet(look.resultUrl, [200, 400, 600, 800])}
+                      sizes="(min-width: 1024px) 270px, 45vw"
                       alt={TYPE_LABEL[look.type] ?? "Look"}
                       className="h-full w-full object-cover object-top"
                       loading="lazy"
@@ -81,6 +97,14 @@ function AlbumPage() {
                     look={look}
                     actions={["favorite", "download", "delete"]}
                     onDeleted={(id) => setAll((prev) => prev.filter((g) => g.id !== id))}
+                    // Sem isto o ♥ gravava no banco mas a lista desta tela
+                    // continuava com o valor antigo, e o filtro "Favoritos"
+                    // não mostrava o que acabara de ser favoritado.
+                    onFavoriteChange={(fav) =>
+                      setAll((prev) =>
+                        prev.map((g) => (g.id === look.id ? { ...g, isFavorite: fav } : g)),
+                      )
+                    }
                     className="absolute right-2 top-2"
                   />
                 </div>
