@@ -20,8 +20,6 @@ const WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 const PLAN_TOKENS: Record<string, number> = { starter: 149, pro: 303, business: 610 };
-// Bônus liberado no início do trial (o total do plano só entra na 1ª fatura paga).
-const TRIAL_BONUS = 25;
 
 // Credita tokens no saldo da loja e registra a transação (service_role).
 async function creditTokens(storeId: string, amount: number) {
@@ -60,17 +58,17 @@ Deno.serve(async (req) => {
         .insert({ session_id: s.id, store_id: storeId });
       if (!dupErr) {
         if (md.kind === "plan" && md.plan) {
-          // Início do plano/trial: define o plano e libera só o bônus de trial.
-          // O total mensal entra na 1ª fatura paga (invoice.paid, abaixo).
+          // Só define o plano. Os tokens vêm de invoice.paid — sem trial no
+          // Stripe, a primeira fatura é cobrada agora, então creditar aqui
+          // também daria o dobro.
           await admin.from("stores").update({ plan: md.plan }).eq("id", storeId);
-          await creditTokens(storeId, TRIAL_BONUS);
         } else if (md.kind === "tokens") {
           await creditTokens(storeId, Number(md.tokens ?? 0));
         }
       }
     } else if (event.type === "invoice.paid") {
-      // Só credita os tokens mensais em fatura REALMENTE paga (> 0) — cobre o
-      // fim do trial (1ª cobrança) e as renovações. Trial ($0) é ignorado.
+      // Único lugar que credita os tokens do plano: cobre a primeira cobrança
+      // e todas as renovações. Fatura de R$ 0 é ignorada.
       const inv = event.data.object as Stripe.Invoice;
       if ((inv.amount_paid ?? 0) > 0) {
         const storeId = (inv.subscription_details?.metadata?.store_id ??
@@ -80,7 +78,14 @@ Deno.serve(async (req) => {
           inv.metadata?.plan ??
           "") as string;
         if (storeId && plan && PLAN_TOKENS[plan]) {
-          await creditTokens(storeId, PLAN_TOKENS[plan]);
+          // Trava pelo id da FATURA. A Stripe reenvia o webhook quando não
+          // recebe 2xx, e agora este é o único crédito do assinante novo — uma
+          // entrega repetida creditaria o mês duas vezes. Reaproveita a mesma
+          // tabela do checkout: os ids não colidem (in_… vs cs_…).
+          const { error: dupErr } = await admin
+            .from("processed_payments")
+            .insert({ session_id: inv.id, store_id: storeId });
+          if (!dupErr) await creditTokens(storeId, PLAN_TOKENS[plan]);
         }
       }
     }

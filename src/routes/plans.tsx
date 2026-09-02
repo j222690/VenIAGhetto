@@ -39,7 +39,8 @@ function PlansPage() {
     setBusy(true);
     try {
       const { url } = await PaymentService.startPlanCheckout(selected);
-      // Redireciona para o checkout do Stripe (assinatura com 7 dias de trial).
+      // Redireciona para o checkout do Stripe (assinatura, cobrada na hora —
+      // o teste grátis é o de cima, sem cartão).
       window.location.href = url;
     } catch (e) {
       // Stripe ainda não configurado: segue o onboarding para não travar o fluxo.

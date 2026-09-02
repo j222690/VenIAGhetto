@@ -1,7 +1,7 @@
 // Edge Function: stripe-checkout
 // -----------------------------------------------------------------------------
 // Duas ações (usuário autenticado):
-//   • padrão { kind, id }  → cria a sessão de Checkout (plano com trial ou
+//   • padrão { kind, id }  → cria a sessão de Checkout (assinatura de plano ou
 //     pacote de tokens) e devolve { url }.
 //   • { action:"confirm", session_id } → quando o cliente VOLTA do Stripe,
 //     confere o pagamento e credita na hora (idempotente via processed_payments),
@@ -28,7 +28,6 @@ const PLAN_PRICE_ENV: Record<string, string> = {
   business: "STRIPE_PRICE_BUSINESS",
 };
 const PLAN_TOKENS: Record<string, number> = { starter: 149, pro: 303, business: 610 };
-const TRIAL_BONUS = 25;
 const PACK_PRICE_ENV: Record<string, string> = {
   pack_100: "STRIPE_PRICE_TOKENS_100",
   pack_300: "STRIPE_PRICE_TOKENS_300",
@@ -97,8 +96,17 @@ Deno.serve(async (req) => {
       if (md.kind === "tokens") {
         balance = await credit(store.id, Number(md.tokens ?? 0));
       } else if (md.kind === "plan" && md.plan) {
+        // Só marca o plano. Os tokens do mês entram em invoice.paid (webhook),
+        // que é o evento do dinheiro de verdade — o mesmo das renovações.
+        // Creditar aqui TAMBÉM somaria duas vezes, já que sem trial a primeira
+        // fatura é cobrada no mesmo instante do checkout.
         await admin.from("stores").update({ plan: md.plan }).eq("id", store.id);
-        balance = await credit(store.id, TRIAL_BONUS);
+        const { data } = await admin
+          .from("stores")
+          .select("tokens_balance")
+          .eq("id", store.id)
+          .single();
+        balance = data?.tokens_balance ?? 0;
       }
       return json({ credited: true, balance });
     }
@@ -115,8 +123,10 @@ Deno.serve(async (req) => {
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
         line_items: [{ price: priceId, quantity: 1 }],
+        // SEM trial no Stripe: o teste grátis do produto são os 35 créditos da
+        // migration 0028, que não pedem cartão. Ter os dois daria 14 dias de
+        // graça a quem assinasse durante o teste.
         subscription_data: {
-          trial_period_days: 7,
           metadata: { store_id: store.id, plan: id },
         },
         success_url,
