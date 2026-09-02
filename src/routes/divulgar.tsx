@@ -61,7 +61,14 @@ function DivulgarPage() {
   const [carregando, setCarregando] = useState(false);
   const [escolhidos, setEscolhidos] = useState<ShowcaseItem[]>([]);
   const [angulo, setAngulo] = useState("");
+  // Começa ligado: o dono marca no Álbum o que presta para post, e essa é a
+  // única forma de a tela saber disso — escolher pela ordem de geração punha
+  // no ar resultado que ele não teria escolhido.
+  const [soFavoritos, setSoFavoritos] = useState(true);
   const [titulo, setTitulo] = useState("");
+  // Selo curto sobre a foto. Número é o que o olho pega primeiro no feed, e é
+  // ele que abre a curiosidade que a legenda fecha.
+  const [selo, setSelo] = useState("");
 
   const [tema, setTema] = useState("");
 
@@ -86,7 +93,11 @@ function DivulgarPage() {
 
   // Só serve de antes/depois o que tem as DUAS pontas: a foto que entrou e o
   // resultado. Geração feita a partir de peça avulsa não tem "antes".
-  const pares = useMemo(() => (material ?? []).filter((m) => !!m.clientPhotoUrl), [material]);
+  const comPar = useMemo(() => (material ?? []).filter((m) => !!m.clientPhotoUrl), [material]);
+  const favoritos = useMemo(() => comPar.filter((m) => m.favorito), [comPar]);
+  // Sem nenhum favorito ainda, mostra tudo — melhor que uma tela vazia sem
+  // explicação para quem abriu antes de favoritar qualquer coisa.
+  const pares = soFavoritos && favoritos.length > 0 ? favoritos : comPar;
 
   if (loading) return null;
   if (!podeVer) return <Navigate to="/home" />;
@@ -117,6 +128,7 @@ function DivulgarPage() {
             depoisUrl: principal.resultUrl,
             formato,
             titulo,
+            selo,
           }),
         ];
       } else if (carrossel === "revela") {
@@ -129,7 +141,8 @@ function DivulgarPage() {
             depoisUrl: principal.resultUrl,
             formato,
             titulo,
-            chamada: "Deslize e veja >>>",
+            selo,
+            chamada: "Deslize e veja",
           }),
           await composeSlide({ url: principal.resultUrl, formato, semTarja: true }),
           await composeBrandCard(formato, CHAMADA),
@@ -142,7 +155,8 @@ function DivulgarPage() {
             depoisUrl: principal.resultUrl,
             formato,
             titulo,
-            chamada: "Deslize e veja >>>",
+            selo,
+            chamada: "Deslize e veja",
           }),
         ];
         for (const m of escolhidos.slice(1)) {
@@ -173,10 +187,10 @@ function DivulgarPage() {
       const imagens =
         formato === "carrossel"
           ? [
-              await composeSlide({ url, formato, titulo, chamada: "Deslize e veja >>>" }),
+              await composeSlide({ url, formato, titulo, selo, chamada: "Deslize e veja" }),
               await composeBrandCard(formato, CHAMADA),
             ]
-          : [await composeSlide({ url, formato, titulo })];
+          : [await composeSlide({ url, formato, titulo, selo })];
 
       setBusyLabel("Escrevendo a legenda…");
       const copies = await ShowcaseService.copyTema(tema);
@@ -249,7 +263,15 @@ function DivulgarPage() {
         <input
           value={titulo}
           onChange={(e) => setTitulo(e.target.value)}
-          placeholder="Manchete do post: ex. Sua cliente prova a roupa sem sair de casa"
+          placeholder="Manchete: curta e forte, ex. Ela prova sem sair de casa"
+          className="w-full rounded-2xl border border-input bg-card px-4 py-3 text-sm outline-none focus:border-clay"
+        />
+
+        <input
+          value={selo}
+          onChange={(e) => setSelo(e.target.value)}
+          maxLength={12}
+          placeholder="Selo (opcional): ex. 30s, 1 foto, R$ 0"
           className="w-full rounded-2xl border border-input bg-card px-4 py-3 text-sm outline-none focus:border-clay"
         />
 
@@ -276,6 +298,28 @@ function DivulgarPage() {
                 ? `Escolha até ${MAX_LOOKS} resultados. O primeiro abre o carrossel como antes/depois; os outros entram como um look por slide.`
                 : "Escolha um resultado real. O antes é a foto que entrou; o depois é o que o app devolveu. Montar não gasta crédito."}
             </p>
+
+            {favoritos.length > 0 ? (
+              <label className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={soFavoritos}
+                  onChange={(e) => setSoFavoritos(e.target.checked)}
+                  className="h-4 w-4 accent-clay"
+                />
+                <span className="flex-1 text-foreground">
+                  Só os favoritos
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {favoritos.length} de {comPar.length} marcados com ♥ no Álbum
+                  </span>
+                </span>
+              </label>
+            ) : (
+              <p className="rounded-2xl border border-dashed border-border p-3 text-xs leading-relaxed text-muted-foreground">
+                Marque com ♥ no Álbum os resultados que ficaram bons: a partir daí esta tela mostra
+                só eles, e o post nunca sai com uma imagem escolhida no chute.
+              </p>
+            )}
 
             {carregando && !material ? (
               <p className="text-sm text-muted-foreground">Carregando resultados…</p>

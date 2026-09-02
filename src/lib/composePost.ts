@@ -6,11 +6,22 @@
 // pagar por uma imagem que já temos — e que nem seria prova, por não ter saído
 // do produto.
 //
-// O MOLDE é o do post de antes/depois que funciona no Instagram: as fotos
-// coladas ocupando o alto, uma seta curva ligando uma à outra, e uma tarja
-// embaixo com a marca numa linha fina, a manchete em caixa alta pesada e a
-// chamada para deslizar. As CORES são as do app (ver THEME.md): grafite
-// noturno com o neon azul → rosa → roxo. Ficam em hexadecimal aqui porque
+// O MOLDE segue o que a pesquisa de capa de carrossel recomenda, e cada peça
+// está aqui por um motivo:
+//   • MANCHETE NO TERÇO SUPERIOR e o maior texto da arte. O feed é percorrido
+//     a 3–4 posts por segundo; o que estiver embaixo não é lido antes do
+//     polegar passar. (Era o erro da versão anterior: manchete no rodapé.)
+//   • SELO COM NÚMERO — a lacuna de curiosidade. Número é o que o olho pega
+//     primeiro, e ele promete o que a legenda vai entregar.
+//   • PISTA DIRECIONAL: a seta entre as fotos e o "deslize" no rodapé.
+//   • TRÊS CORES, na proporção 60-30-10: grafite de base, branco no texto,
+//     neon só no acento. A versão anterior usava cinco e ficava carnavalesca.
+//   • CONTRASTE: texto sobre foto sempre com véu escuro por baixo — sem ele a
+//     manchete some numa foto clara.
+// Fontes: panocollages.com/blog/best-practices-for-first-slide-carousel-hooks
+// e imagine.art/blogs/best-carousel-hooks (consultadas em 2026-09).
+//
+// As CORES são as do app (ver THEME.md). Ficam em hexadecimal aqui porque
 // canvas não lê CSS custom property; cada uma está anotada com o token que
 // espelha, lido do próprio app.
 
@@ -206,11 +217,14 @@ function manchete(
   w: number,
   topoY: number,
   alturaDisponivel: number,
+  margem = 110,
 ): number {
-  const limite = w - 110;
+  const limite = w - margem;
   const alvo = texto.toUpperCase();
 
-  for (const tam of [82, 76, 70, 64, 58, 52, 46]) {
+  // Começa grande: a manchete tem de ser o MAIOR texto da arte. Só encolhe
+  // quando não cabe.
+  for (const tam of [104, 96, 88, 80, 72, 64, 58, 52]) {
     ctx.font = `400 ${tam}px ${TITULO_FONT}`;
     const linhas: string[] = [];
     let atual = "";
@@ -223,9 +237,9 @@ function manchete(
     }
     if (atual) linhas.push(atual);
 
-    const entrelinha = Math.round(tam * 1.06);
+    const entrelinha = Math.round(tam * 1.04);
     const altura = linhas.length * entrelinha;
-    if (altura > alturaDisponivel && tam > 46) continue;
+    if (altura > alturaDisponivel && tam > 52) continue;
 
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
@@ -237,36 +251,123 @@ function manchete(
 }
 
 export interface CartaoParams {
-  /** Manchete em caixa alta. É o que carrega o post. */
+  /** Manchete em caixa alta, no terço superior. É o que carrega o post. */
   titulo?: string;
-  /** Chamada pequena embaixo (ex.: "DESLIZE E VEJA >>>"). */
+  /** Chamada pequena no rodapé (ex.: "Deslize e veja"). */
   chamada?: string;
+  /** Selo curto sobre a foto, de preferência com número: "30s", "1 foto". */
+  selo?: string;
 }
 
-// Desenha a tarja de baixo (marca + manchete + chamada) na área do cartão.
-function tarja(
+// Altura do bloco do cabeçalho, em fração do cartão. O terço superior é o que
+// a pesquisa manda reservar para o gancho.
+const BLOCO_TITULO = 0.27;
+const ALTURA_RODAPE = 107;
+
+// O texto vive num BLOCO SÓLIDO, não sobre a foto. Testei por cima com véu e a
+// manchete caía no rosto da pessoa — texto sobre rosto é o erro clássico, e
+// com foto de cliente variável não dá para garantir uma área limpa.
+
+// Selo com o número. Fica sobre a foto, do lado direito, longe da manchete.
+function seloNumero(ctx: CanvasRenderingContext2D, texto: string, cx: number, cy: number) {
+  const r = 92;
+  ctx.save();
+  ctx.fillStyle = COR.rosa;
+  ctx.shadowColor = COR.rosa;
+  ctx.shadowBlur = 34;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Texto escuro sobre o rosa: o contraste inverte e o selo salta.
+  ctx.fillStyle = COR.fundo;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  let tam = 62;
+  ctx.font = `400 ${tam}px ${TITULO_FONT}`;
+  while (ctx.measureText(texto).width > r * 1.6 && tam > 26) {
+    tam -= 4;
+    ctx.font = `400 ${tam}px ${TITULO_FONT}`;
+  }
+  ctx.fillText(texto.toUpperCase(), cx, cy + 2);
+}
+
+// Etiqueta pequena no pé da foto (ANTES / DEPOIS). Fica embaixo, e não no
+// topo, para não disputar espaço com a manchete.
+function etiquetaPe(ctx: CanvasRenderingContext2D, texto: string, cx: number, baseY: number) {
+  ctx.font = `700 26px ${SANS}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const larg = ctx.measureText(texto).width + 44;
+  const alt = 50;
+  ctx.save();
+  ctx.fillStyle = "rgba(11,13,22,0.82)";
+  ctx.beginPath();
+  ctx.roundRect(cx - larg / 2, baseY - alt, larg, alt, 25);
+  ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = COR.texto;
+  ctx.fillText(texto.toUpperCase(), cx, baseY - alt / 2 + 1);
+}
+
+// Cabeçalho: bloco sólido no topo com a manchete. Devolve onde a foto começa.
+function cabecalho(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   w: number,
-  h: number,
-  { titulo, chamada }: CartaoParams,
-) {
+  alturaCartao: number,
+  { titulo }: CartaoParams,
+): number {
+  if (!titulo?.trim()) return y;
+
+  const alturaBloco = Math.round(alturaCartao * BLOCO_TITULO);
   ctx.fillStyle = COR.fundo;
-  ctx.fillRect(x, y, w, h);
+  ctx.fillRect(x, y, w, alturaBloco);
 
-  linhaMarca(ctx, w, x, y + 40);
+  const alturaTexto = manchete(ctx, titulo.trim(), x, w, y + 56, alturaBloco - 96, 120) - (y + 56);
+  // Centraliza o texto no bloco: sobra igual em cima e embaixo.
+  const folga = Math.max(0, alturaBloco - 96 - alturaTexto);
+  if (folga > 12) {
+    ctx.fillStyle = COR.fundo;
+    ctx.fillRect(x, y, w, alturaBloco);
+    manchete(ctx, titulo.trim(), x, w, y + 56 + Math.round(folga / 2), alturaBloco - 96, 120);
+  }
 
-  const temChamada = !!chamada?.trim();
-  const espacoTitulo = h - 90 - (temChamada ? 80 : 30);
-  const fim = titulo?.trim() ? manchete(ctx, titulo.trim(), x, w, y + 82, espacoTitulo) : y + 82;
+  return y + alturaBloco;
+}
 
-  if (temChamada) {
-    ctx.textAlign = "center";
-    ctx.textBaseline = "top";
+// Rodapé: fio neon, marca e a pista para deslizar. Enxuto de propósito — o
+// peso da arte é a manchete, não o rodapé.
+function rodape(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, chamada?: string) {
+  ctx.save();
+  ctx.strokeStyle = gradienteNeon(ctx, x, x + w);
+  ctx.lineWidth = 5;
+  ctx.shadowColor = COR.rosa;
+  ctx.shadowBlur = 20;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + w, y);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.fillStyle = COR.fundo;
+  ctx.fillRect(x, y + 3, w, 104);
+
+  ctx.textBaseline = "middle";
+  ctx.font = `600 30px ${SANS}`;
+  ctx.textAlign = "left";
+  ctx.fillStyle = COR.texto;
+  ctx.fillText(SITE, x + 56, y + 56);
+
+  if (chamada?.trim()) {
+    ctx.textAlign = "right";
+    ctx.fillStyle = COR.rosa;
     ctx.font = `700 30px ${SANS}`;
-    ctx.fillStyle = COR.azul;
-    ctx.fillText(chamada!.trim().toUpperCase(), x + w / 2, Math.min(fim + 34, y + h - 56));
+    // Tira setas que já venham no texto: com elas saía "DESLIZE >>>  →".
+    const limpo = chamada.trim().replace(/[>»→\s]+$/u, "");
+    ctx.fillText(`${limpo.toUpperCase()}  →`, x + w - 56, y + 56);
   }
 }
 
@@ -283,25 +384,37 @@ export async function composePair({
   formato,
   titulo,
   chamada,
+  selo,
 }: ParParams): Promise<string> {
   await fontesProntas();
   const [antes, depois] = await Promise.all([loadImage(antesUrl), loadImage(depoisUrl)]);
-  const { canvas, ctx, w, topo } = novoCanvas(formato);
+  const { canvas, ctx, w, h, topo } = novoCanvas(formato);
 
-  // 63% de foto: proporção do molde, e o que deixa cada metade em 540x850 —
-  // retrato o bastante para a pessoa caber sem corte lateral.
-  const alturaFoto = Math.round(CARTAO.h * 0.63);
+  // A foto ocupa TUDO: manchete e rodapé vivem sobre ela. Assim a arte não
+  // gasta um terço da área em tarja preta, e a foto é o que segura o olhar.
+  const alturaCartao = formato === "story" ? h : CARTAO.h;
+  const y = formato === "story" ? 0 : topo;
   const meio = Math.round(w / 2);
 
-  drawCoverTop(ctx, antes, 0, topo, meio, alturaFoto);
-  drawCoverTop(ctx, depois, meio, topo, w - meio, alturaFoto);
+  const fotoY = titulo?.trim() ? y + Math.round(alturaCartao * BLOCO_TITULO) : y;
+  const fotoH = y + alturaCartao - ALTURA_RODAPE - fotoY;
+
+  drawCoverTop(ctx, antes, 0, fotoY, meio, fotoH);
+  drawCoverTop(ctx, depois, meio, fotoY, w - meio, fotoH);
 
   // Costura fina entre as duas: sem ela as fotos se confundem numa só.
   ctx.fillStyle = COR.fundo;
-  ctx.fillRect(meio - 1, topo, 2, alturaFoto);
+  ctx.fillRect(meio - 1, fotoY, 2, fotoH);
 
-  setaCurva(ctx, meio, topo + Math.round(alturaFoto * 0.45));
-  tarja(ctx, 0, topo + alturaFoto, w, CARTAO.h - alturaFoto, { titulo, chamada });
+  setaCurva(ctx, meio, fotoY + Math.round(fotoH * 0.5));
+  etiquetaPe(ctx, "Antes", meio / 2, fotoY + fotoH - 34);
+  etiquetaPe(ctx, "Depois", meio + meio / 2, fotoY + fotoH - 34);
+
+  cabecalho(ctx, 0, y, w, alturaCartao, { titulo });
+  // O selo cavalga a borda do bloco: metade no texto, metade na foto. É o que
+  // dá profundidade e impede que ele pareça só mais um adesivo solto.
+  if (selo?.trim()) seloNumero(ctx, selo.trim(), w - 148, fotoY);
+  rodape(ctx, 0, y + alturaCartao - ALTURA_RODAPE, w, chamada);
 
   return canvas.toDataURL("image/jpeg", 0.92);
 }
@@ -309,7 +422,7 @@ export async function composePair({
 export interface SlideParams extends CartaoParams {
   url: string;
   formato: PostFormat;
-  /** Sem tarja: para os slides do meio de um carrossel, que são só foto. */
+  /** Sem texto nenhum: para os slides do meio de um carrossel. */
   semTarja?: boolean;
 }
 
@@ -319,24 +432,24 @@ export async function composeSlide({
   formato,
   titulo,
   chamada,
+  selo,
   semTarja = false,
 }: SlideParams): Promise<string> {
   await fontesProntas();
   const img = await loadImage(url);
   const { canvas, ctx, w, h, topo } = novoCanvas(formato);
 
-  // Com UMA foto o story usa a altura toda: não há duas metades disputando
-  // largura, então não há motivo para encolher a arte num 4:5 e deixar o topo
-  // vazio. (No par isso não vale: em 9:16 cada metade viraria uma tira.)
   const alturaCartao = formato === "story" ? h : CARTAO.h;
   const y = formato === "story" ? 0 : topo;
 
   if (semTarja) {
     drawCoverTop(ctx, img, 0, y, w, alturaCartao);
   } else {
-    const alturaFoto = Math.round(alturaCartao * (formato === "story" ? 0.75 : 0.63));
-    drawCoverTop(ctx, img, 0, y, w, alturaFoto);
-    tarja(ctx, 0, y + alturaFoto, w, alturaCartao - alturaFoto, { titulo, chamada });
+    const fotoY = titulo?.trim() ? y + Math.round(alturaCartao * BLOCO_TITULO) : y;
+    drawCoverTop(ctx, img, 0, fotoY, w, y + alturaCartao - ALTURA_RODAPE - fotoY);
+    cabecalho(ctx, 0, y, w, alturaCartao, { titulo });
+    if (selo?.trim()) seloNumero(ctx, selo.trim(), w - 148, fotoY);
+    rodape(ctx, 0, y + alturaCartao - ALTURA_RODAPE, w, chamada);
   }
 
   return canvas.toDataURL("image/jpeg", 0.92);

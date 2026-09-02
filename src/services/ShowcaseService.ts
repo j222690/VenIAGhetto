@@ -21,6 +21,8 @@ export interface ShowcaseItem {
   storeName: string;
   /** true = gerada pela própria loja da Vest Ai (não precisa pedir autorização). */
   ownStore: boolean;
+  /** Marcada com ♥ no Álbum. */
+  favorito: boolean;
 }
 
 const SITE = "vestaiapp.com";

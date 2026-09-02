@@ -28,7 +28,7 @@ const ADMIN_ROLES = ["owner", "manager"];
 
 // Teto do que devolvemos de uma vez. A tela é uma galeria de escolha, não um
 // relatório: mais que isso só pesaria o carregamento.
-const LIMITE = 60;
+const LIMITE = 120;
 
 interface Item {
   id: string;
@@ -38,6 +38,8 @@ interface Item {
   createdAt: string;
   storeName: string;
   ownStore: boolean;
+  /** Marcado com ♥ no Álbum. É como o dono separa o que presta para post. */
+  favorito: boolean;
 }
 
 Deno.serve(async (req) => {
@@ -80,11 +82,14 @@ Deno.serve(async (req) => {
 
     const { data: rows, error } = await admin
       .from("generations")
-      .select("id, store_id, type, input_refs, output_url, created_at")
+      .select("id, store_id, type, input_refs, output_url, created_at, is_favorite")
       // status é NULL nas linhas anteriores à migration 0025 — todas já tinham
       // imagem, então valem como prontas (mesma regra do mapGeneration).
       .or("status.eq.pronta,status.is.null")
       .not("output_url", "is", null)
+      // Favorito ANTES da data: o teto de LIMITE é por recência, e um favorito
+      // antigo ficava de fora justamente da tela feita para usar favoritos.
+      .order("is_favorite", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(LIMITE);
     if (error) return json({ error: error.message }, 500);
@@ -105,6 +110,7 @@ Deno.serve(async (req) => {
         createdAt: r.created_at as string,
         storeName: nomes.get(r.store_id as string) ?? "",
         ownStore: (r.store_id as string) === ADMIN_STORE_ID,
+        favorito: !!r.is_favorite,
       };
     });
 
