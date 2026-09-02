@@ -61,6 +61,7 @@ function DivulgarPage() {
   const [carregando, setCarregando] = useState(false);
   const [escolhidos, setEscolhidos] = useState<ShowcaseItem[]>([]);
   const [angulo, setAngulo] = useState("");
+  const [titulo, setTitulo] = useState("");
 
   const [tema, setTema] = useState("");
 
@@ -115,6 +116,7 @@ function DivulgarPage() {
             antesUrl: principal.clientPhotoUrl,
             depoisUrl: principal.resultUrl,
             formato,
+            titulo,
           }),
         ];
       } else if (carrossel === "revela") {
@@ -129,7 +131,7 @@ function DivulgarPage() {
             assinar: false,
           }),
           await composeSlide({ url: principal.resultUrl, formato, rotulo: "DEPOIS" }),
-          composeBrandCard(formato, CHAMADA),
+          await composeBrandCard(formato, CHAMADA),
         ];
       } else {
         // Vitrine: abre com o par, para prender, e segue com um look por slide.
@@ -143,7 +145,7 @@ function DivulgarPage() {
         for (const m of escolhidos.slice(1)) {
           slides.push(await composeSlide({ url: m.resultUrl, formato, assinar: false }));
         }
-        slides.push(composeBrandCard(formato, CHAMADA));
+        slides.push(await composeBrandCard(formato, CHAMADA));
         imagens = slides;
       }
 
@@ -169,7 +171,7 @@ function DivulgarPage() {
         formato === "carrossel"
           ? [
               await composeSlide({ url, formato, assinar: false }),
-              composeBrandCard(formato, CHAMADA),
+              await composeBrandCard(formato, CHAMADA),
             ]
           : [await composeSlide({ url, formato })];
 
@@ -312,6 +314,15 @@ function DivulgarPage() {
                 ). Peça autorização à loja e à pessoa antes de publicar — é a imagem de alguém, não
                 um material seu.
               </p>
+            ) : null}
+
+            {formato === "story" ? (
+              <input
+                value={titulo}
+                onChange={(e) => setTitulo(e.target.value)}
+                placeholder="Frase no story (opcional): ex. A mesma pessoa. A roupa da sua loja."
+                className="w-full rounded-2xl border border-input bg-card px-4 py-3 text-sm outline-none focus:border-clay"
+              />
             ) : null}
 
             <input
