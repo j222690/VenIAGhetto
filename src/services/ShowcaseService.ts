@@ -135,11 +135,16 @@ export const ShowcaseService = {
       `Cena: ${tema.trim()}. ` +
       "Luz natural, cores quentes e suaves, aparência de foto de celular profissional — não de " +
       "render 3D nem de ilustração. Pessoas brasileiras, roupas atuais, ambiente de loja de roupas " +
-      "real. Deixe espaço livre na parte de cima da imagem para texto. " +
+      "Enquadre as pessoas no CENTRO, de corpo inteiro ou meio corpo, com folga " +
+      "em volta: a imagem é recortada para caber no post, e sujeito colado na borda perde a cabeça. " +
       "NÃO escreva nenhuma palavra, letra, número, logo ou interface de aplicativo na imagem: " +
       "texto gerado por IA sai deformado e estraga o anúncio.";
+    // A proporção pedida é a da ÁREA DA FOTO, não a do post: depois do bloco
+    // da manchete e do rodapé, o espaço da imagem no story fica quase
+    // quadrado. Pedir 9:16 e encaixar ali cortava a cena — a primeira prova
+    // saiu com os rostos cortados na base.
     const { url } = await AIService.image(prompt, "post", {
-      aspectRatio: formato === "story" ? "9:16" : "4:5",
+      aspectRatio: formato === "story" ? "1:1" : "5:4",
     });
     return url;
   },

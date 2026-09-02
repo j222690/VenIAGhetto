@@ -38,6 +38,12 @@ const DIMENSOES: Record<PostFormat, { w: number; h: number }> = {
 // segura para a interface do Instagram (perfil no topo, resposta no rodapé).
 const CARTAO = { w: 1080, h: 1350 };
 
+// Zonas seguras do story: o Instagram desenha o perfil no topo e a caixa de
+// resposta no rodapé. Sem reservar essa faixa, a manchete e a assinatura
+// ficavam debaixo da interface dele — o rodapé sumia inteiro.
+const STORY_TOPO = 150;
+const STORY_RODAPE = 260;
+
 // Espelho da paleta do app (src/styles.css).
 const COR = {
   fundo: "#0b0d16", // --background     oklch(0.16 0.02 275)
@@ -137,11 +143,13 @@ function drawCoverTop(
   y: number,
   w: number,
   h: number,
+  /** 0 = topo (foto de cliente, onde o rosto está em cima), 0.5 = centro. */
+  ancora = 0,
 ) {
   const escala = Math.max(w / img.width, h / img.height);
   const sw = w / escala;
   const sh = h / escala;
-  ctx.drawImage(img, (img.width - sw) / 2, 0, sw, sh, x, y, w, h);
+  ctx.drawImage(img, (img.width - sw) / 2, (img.height - sh) * ancora, sw, sh, x, y, w, h);
 }
 
 function gradienteNeon(ctx: CanvasRenderingContext2D, x0: number, x1: number): CanvasGradient {
@@ -392,8 +400,8 @@ export async function composePair({
 
   // A foto ocupa TUDO: manchete e rodapé vivem sobre ela. Assim a arte não
   // gasta um terço da área em tarja preta, e a foto é o que segura o olhar.
-  const alturaCartao = formato === "story" ? h : CARTAO.h;
-  const y = formato === "story" ? 0 : topo;
+  const alturaCartao = formato === "story" ? h - STORY_TOPO - STORY_RODAPE : CARTAO.h;
+  const y = formato === "story" ? STORY_TOPO : topo;
   const meio = Math.round(w / 2);
 
   const fotoY = titulo?.trim() ? y + Math.round(alturaCartao * BLOCO_TITULO) : y;
@@ -439,14 +447,16 @@ export async function composeSlide({
   const img = await loadImage(url);
   const { canvas, ctx, w, h, topo } = novoCanvas(formato);
 
-  const alturaCartao = formato === "story" ? h : CARTAO.h;
-  const y = formato === "story" ? 0 : topo;
+  const alturaCartao = formato === "story" ? h - STORY_TOPO - STORY_RODAPE : CARTAO.h;
+  const y = formato === "story" ? STORY_TOPO : topo;
 
   if (semTarja) {
     drawCoverTop(ctx, img, 0, y, w, alturaCartao);
   } else {
     const fotoY = titulo?.trim() ? y + Math.round(alturaCartao * BLOCO_TITULO) : y;
-    drawCoverTop(ctx, img, 0, fotoY, w, y + alturaCartao - ALTURA_RODAPE - fotoY);
+    // Centro, não topo: no anúncio criado do zero a cena é composta no meio
+    // do quadro, e ancorar no topo cortava as pessoas pela base.
+    drawCoverTop(ctx, img, 0, fotoY, w, y + alturaCartao - ALTURA_RODAPE - fotoY, 0.5);
     cabecalho(ctx, 0, y, w, alturaCartao, { titulo });
     if (selo?.trim()) seloNumero(ctx, selo.trim(), w - 148, fotoY);
     rodape(ctx, 0, y + alturaCartao - ALTURA_RODAPE, w, chamada);
