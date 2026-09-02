@@ -1,8 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
+  ArrowUpRight,
   Building2,
   Copy,
+  Megaphone,
   Instagram,
   Link2,
   Mail,
@@ -24,6 +26,7 @@ import { ShareService } from "@/services/ShareService";
 import { AdminService, type PlatformStats } from "@/services/AdminService";
 import { describeApiError } from "@/lib/apiErrors";
 import { ROLE_LABEL } from "@/constants/permissions";
+import { isAppAdmin } from "@/constants/admins";
 import { getPlan } from "@/constants/plans";
 import type { PlanId, StoreInvite, User, UserRole } from "@/types";
 import { toast } from "sonner";
@@ -230,9 +233,29 @@ function ProfilePage() {
 
         <TeamSection currentUserId={session.user.id} planId={session.store.planId} />
 
-        {/* Gate aqui é só UX (esconder de quem nunca vai poder ver) — a
-            permissão de verdade é checada no servidor (ADMIN_EMAILS). */}
+        {/* Gates aqui são só UX (esconder de quem nunca vai poder ver) — a
+            permissão de verdade é checada no servidor: ADMIN_EMAILS nas
+            métricas, ADMIN_STORE_ID + papel na divulgação. */}
         {session.user.email === "victor@styledesk.app" ? <PlatformStatsSection /> : null}
+
+        {isAppAdmin(session) ? (
+          <section className="space-y-3">
+            <SectionTitle eyebrow="Admin" title="Divulgar o app" />
+            <Link
+              to="/divulgar"
+              className="flex items-center gap-3 rounded-3xl border border-dashed border-accent/40 bg-accent/5 p-4 text-sm font-medium text-foreground"
+            >
+              <Megaphone className="h-5 w-5 shrink-0 text-accent" />
+              <span className="flex-1">
+                Criar post de divulgação
+                <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                  Antes/depois de um resultado real, ou um anúncio criado do zero.
+                </span>
+              </span>
+              <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </Link>
+          </section>
+        ) : null}
       </div>
     </AppLayout>
   );
@@ -365,7 +388,9 @@ function TeamSection({ currentUserId, planId }: { currentUserId: string; planId:
       return;
     }
     if (seatLimitReached) {
-      toast.error("Limite de usuários do plano atingido. Remova alguém da equipe ou faça upgrade de plano.");
+      toast.error(
+        "Limite de usuários do plano atingido. Remova alguém da equipe ou faça upgrade de plano.",
+      );
       return;
     }
     setBusy(true);
@@ -392,7 +417,9 @@ function TeamSection({ currentUserId, planId }: { currentUserId: string; planId:
 
   const createLink = async () => {
     if (seatLimitReached) {
-      toast.error("Limite de usuários do plano atingido. Remova alguém da equipe ou faça upgrade de plano.");
+      toast.error(
+        "Limite de usuários do plano atingido. Remova alguém da equipe ou faça upgrade de plano.",
+      );
       return;
     }
     setLinkBusy(true);

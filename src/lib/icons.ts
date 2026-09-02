@@ -66,6 +66,7 @@ export {
   TreePine,
   Briefcase,
   PartyPopper,
+  Megaphone,
 } from "lucide-react";
 
 export type { LucideIcon } from "lucide-react";

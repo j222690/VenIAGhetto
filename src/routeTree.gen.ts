@@ -26,6 +26,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as LibraryRouteImport } from './routes/library'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as DivulgarRouteImport } from './routes/divulgar'
 import { Route as ClientsRouteImport } from './routes/clients'
 import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as AlbumRouteImport } from './routes/album'
@@ -116,6 +117,11 @@ const HistoryRoute = HistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DivulgarRoute = DivulgarRouteImport.update({
+  id: '/divulgar',
+  path: '/divulgar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientsRoute = ClientsRouteImport.update({
   id: '/clients',
   path: '/clients',
@@ -142,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/album': typeof AlbumRoute
   '/catalog': typeof CatalogRoute
   '/clients': typeof ClientsRoute
+  '/divulgar': typeof DivulgarRoute
   '/history': typeof HistoryRoute
   '/home': typeof HomeRoute
   '/library': typeof LibraryRoute
@@ -165,6 +172,7 @@ export interface FileRoutesByTo {
   '/album': typeof AlbumRoute
   '/catalog': typeof CatalogRoute
   '/clients': typeof ClientsRoute
+  '/divulgar': typeof DivulgarRoute
   '/history': typeof HistoryRoute
   '/home': typeof HomeRoute
   '/library': typeof LibraryRoute
@@ -189,6 +197,7 @@ export interface FileRoutesById {
   '/album': typeof AlbumRoute
   '/catalog': typeof CatalogRoute
   '/clients': typeof ClientsRoute
+  '/divulgar': typeof DivulgarRoute
   '/history': typeof HistoryRoute
   '/home': typeof HomeRoute
   '/library': typeof LibraryRoute
@@ -214,6 +223,7 @@ export interface FileRouteTypes {
     | '/album'
     | '/catalog'
     | '/clients'
+    | '/divulgar'
     | '/history'
     | '/home'
     | '/library'
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/album'
     | '/catalog'
     | '/clients'
+    | '/divulgar'
     | '/history'
     | '/home'
     | '/library'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/album'
     | '/catalog'
     | '/clients'
+    | '/divulgar'
     | '/history'
     | '/home'
     | '/library'
@@ -284,6 +296,7 @@ export interface RootRouteChildren {
   AlbumRoute: typeof AlbumRoute
   CatalogRoute: typeof CatalogRoute
   ClientsRoute: typeof ClientsRoute
+  DivulgarRoute: typeof DivulgarRoute
   HistoryRoute: typeof HistoryRoute
   HomeRoute: typeof HomeRoute
   LibraryRoute: typeof LibraryRoute
@@ -424,6 +437,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/divulgar': {
+      id: '/divulgar'
+      path: '/divulgar'
+      fullPath: '/divulgar'
+      preLoaderRoute: typeof DivulgarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/clients': {
       id: '/clients'
       path: '/clients'
@@ -460,6 +480,7 @@ const rootRouteChildren: RootRouteChildren = {
   AlbumRoute: AlbumRoute,
   CatalogRoute: CatalogRoute,
   ClientsRoute: ClientsRoute,
+  DivulgarRoute: DivulgarRoute,
   HistoryRoute: HistoryRoute,
   HomeRoute: HomeRoute,
   LibraryRoute: LibraryRoute,
