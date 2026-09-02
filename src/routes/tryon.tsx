@@ -968,16 +968,24 @@ function CatalogSheet({
           </Link>
         </p>
       ) : (
-        <div className="grid grid-cols-3 gap-2">
+        // 4 colunas em vez de 3: aqui o lojista está PROCURANDO uma peça, e
+        // quanto mais couber na tela menos ele rola — passou de 9 para 16
+        // peças visíveis sem rolagem.
+        //
+        // A célula é 3:4, não quadrada: as fotos de peça são retrato, e no
+        // quadrado ou sobrava tarja dos dois lados (contain) ou o corte comia
+        // a peça (cover). Com a célula na mesma proporção da foto, a peça
+        // preenche a miniatura inteira sem perder nada.
+        <div className="grid grid-cols-4 gap-2">
           {items.map((it) => (
             <button
               key={it.id}
               onClick={() => onSelect(it.imageUrl!)}
               className="overflow-hidden rounded-xl border border-border text-left"
             >
-              <div className="aspect-square w-full overflow-hidden bg-secondary">
+              <div className="aspect-[3/4] w-full overflow-hidden bg-secondary">
                 <img
-                  src={thumbUrl(it.imageUrl, { width: 200 })}
+                  src={thumbUrl(it.imageUrl, { width: 160 })}
                   alt={it.name}
                   className="h-full w-full object-cover"
                   loading="lazy"

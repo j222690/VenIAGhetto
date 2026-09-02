@@ -626,7 +626,13 @@ function CatalogPage() {
               >
                 <div className="relative aspect-[3/4] w-full overflow-hidden bg-secondary">
                   {it.imageUrl ? (
-                    <img src={thumbUrl(it.imageUrl, { width: 200 })} alt={it.name} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                    <img
+                      src={thumbUrl(it.imageUrl, { width: 200 })}
+                      alt={it.name}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                    />
                   ) : null}
                   {!it.active ? (
                     <span className="absolute left-2 top-2 rounded-full bg-foreground/70 px-2 py-0.5 text-[10px] font-medium text-background">
