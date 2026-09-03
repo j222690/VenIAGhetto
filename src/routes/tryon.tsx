@@ -34,7 +34,7 @@ import {
   REF_APP_NO_INVENT_CLAUSE,
   REF_APP_FIDELITY_CLOSING_CLAUSE,
 } from "@/constants/prompts";
-import { BACKGROUNDS, FITS, LENGTHS, SIZES } from "@/constants/lookOptions";
+import { BACKGROUNDS, FITS, LENGTHS, MAX_GARMENTS, SIZES } from "@/constants/lookOptions";
 import { cn } from "@/lib/utils";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { genUrl, thumbUrl } from "@/lib/imageUrl";
@@ -131,6 +131,16 @@ function TryOnPage() {
   const cost = GenerationService.tryonCost(garments.length);
 
   const addGarment = (url: string) => {
+    // Teto de 4: é o que cabe numa chamada só (ver MAX_GARMENTS). Vale também
+    // no modo grade, que é 2x2 pela mesma razão.
+    if (garments.length >= MAX_GARMENTS) {
+      toast.info(
+        gridMode
+          ? `Até ${MAX_GARMENTS} looks por comparação.`
+          : `Até ${MAX_GARMENTS} peças por look. Acima disso, mande a foto do look inteiro.`,
+      );
+      return;
+    }
     setGarments((g) => [...g, url]);
     if (gridMode) return; // dica é sobre foto de PEÇA — não se aplica a look completo
     // Checa (em 2º plano) se a foto da peça é boa pra prova; avisa o lojista se não for.
@@ -280,8 +290,9 @@ function TryOnPage() {
       //    2-4 peças = QUADRANTE: monta 1 imagem com todas as peças (grade
       //    2x2, sem IA) e veste tudo numa ÚNICA chamada — em vez de N
       //    chamadas sequenciais (1 por peça), que custavam N × o preço real
-      //    da imagem. 5+ peças (raro) mantém o fluxo sequencial antigo, já
-      //    que a grade só tem 4 quadrantes.
+      //    da imagem. A grade tem 4 quadrantes, e é por isso que 4 é o teto
+      //    de peças (MAX_GARMENTS): acima disso o caminho é a foto do look
+      //    inteiro, que também sai por 1 token.
       const piecesPart = pieces ? ` Look completo (contexto): ${pieces}.` : "";
       // O tamanho SOZINHO não entra no specText. Motivo: "tamanho M" não
       // descreve geometria nenhuma pro modelo (ele não sabe qual é o tamanho
@@ -306,8 +317,7 @@ function TryOnPage() {
       const selectedBg = changeSceneOn ? BACKGROUNDS.find((b) => b.id === background) : undefined;
       const bgRefUrls = selectedBg && bgRefUrl ? [bgRefUrl] : [];
 
-      // Cauda comum (fundo/retoques/realismo/fidelidade) — igual pro passo
-      // único (quadrante) ou pro último passo do fluxo sequencial (5+ peças).
+      // Cauda comum (fundo/retoques/realismo/fidelidade) do passo único.
       const buildFinishPart = (): string => {
         let part = "";
         if (changeSceneOn) {
@@ -331,93 +341,46 @@ function TryOnPage() {
       };
 
       let currentUrl: string;
-      if (garments.length <= 4) {
-        setBusyLabel(garments.length > 1 ? "Montando o look…" : "Vestindo o look…");
-        const stepPrompt =
-          (garments.length === 1
-            ? buildSequentialStepClause(0)
-            : buildQuadrantClause(garments.length)) +
-          (specPart ? " " + specPart : "") +
-          " " +
-          REF_APP_ANATOMY_CLAUSE +
-          " " +
-          REF_APP_NO_COLLAGE_CLAUSE +
-          " " +
-          REF_APP_NO_INVENT_CLAUSE +
-          piecesPart +
-          buildFinishPart() +
-          " " +
-          REF_APP_FIDELITY_CLOSING_CLAUSE;
+      setBusyLabel(garments.length > 1 ? "Montando o look…" : "Vestindo o look…");
+      const stepPrompt =
+        (garments.length === 1
+          ? buildSequentialStepClause(0)
+          : buildQuadrantClause(garments.length)) +
+        (specPart ? " " + specPart : "") +
+        " " +
+        REF_APP_ANATOMY_CLAUSE +
+        " " +
+        REF_APP_NO_COLLAGE_CLAUSE +
+        " " +
+        REF_APP_NO_INVENT_CLAUSE +
+        piecesPart +
+        buildFinishPart() +
+        " " +
+        REF_APP_FIDELITY_CLOSING_CLAUSE;
 
-        const refs =
-          garments.length === 1
-            ? { imageUrls: [photoUrl, garments[0], ...bgRefUrls].map(genUrl) }
-            : {
-                imageUrls: [photoUrl, ...bgRefUrls].map(genUrl),
-                images: [await composeQuadrant(garments)],
-              };
-        const pedida = await GenerationService.startAsync({
-          type: "tryon",
-          feature: "tryon",
-          prompt: stepPrompt,
-          inputs: {
-            clientPhotoUrl: photoUrl,
-            notes:
-              `${changeSceneOn ? `${background} ${bgCustom}` : ""} ${refineOn ? retouchCustom : ""} ${size ?? ""} ${fit ?? ""} ${length ?? ""}`.trim(),
-          },
-          tokenCost: cost,
-          userId: session.user.id,
-          storeId: session.store.id,
-          clientId: client?.id,
-          ...refs,
-        });
-        setResult(await acompanhar(pedida));
-        return;
-      } else {
-        // Fallback sequencial pra 5+ peças (fora do escopo da grade 2x2). Cada
-        // peça é 1 chamada de IA = 1 token cobrado no servidor (mais caro que
-        // o quadrante de propósito — reflete o custo real maior desse caso raro).
-        let running = photoUrl;
-        for (let i = 0; i < garments.length; i++) {
-          const isLast = i === garments.length - 1;
-          setBusyLabel(`Vestindo peça ${i + 1} de ${garments.length}…`);
-          let stepPrompt =
-            buildSequentialStepClause(i) +
-            (specPart ? " " + specPart : "") +
-            " " +
-            REF_APP_ANATOMY_CLAUSE +
-            " " +
-            REF_APP_NO_COLLAGE_CLAUSE +
-            " " +
-            REF_APP_NO_INVENT_CLAUSE +
-            piecesPart;
-          stepPrompt += isLast ? buildFinishPart() : " " + PRESERVE_PHOTO_CLAUSE;
-          stepPrompt += " " + REF_APP_FIDELITY_CLOSING_CLAUSE;
-          const stepImgs = isLast ? [running, garments[i], ...bgRefUrls] : [running, garments[i]];
-          const { url, balance } = await AIService.image(stepPrompt, "tryon", {
-            imageUrls: stepImgs.map(genUrl),
-          });
-          running = url;
-          TokenService.syncAfterServerDebit(cost, "Geração: tryon", balance);
-        }
-        currentUrl = running;
-      }
-
-      const gen = await GenerationService.generate({
+      const refs =
+        garments.length === 1
+          ? { imageUrls: [photoUrl, garments[0], ...bgRefUrls].map(genUrl) }
+          : {
+              imageUrls: [photoUrl, ...bgRefUrls].map(genUrl),
+              images: [await composeQuadrant(garments)],
+            };
+      const pedida = await GenerationService.startAsync({
         type: "tryon",
-        alreadyDebited: true,
+        feature: "tryon",
+        prompt: stepPrompt,
         inputs: {
           clientPhotoUrl: photoUrl,
           notes:
             `${changeSceneOn ? `${background} ${bgCustom}` : ""} ${refineOn ? retouchCustom : ""} ${size ?? ""} ${fit ?? ""} ${length ?? ""}`.trim(),
         },
-        resultUrl: currentUrl,
         tokenCost: cost,
         userId: session.user.id,
         storeId: session.store.id,
         clientId: client?.id,
+        ...refs,
       });
-      setResult(gen);
+      setResult(await acompanhar(pedida));
     } catch (e) {
       toast.error(describeApiError(e, "Não foi possível gerar o look."));
     } finally {
@@ -545,12 +508,12 @@ function TryOnPage() {
         <section className="space-y-3">
           <div>
             <p className="text-sm font-semibold text-foreground">
-              {gridMode ? "Looks para comparar" : "Peças do look"}
+              {gridMode ? "Looks para comparar" : "O look"}
             </p>
             <p className="text-xs text-muted-foreground">
               {gridMode
                 ? "Envie 2 ou 4 fotos — cada uma um look completo diferente."
-                : "Envie 1 peça, ou várias fotos separadas — a IA junta tudo no mesmo look."}
+                : `O melhor resultado vem de uma foto do look inteiro — as peças já combinadas. Também funciona com até ${MAX_GARMENTS} peças em fotos separadas.`}
             </p>
           </div>
           {!gridMode ? (

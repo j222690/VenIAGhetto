@@ -2,7 +2,24 @@
 // comprimento das peças, e cenários de fundo. Extraído para um só lugar
 // porque as duas telas usavam listas idênticas duplicadas.
 
-import { Briefcase, Building2, Camera, PartyPopper, TreePine, Waves, type LucideIcon } from "@/lib/icons";
+import {
+  Briefcase,
+  Building2,
+  Camera,
+  PartyPopper,
+  TreePine,
+  Waves,
+  type LucideIcon,
+} from "@/lib/icons";
+
+// Teto de peças por look.
+//
+// Quatro é o que cabe na grade 2x2 que vai numa ÚNICA chamada de imagem. A
+// partir da quinta o app caía num caminho sequencial — uma chamada por peça,
+// e portanto um token por peça — que quase ninguém usava e cobrava caro sem
+// avisar. Melhor não existir: acima de 4, o caminho é mandar a foto do look
+// inteiro, que sai por 1 token e ainda preserva como as peças combinam.
+export const MAX_GARMENTS = 4;
 
 export const SIZES = ["PP", "P", "M", "G", "GG", "G1", "G2", "G3"];
 
@@ -74,7 +91,13 @@ export interface BackgroundRef {
   label: string;
   url: string;
 }
-export const BACKGROUNDS: { id: string; label: string; icon: LucideIcon; desc: string; refs: BackgroundRef[] }[] = [
+export const BACKGROUNDS: {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  desc: string;
+  refs: BackgroundRef[];
+}[] = [
   {
     id: "estudio",
     label: "Estúdio",
@@ -94,8 +117,7 @@ export const BACKGROUNDS: { id: string; label: string; icon: LucideIcon; desc: s
     id: "praia",
     label: "Praia",
     icon: Waves,
-    desc:
-      "praia tropical, areia clara, mar ao fundo, luz natural de dia batendo no rosto e no corpo",
+    desc: "praia tropical, areia clara, mar ao fundo, luz natural de dia batendo no rosto e no corpo",
     refs: [
       {
         label: "Opção 1",

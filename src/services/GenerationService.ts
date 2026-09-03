@@ -102,11 +102,14 @@ let generations: Generation[] = [];
 // 4 peças: 1 chamada de imagem só, custo real ~igual não importa o nº de
 // peças (~R$0,43 Provador, ~R$0,45 Post com Gemini 3.1 Flash Image) — por
 // isso 1 peça e 2-4 peças custam o MESMO: 1 token. Margem a R$0,65: Provador
-// ~34%, Post ~31%, Scanner ~94% (custo real ~R$0,04). Looks de 5+ peças
-// (raro, fora da grade 2x2) caem no fallback sequencial, que faz UMA chamada de
-// imagem por peça — e o SERVIDOR debita em cada uma. Um look de 5 peças custa
-// 5 tokens, não 1. O comentário anterior aqui dizia o contrário e estava
-// errado; o extrato do lojista sempre mostrou peça por peça.
+// ~34%, Post ~31%, Scanner ~94% (custo real ~R$0,04).
+//
+// O look para de 4 peças (MAX_GARMENTS), que é o que cabe na grade 2x2 e numa
+// chamada só. Existia um caminho sequencial para 5+ que fazia uma chamada por
+// peça — e o servidor debitava em cada uma, então um look de 5 custava 5
+// tokens sem que a tela avisasse. Foi removido: acima de 4 peças o caminho é
+// a foto do look inteiro, que sai por 1 token e ainda mostra como as peças
+// combinam de verdade.
 const TOKEN_COST: Record<GenerationType, number> = {
   tryon: 1,
   post: 1,
@@ -372,9 +375,8 @@ export const GenerationService = {
     feature: "refine" | "clean_image" | "criar_corpo" | "post";
     /**
      * Tipo da linha, quando difere da feature. Serve aos passos INTERMEDIÁRIOS
-     * do look sequencial (5+ peças): eles são geração de post para efeito de
-     * custo, mas não são look — só a última etapa vira o post do álbum. Marcá-
-     * los como "refine" os mantém fora do álbum sem mentir sobre a cobrança.
+     * de geração que não são um look do álbum — cobram como a feature diz,
+     * mas o tipo os mantém fora do álbum.
      */
     type?: GenerationType;
     prompt: string;

@@ -34,7 +34,7 @@ import {
   REF_APP_NO_COLLAGE_CLAUSE,
   REF_APP_NO_INVENT_CLAUSE,
 } from "@/constants/prompts";
-import { BACKGROUNDS, FITS, LENGTHS, SIZES } from "@/constants/lookOptions";
+import { BACKGROUNDS, FITS, LENGTHS, MAX_GARMENTS, SIZES } from "@/constants/lookOptions";
 import type { Generation, StoreSegment } from "@/types";
 
 export const Route = createFileRoute("/posts")({
@@ -96,7 +96,13 @@ function PostsPage() {
     return pronta;
   };
 
-  const addGarment = (url: string) => setGarments((g) => [...g, url]);
+  const addGarment = (url: string) => {
+    if (garments.length >= MAX_GARMENTS) {
+      toast.info(`Até ${MAX_GARMENTS} peças por look. Acima disso, mande a foto do look inteiro.`);
+      return;
+    }
+    setGarments((g) => [...g, url]);
+  };
   const removeGarment = (i: number) => setGarments((g) => g.filter((_, idx) => idx !== i));
 
   const generate = async () => {
@@ -163,7 +169,7 @@ function PostsPage() {
       const bgRefUrls = selectedBg && bgRefUrl ? [bgRefUrl] : [];
 
       // Cauda comum (fundo/refino/realismo) — igual pro passo único (1 peça
-      // ou quadrante 2-4) e pro último passo do fallback sequencial (5+).
+      // ou quadrante 2-4).
       const buildFinishPart = (hasOwnPhoto: boolean): string => {
         let part = "";
         if (hasOwnPhoto && !changeSceneOn) {
@@ -187,150 +193,67 @@ function PostsPage() {
       // A linha criada pelo caminho assíncrono, quando houver: é ela que vira
       // o post, e a legenda é anexada nela depois.
       let pedidaFinal: Generation | null = null;
-      if (garments.length <= 4) {
-        const hasOwnPhoto = !!modelUrl;
-        let stepPrompt: string;
-        if (hasOwnPhoto) {
-          stepPrompt =
-            (garments.length === 1
-              ? buildSequentialStepClause(0)
-              : buildQuadrantClause(garments.length)) +
-            (specPart ? " " + specPart : "") +
-            " " +
-            REF_APP_ANATOMY_CLAUSE +
-            " " +
-            REF_APP_NO_COLLAGE_CLAUSE +
-            " " +
-            REF_APP_NO_INVENT_CLAUSE +
-            piecesPart;
-        } else if (garments.length === 1) {
-          stepPrompt =
-            `Crie uma foto de moda profissional para redes sociais de um(a) ${modelDesc} vestindo a ` +
-            "peça mostrada na imagem." +
-            (specPart ? " " + specPart : "") +
-            piecesPart;
-        } else {
-          stepPrompt =
-            buildQuadrantFromScratchClause(garments.length, modelDesc) +
-            (specPart ? " " + specPart : "") +
-            piecesPart;
-        }
-        stepPrompt += buildFinishPart(hasOwnPhoto) + " " + REF_APP_FIDELITY_CLOSING_CLAUSE;
-
-        // SEGUNDO PLANO. Pelo caminho síncrono a Supabase encerrava a função
-        // em 150s, e o Gemini leva de 11s a 131s — o teto caía dentro da faixa
-        // normal. Como o Google cobra a imagem mesmo quando desistimos de
-        // esperar, cada estouro era imagem paga jogada fora e token do lojista
-        // perdido. Aqui o orçamento é 400s, a falha devolve o token sozinha e
-        // o lojista pode fechar o app: o aviso chega por push.
-        const imageUrls = [
-          ...(hasOwnPhoto ? [modelUrl!] : []),
-          ...(garments.length === 1 ? [garments[0]] : []),
-          ...bgRefUrls,
-        ].map(genUrl);
-        const images = garments.length === 1 ? undefined : [await composeQuadrant(garments)];
-
-        pedidaFinal = await GenerationService.startAsync({
-          type: "post",
-          feature: "post",
-          prompt: stepPrompt,
-          inputs: {
-            clientPhotoUrl: modelUrl,
-            notes: (refineOn ? refineText.trim() : "") || bgCustom.trim() || undefined,
-          },
-          tokenCost: cost,
-          userId: session.user.id,
-          storeId: session.store.id,
-          imageUrls,
-          images,
-          aspectRatio: outputAspectRatio,
-        });
-        currentUrl = (await acompanhar(pedidaFinal)).resultUrl;
+      const hasOwnPhoto = !!modelUrl;
+      let stepPrompt: string;
+      if (hasOwnPhoto) {
+        stepPrompt =
+          (garments.length === 1
+            ? buildSequentialStepClause(0)
+            : buildQuadrantClause(garments.length)) +
+          (specPart ? " " + specPart : "") +
+          " " +
+          REF_APP_ANATOMY_CLAUSE +
+          " " +
+          REF_APP_NO_COLLAGE_CLAUSE +
+          " " +
+          REF_APP_NO_INVENT_CLAUSE +
+          piecesPart;
+      } else if (garments.length === 1) {
+        stepPrompt =
+          `Crie uma foto de moda profissional para redes sociais de um(a) ${modelDesc} vestindo a ` +
+          "peça mostrada na imagem." +
+          (specPart ? " " + specPart : "") +
+          piecesPart;
       } else {
-        // Fallback sequencial pra 5+ peças (fora do escopo da grade 2x2).
-        let running: string | undefined = modelUrl;
-        for (let i = 0; i < garments.length; i++) {
-          const isFirst = i === 0;
-          const isLast = i === garments.length - 1;
-          setBusyLabel(`Vestindo peça ${i + 1} de ${garments.length}…`);
-          let stepPrompt: string;
-          let imgs: string[];
-          let stepAspectRatio: string | undefined;
-          if (running) {
-            stepPrompt =
-              buildSequentialStepClause(isFirst ? 0 : 1) +
-              (specPart ? " " + specPart : "") +
-              " " +
-              REF_APP_ANATOMY_CLAUSE +
-              " " +
-              REF_APP_NO_COLLAGE_CLAUSE +
-              " " +
-              REF_APP_NO_INVENT_CLAUSE +
-              piecesPart;
-            imgs = [running, garments[i]];
-          } else {
-            stepPrompt =
-              `Crie uma foto de moda profissional para redes sociais de um(a) ${modelDesc} vestindo a ` +
-              "peça mostrada na imagem." +
-              (specPart ? " " + specPart : "") +
-              piecesPart;
-            imgs = [garments[i]];
-            stepAspectRatio = "3:4";
-          }
-          stepPrompt += isLast
-            ? buildFinishPart(!!running)
-            : running
-              ? " " + PRESERVE_PHOTO_CLAUSE
-              : "";
-          stepPrompt += " " + REF_APP_FIDELITY_CLOSING_CLAUSE;
-          if (isLast) {
-            imgs = [...imgs, ...bgRefUrls];
-            stepAspectRatio = outputAspectRatio;
-          }
-          // Em segundo plano, como o resto. Cada passo é uma imagem paga: se
-          // o penúltimo estourasse o teto síncrono de 150s, todos os
-          // anteriores iam junto — pagos e perdidos.
-          //
-          // Só a ÚLTIMA etapa vira o post do álbum; as anteriores são etapas
-          // intermediárias e ficam fora dele (type "refine").
-          if (isLast) {
-            pedidaFinal = await GenerationService.startAsync({
-              type: "post",
-              feature: "post",
-              prompt: stepPrompt,
-              inputs: {
-                clientPhotoUrl: modelUrl,
-                notes: (refineOn ? refineText.trim() : "") || bgCustom.trim() || undefined,
-              },
-              tokenCost: cost,
-              userId: session.user.id,
-              storeId: session.store.id,
-              imageUrls: imgs.map(genUrl),
-              aspectRatio: stepAspectRatio,
-            });
-            running = (await acompanhar(pedidaFinal)).resultUrl;
-          } else {
-            const passo = i + 1;
-            const { url } = await GenerationService.runAsync({
-              feature: "post",
-              type: "refine",
-              prompt: stepPrompt,
-              userId: session.user.id,
-              storeId: session.store.id,
-              imageUrls: imgs.map(genUrl),
-              aspectRatio: stepAspectRatio,
-              onTick: (seg) =>
-                setBusyLabel(`Vestindo peça ${passo} de ${garments.length}… ${seg}s`),
-            });
-            running = url;
-          }
-        }
-        currentUrl = running!;
+        stepPrompt =
+          buildQuadrantFromScratchClause(garments.length, modelDesc) +
+          (specPart ? " " + specPart : "") +
+          piecesPart;
       }
+      stepPrompt += buildFinishPart(hasOwnPhoto) + " " + REF_APP_FIDELITY_CLOSING_CLAUSE;
 
-      // Com o caminho assíncrono a linha já existe (nasceu antes da imagem,
-      // para o lojista poder acompanhar). Só falta a legenda. O caminho
-      // sequencial de 5+ peças ainda cria a linha aqui, no fim.
+      // SEGUNDO PLANO. Pelo caminho síncrono a Supabase encerrava a função
+      // em 150s, e o Gemini leva de 11s a 131s — o teto caía dentro da faixa
+      // normal. Como o Google cobra a imagem mesmo quando desistimos de
+      // esperar, cada estouro era imagem paga jogada fora e token do lojista
+      // perdido. Aqui o orçamento é 400s, a falha devolve o token sozinha e
+      // o lojista pode fechar o app: o aviso chega por push.
+      const imageUrls = [
+        ...(hasOwnPhoto ? [modelUrl!] : []),
+        ...(garments.length === 1 ? [garments[0]] : []),
+        ...bgRefUrls,
+      ].map(genUrl);
+      const images = garments.length === 1 ? undefined : [await composeQuadrant(garments)];
+
+      pedidaFinal = await GenerationService.startAsync({
+        type: "post",
+        feature: "post",
+        prompt: stepPrompt,
+        inputs: {
+          clientPhotoUrl: modelUrl,
+          notes: (refineOn ? refineText.trim() : "") || bgCustom.trim() || undefined,
+        },
+        tokenCost: cost,
+        userId: session.user.id,
+        storeId: session.store.id,
+        imageUrls,
+        images,
+        aspectRatio: outputAspectRatio,
+      });
+      currentUrl = (await acompanhar(pedidaFinal)).resultUrl;
+
+      // A linha já existe: ela nasce antes da imagem, para o lojista poder
+      // acompanhar. Só falta a legenda.
       let gen: Generation;
       if (pedidaFinal) {
         gen = { ...pedidaFinal, resultUrl: currentUrl, status: "pronta" };
@@ -523,9 +446,12 @@ function PostsPage() {
         {/* Peças do look — uma ou várias (fotos separadas viram um look só) */}
         <section className="space-y-3">
           <div>
-            <p className="text-sm font-semibold text-foreground">Peças do look</p>
+            <p className="text-sm font-semibold text-foreground">O look</p>
             <p className="text-xs text-muted-foreground">
-              Envie 1 peça, ou várias fotos separadas: a IA junta tudo no mesmo look.
+              O melhor resultado vem de{" "}
+              <strong className="text-foreground">uma foto do look inteiro</strong> — as peças já
+              combinadas, como você quer que apareça. Também funciona com até {MAX_GARMENTS} peças
+              em fotos separadas.
             </p>
           </div>
           <div className="grid grid-cols-3 gap-2">
