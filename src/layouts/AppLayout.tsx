@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { Sidebar } from "@/components/Sidebar";
+import { AssistantBubble } from "@/components/AssistantBubble";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -53,6 +54,8 @@ export function AppLayout({ title, subtitle, showTokens, wide, children }: Props
         </main>
       </div>
       <BottomNav />
+      {/* Em todas as telas: a dúvida aparece durante a tarefa, não depois. */}
+      <AssistantBubble />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import {
   FileText,
   LogOut,
   MessageCircle,
+  Sparkles,
   Plus,
   Shield,
   Shirt,
@@ -140,6 +141,21 @@ function SettingsPage() {
 
         <section className="space-y-2">
           <SectionTitle eyebrow="Ajuda" title="Suporte" />
+          <Link
+            to="/ajuda"
+            className="flex items-center justify-between rounded-2xl border border-border bg-card p-4"
+          >
+            <span className="flex items-center gap-3">
+              <Sparkles className="h-5 w-5 text-clay" />
+              <span>
+                <span className="font-medium">Tirar dúvidas sobre o app</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  Como usar cada tela, custos, dicas de foto
+                </span>
+              </span>
+            </span>
+            <ArrowUpRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+          </Link>
           <a
             href={SUPPORT_WHATSAPP}
             target="_blank"
