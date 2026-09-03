@@ -100,7 +100,20 @@ export interface Asset {
   tags?: string[];
 }
 
-export type GenerationType = "tryon" | "post" | "scanner";
+// Os três primeiros são LOOKS: aparecem no álbum e no histórico. Os outros
+// existem só para dar a essas funções o caminho assíncrono (linha para
+// acompanhar, reembolso e aviso) — ver migration 0029. O álbum os filtra.
+export type GenerationType =
+  | "tryon"
+  | "post"
+  | "scanner"
+  | "refine"
+  | "clean_image"
+  | "criar_corpo";
+
+/** Os tipos que o lojista vê como "look" no álbum e no histórico. */
+export const LOOK_TYPES = ["tryon", "post", "scanner"] as const;
+export type LookType = (typeof LOOK_TYPES)[number];
 
 export interface GenerationInputs {
   modelAssetId?: string;

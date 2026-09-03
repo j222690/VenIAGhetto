@@ -139,19 +139,28 @@ export const ClientService = {
   // corpo inteiro e guarda o resultado na galeria do cliente.
   //
   // Existe porque o Provador precisa da pessoa inteira pra vestir a peça, e na
-  // prática o lojista quase sempre tem foto cortada. Segue o padrão do
-  // `clean_image` do catálogo: é só uma geração de imagem que devolve uma URL,
-  // sem virar linha em `generations` — o destino natural dessa foto é ser a
-  // foto-base do cliente, não um item de álbum. Por isso não precisou de
-  // migration nem de tipo novo no enum generation_type.
+  // prática o lojista quase sempre tem foto cortada.
   //
-  // O token é debitado no SERVIDOR (ver FEATURE_COST em generate-image); aqui
-  // só sincronizamos o saldo que ele devolve.
-  async createFullBodyPhoto(clientId: string, sourcePhotoUrl: string): Promise<ClientPhoto> {
-    const { url, balance } = await AIService.image(CREATE_BODY_CLAUSE, "criar_corpo", {
+  // Roda em SEGUNDO PLANO (ver GenerationService.runAsync): pelo caminho
+  // síncrono, uma geração que passasse de 150s morria no teto da plataforma —
+  // e o Google cobra a imagem mesmo assim, então era foto paga e token perdido.
+  // A linha em `generations` existe só para acompanhar; o álbum a filtra.
+  async createFullBodyPhoto(
+    clientId: string,
+    sourcePhotoUrl: string,
+    storeId: string,
+    userId: string,
+    onTick?: (segundos: number) => void,
+  ): Promise<ClientPhoto> {
+    const { url } = await GenerationService.runAsync({
+      feature: "criar_corpo",
+      prompt: CREATE_BODY_CLAUSE,
+      userId,
+      storeId,
+      inputs: { clientPhotoUrl: sourcePhotoUrl },
       imageUrls: [genUrl(sourcePhotoUrl)],
+      onTick,
     });
-    TokenService.syncAfterServerDebit(1, "Geração: criar corpo", balance);
     return this.addPhoto(clientId, url);
   },
 

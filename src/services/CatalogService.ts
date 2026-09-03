@@ -9,6 +9,7 @@ import type { CatalogItem, StoreSegment } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { mapCatalogItem } from "@/integrations/supabase/mappers";
 import { AIService } from "./AIService";
+import { GenerationService } from "./GenerationService";
 import { StoreService } from "./StoreService";
 
 export const CATALOG_CATEGORIES = [
@@ -261,8 +262,22 @@ export const CatalogService = {
   // que a foto original mostre alguém vestindo a peça. O token já é debitado
   // no SERVIDOR (dentro da Edge Function) — devolve o saldo atualizado pra
   // quem chama sincronizar o cache local (ver catalog.tsx).
-  async cleanPieceImage(imageUrl: string): Promise<{ url: string; balance?: number }> {
-    return AIService.image(GARMENT_ISOLATION_PROMPT, "clean_image", { imageUrls: [imageUrl] });
+  async cleanPieceImage(
+    imageUrl: string,
+    storeId: string,
+    userId: string,
+    onTick?: (segundos: number) => void,
+  ): Promise<{ url: string; balance?: number }> {
+    // Segundo plano pelo mesmo motivo das outras: acima de 150s a função
+    // síncrona era encerrada, e a imagem já paga se perdia junto com o token.
+    return GenerationService.runAsync({
+      feature: "clean_image",
+      prompt: GARMENT_ISOLATION_PROMPT,
+      userId,
+      storeId,
+      imageUrls: [imageUrl],
+      onTick,
+    });
   },
 
   // Copia para o NOSSO Storage uma imagem que está hospedada no site de

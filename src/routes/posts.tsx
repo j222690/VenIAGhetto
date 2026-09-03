@@ -77,6 +77,25 @@ function PostsPage() {
   // Custo é flat: 1 geração, não importa o nº de peças (ver GenerationService.ts).
   const cost = GenerationService.postCost(garments.length);
 
+  // Acompanha a geração em segundo plano até terminar. O rótulo anda porque o
+  // Gemini varia de 11s a 131s na MESMA entrada — sem isso o lojista fica
+  // olhando uma tela parada sem saber se travou.
+  const acompanhar = async (pedida: Generation): Promise<Generation> => {
+    setBusyLabel("Criando sua imagem…");
+    const pronta = await GenerationService.waitFor(pedida.id, (seg) => {
+      setBusyLabel(
+        seg < 60
+          ? `Criando sua imagem… ${seg}s`
+          : `O serviço de IA está mais lento agora (${seg}s). Sua geração continua rodando — ` +
+              `pode sair desta tela, avisamos quando ficar pronta.`,
+      );
+    });
+    if (pronta.status === "falhou") {
+      throw new Error(pronta.errorMessage ?? "Não foi possível criar o post.");
+    }
+    return pronta;
+  };
+
   const addGarment = (url: string) => setGarments((g) => [...g, url]);
   const removeGarment = (i: number) => setGarments((g) => g.filter((_, idx) => idx !== i));
 
@@ -165,6 +184,9 @@ function PostsPage() {
       };
 
       let currentUrl: string;
+      // A linha criada pelo caminho assíncrono, quando houver: é ela que vira
+      // o post, e a legenda é anexada nela depois.
+      let pedidaFinal: Generation | null = null;
       if (garments.length <= 4) {
         const hasOwnPhoto = !!modelUrl;
         let stepPrompt: string;
@@ -195,41 +217,35 @@ function PostsPage() {
         }
         stepPrompt += buildFinishPart(hasOwnPhoto) + " " + REF_APP_FIDELITY_CLOSING_CLAUSE;
 
-        if (hasOwnPhoto) {
-          if (garments.length === 1) {
-            const { url, balance } = await AIService.image(stepPrompt, "post", {
-              imageUrls: [modelUrl!, garments[0], ...bgRefUrls].map(genUrl),
-              aspectRatio: outputAspectRatio,
-            });
-            currentUrl = url;
-            TokenService.syncAfterServerDebit(cost, "Geração: post", balance);
-          } else {
-            const composite = await composeQuadrant(garments);
-            const { url, balance } = await AIService.image(stepPrompt, "post", {
-              imageUrls: [modelUrl!, ...bgRefUrls].map(genUrl),
-              images: [composite],
-              aspectRatio: outputAspectRatio,
-            });
-            currentUrl = url;
-            TokenService.syncAfterServerDebit(cost, "Geração: post", balance);
-          }
-        } else if (garments.length === 1) {
-          const { url, balance } = await AIService.image(stepPrompt, "post", {
-            imageUrls: [garments[0], ...bgRefUrls].map(genUrl),
-            aspectRatio: outputAspectRatio,
-          });
-          currentUrl = url;
-          TokenService.syncAfterServerDebit(cost, "Geração: post", balance);
-        } else {
-          const composite = await composeQuadrant(garments);
-          const { url, balance } = await AIService.image(stepPrompt, "post", {
-            imageUrls: bgRefUrls.map(genUrl),
-            images: [composite],
-            aspectRatio: outputAspectRatio,
-          });
-          currentUrl = url;
-          TokenService.syncAfterServerDebit(cost, "Geração: post", balance);
-        }
+        // SEGUNDO PLANO. Pelo caminho síncrono a Supabase encerrava a função
+        // em 150s, e o Gemini leva de 11s a 131s — o teto caía dentro da faixa
+        // normal. Como o Google cobra a imagem mesmo quando desistimos de
+        // esperar, cada estouro era imagem paga jogada fora e token do lojista
+        // perdido. Aqui o orçamento é 400s, a falha devolve o token sozinha e
+        // o lojista pode fechar o app: o aviso chega por push.
+        const imageUrls = [
+          ...(hasOwnPhoto ? [modelUrl!] : []),
+          ...(garments.length === 1 ? [garments[0]] : []),
+          ...bgRefUrls,
+        ].map(genUrl);
+        const images = garments.length === 1 ? undefined : [await composeQuadrant(garments)];
+
+        pedidaFinal = await GenerationService.startAsync({
+          type: "post",
+          feature: "post",
+          prompt: stepPrompt,
+          inputs: {
+            clientPhotoUrl: modelUrl,
+            notes: (refineOn ? refineText.trim() : "") || bgCustom.trim() || undefined,
+          },
+          tokenCost: cost,
+          userId: session.user.id,
+          storeId: session.store.id,
+          imageUrls,
+          images,
+          aspectRatio: outputAspectRatio,
+        });
+        currentUrl = (await acompanhar(pedidaFinal)).resultUrl;
       } else {
         // Fallback sequencial pra 5+ peças (fora do escopo da grade 2x2).
         let running: string | undefined = modelUrl;
@@ -281,20 +297,37 @@ function PostsPage() {
         currentUrl = running!;
       }
 
-      const gen = await GenerationService.generate({
-        type: "post",
-        alreadyDebited: true,
-        inputs: {
-          clientPhotoUrl: modelUrl,
-          notes: (refineOn ? refineText.trim() : "") || bgCustom.trim() || undefined,
-        },
-        resultUrl: currentUrl,
-        audience,
-        withCopy: aiCaption,
-        tokenCost: cost,
-        userId: session.user.id,
-        storeId: session.store.id,
-      });
+      // Com o caminho assíncrono a linha já existe (nasceu antes da imagem,
+      // para o lojista poder acompanhar). Só falta a legenda. O caminho
+      // sequencial de 5+ peças ainda cria a linha aqui, no fim.
+      let gen: Generation;
+      if (pedidaFinal) {
+        gen = { ...pedidaFinal, resultUrl: currentUrl, status: "pronta" };
+        if (aiCaption) {
+          setBusyLabel("Escrevendo a legenda…");
+          gen.copies = await GenerationService.attachCopy(
+            gen.id,
+            currentUrl,
+            (refineOn ? refineText.trim() : "") || bgCustom.trim() || undefined,
+            audience,
+          );
+        }
+      } else {
+        gen = await GenerationService.generate({
+          type: "post",
+          alreadyDebited: true,
+          inputs: {
+            clientPhotoUrl: modelUrl,
+            notes: (refineOn ? refineText.trim() : "") || bgCustom.trim() || undefined,
+          },
+          resultUrl: currentUrl,
+          audience,
+          withCopy: aiCaption,
+          tokenCost: cost,
+          userId: session.user.id,
+          storeId: session.store.id,
+        });
+      }
       setResult(gen);
     } catch (e) {
       toast.error(describeApiError(e, "Não foi possível gerar o post."));
@@ -825,7 +858,13 @@ function ModelBankSheet({
               onClick={() => onSelect(m.url)}
               className="overflow-hidden rounded-xl border border-border"
             >
-              <img src={thumbUrl(m.url, { width: 200 })} alt={m.label} className="aspect-[3/4] w-full object-cover" loading="lazy" decoding="async" />
+              <img
+                src={thumbUrl(m.url, { width: 200 })}
+                alt={m.label}
+                className="aspect-[3/4] w-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
             </button>
           ))}
         </div>

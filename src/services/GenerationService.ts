@@ -109,6 +109,11 @@ const TOKEN_COST: Record<GenerationType, number> = {
   tryon: 1,
   post: 1,
   scanner: 1,
+  // Mesmo custo real: uma chamada de imagem cada (ver FEATURE_COST no servidor,
+  // que é quem debita de verdade).
+  refine: 1,
+  clean_image: 1,
+  criar_corpo: 1,
 };
 
 export const GenerationService = {
@@ -141,9 +146,14 @@ export const GenerationService = {
   // Seguro de chamar no bootstrap.
   async load(): Promise<Generation[]> {
     try {
+      // Só LOOK: refino, limpeza e corpo têm linha em `generations` apenas
+      // para poder rodar em segundo plano (ver migration 0029). Não são coisa
+      // que o lojista procura no álbum — refino é uma versão de um look que
+      // já está lá, limpeza é foto de peça e corpo é foto de cliente.
       const { data, error } = await supabase
         .from("generations")
         .select("*")
+        .in("type", ["provador", "post", "scanner"])
         .order("created_at", { ascending: false });
       if (error) throw error;
       generations = (data ?? []).map(mapGeneration);
@@ -271,7 +281,7 @@ export const GenerationService = {
     storeId: string;
     clientId?: string;
     prompt: string;
-    feature: "tryon" | "post";
+    feature: "tryon" | "post" | "refine" | "clean_image" | "criar_corpo";
     imageUrls?: string[];
     images?: { mimeType: string; data: string }[];
     aspectRatio?: string;
@@ -309,6 +319,65 @@ export const GenerationService = {
     });
     TokenService.syncAfterServerDebit(cost, `Geração: ${params.type}`, balance);
     return criada;
+  },
+
+  // Escreve a legenda numa geração que JÁ existe.
+  //
+  // Pelo caminho síncrono a legenda era escrita antes de a linha ser criada,
+  // dentro de generate(). Em segundo plano a linha nasce primeiro (é ela que o
+  // lojista acompanha), então a legenda entra depois — aqui.
+  async attachCopy(
+    id: string,
+    imageUrl: string,
+    contexto?: string,
+    audience?: StoreSegment,
+  ): Promise<SocialCopySet> {
+    const copies = await generatePostCopy(imageUrl, contexto, audience).catch(() => seedSocialCopy);
+    await supabase
+      .from("generations")
+      .update({ copies: copies as unknown as Json })
+      .eq("id", id);
+    generations = generations.map((g) => (g.id === id ? { ...g, copies } : g));
+    return copies;
+  },
+
+  // Roda UMA geração em segundo plano e devolve só a URL pronta, escondendo a
+  // linha de acompanhamento de quem chama.
+  //
+  // Existe para Refino, Limpar imagem e Criar corpo, que chamavam a IA pelo
+  // caminho síncrono. A Supabase encerra uma função síncrona em 150s e o
+  // Gemini leva de 11s a 131s: o teto caía dentro da faixa normal. Como o
+  // Google cobra a imagem mesmo quando desistimos de esperar, cada estouro era
+  // imagem paga jogada fora E o token do lojista perdido, porque não havia
+  // linha para reembolsar. Por aqui são 400s de orçamento, reembolso
+  // automático na falha e aviso por push quando termina.
+  async runAsync(params: {
+    feature: "refine" | "clean_image" | "criar_corpo";
+    prompt: string;
+    userId: string;
+    storeId: string;
+    inputs?: GenerationInputs;
+    imageUrls?: string[];
+    images?: { mimeType: string; data: string }[];
+    aspectRatio?: string;
+    onTick?: (segundos: number) => void;
+  }): Promise<{ url: string; balance?: number }> {
+    const pedida = await this.startAsync({
+      type: params.feature,
+      feature: params.feature,
+      inputs: params.inputs ?? {},
+      userId: params.userId,
+      storeId: params.storeId,
+      prompt: params.prompt,
+      imageUrls: params.imageUrls,
+      images: params.images,
+      aspectRatio: params.aspectRatio,
+    });
+    const pronta = await this.waitFor(pedida.id, params.onTick);
+    if (pronta.status === "falhou" || !pronta.resultUrl) {
+      throw new Error(pronta.errorMessage ?? "A geração não foi concluída.");
+    }
+    return { url: pronta.resultUrl, balance: TokenService.balance() };
   },
 
   // Pede ao servidor que resgate gerações presas em "processando".

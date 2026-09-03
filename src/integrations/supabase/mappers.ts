@@ -85,6 +85,9 @@ const GENERATION_TYPE_FROM_DB = {
   provador: "tryon",
   post: "post",
   scanner: "scanner",
+  refino: "refine",
+  limpeza: "clean_image",
+  corpo: "criar_corpo",
 } as const;
 
 export function mapGeneration(row: GenerationRow): Generation {
@@ -112,6 +115,9 @@ export const GENERATION_TYPE_TO_DB = {
   tryon: "provador",
   post: "post",
   scanner: "scanner",
+  refine: "refino",
+  clean_image: "limpeza",
+  criar_corpo: "corpo",
 } as const;
 
 export function mapCatalogItem(row: CatalogItemRow): CatalogItem {

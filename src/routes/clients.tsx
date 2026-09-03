@@ -20,6 +20,7 @@ import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { ClientService } from "@/services/ClientService";
 import { AIService } from "@/services/AIService";
 import { TokenService } from "@/services/TokenService";
+import { useAuth } from "@/hooks/useAuth";
 import { describeApiError } from "@/lib/apiErrors";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { Client, ClientPhoto, Generation } from "@/types";
@@ -329,7 +330,11 @@ function ClientFolder({ client: initialClient, onBack }: { client: Client; onBac
   const [viewingUrl, setViewingUrl] = useState<string | null>(null);
   const [photos, setPhotos] = useState<ClientPhoto[]>([]);
   // URL da foto que está gerando corpo inteiro (null = nenhuma).
+  const { session } = useAuth();
   const [creatingBody, setCreatingBody] = useState<string | null>(null);
+  // Roda em segundo plano e pode passar de um minuto: o rótulo andando é o que
+  // diz ao lojista que continua trabalhando.
+  const [bodyLabel, setBodyLabel] = useState("Criando o corpo…");
 
   useEffect(() => {
     let active = true;
@@ -383,6 +388,7 @@ function ClientFolder({ client: initialClient, onBack }: { client: Client; onBac
       toast.error("Você já usou todas as gerações do mês. Adicione mais nas Configurações.");
       return;
     }
+    setBodyLabel("Criando o corpo…");
     setCreatingBody(sourceUrl);
     try {
       // Confere o enquadramento ANTES de cobrar o token (ver bodyFramingCheck).
@@ -402,7 +408,15 @@ function ClientFolder({ client: initialClient, onBack }: { client: Client; onBac
         });
         return;
       }
-      const photo = await ClientService.createFullBodyPhoto(client.id, sourceUrl);
+      if (!session) return;
+      const photo = await ClientService.createFullBodyPhoto(
+        client.id,
+        sourceUrl,
+        session.store.id,
+        session.user.id,
+        (seg) =>
+          setBodyLabel(seg < 60 ? `Criando o corpo… ${seg}s` : `Ainda processando (${seg}s)…`),
+      );
       setPhotos((prev) => [photo, ...prev]);
       toast.success("Corpo inteiro gerado e salvo na galeria.", {
         duration: 8000,
@@ -466,9 +480,7 @@ function ClientFolder({ client: initialClient, onBack }: { client: Client; onBac
             >
               <span className="min-w-0">
                 <span className="block text-sm font-medium text-foreground">
-                  {creatingBody === client.photoUrl
-                    ? "Gerando corpo inteiro…"
-                    : "Criar corpo inteiro"}
+                  {creatingBody === client.photoUrl ? bodyLabel : "Criar corpo inteiro"}
                 </span>
                 <span className="block text-xs text-muted-foreground">
                   A foto atual está cortada? A IA completa até os pés. 1 geração.
@@ -518,7 +530,7 @@ function ClientFolder({ client: initialClient, onBack }: { client: Client; onBac
                     onClick={() => createBody(p.url)}
                     className="absolute inset-x-1.5 bottom-1.5 rounded-full bg-background/85 px-2 py-1 text-[10px] font-medium text-foreground shadow-soft backdrop-blur disabled:opacity-60"
                   >
-                    {creatingBody === p.url ? "Gerando…" : "Criar corpo"}
+                    {creatingBody === p.url ? bodyLabel : "Criar corpo"}
                   </button>
                 </div>
               );

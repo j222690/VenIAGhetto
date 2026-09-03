@@ -143,12 +143,21 @@ function DivulgarPage() {
             titulo,
             selo,
             chamada: "Deslize e veja",
+            passo: "1 / 3",
           }),
-          await composeSlide({ url: principal.resultUrl, formato, semTarja: true }),
+          await composeSlide({
+            url: principal.resultUrl,
+            formato,
+            titulo: "O resultado que a cliente recebe",
+            chamada: "Falta um",
+            passo: "2 / 3",
+          }),
           await composeBrandCard(formato, CHAMADA),
         ];
       } else {
         // Vitrine: abre com o par, para prender, e segue com um look por slide.
+        // +1 pelo cartão de marca no fim.
+        const total = escolhidos.length + 1;
         const slides = [
           await composePair({
             antesUrl: principal.clientPhotoUrl,
@@ -157,10 +166,27 @@ function DivulgarPage() {
             titulo,
             selo,
             chamada: "Deslize e veja",
+            passo: `1 / ${total}`,
           }),
         ];
-        for (const m of escolhidos.slice(1)) {
-          slides.push(await composeSlide({ url: m.resultUrl, formato, semTarja: true }));
+        // Cada look tem manchete própria e o contador: nenhum slide entra só
+        // como foto, que é o que fazia o carrossel parecer uma galeria.
+        const olhares = [
+          "A mesma pessoa, outra peça",
+          "Mais um look do seu catálogo",
+          "Tudo isso sem ensaio",
+          "E ainda tem mais",
+        ];
+        for (const [i, m] of escolhidos.slice(1).entries()) {
+          slides.push(
+            await composeSlide({
+              url: m.resultUrl,
+              formato,
+              titulo: olhares[i % olhares.length],
+              chamada: i === escolhidos.length - 2 ? "Falta um" : "Deslize",
+              passo: `${i + 2} / ${total}`,
+            }),
+          );
         }
         slides.push(await composeBrandCard(formato, CHAMADA));
         imagens = slides;
@@ -187,10 +213,18 @@ function DivulgarPage() {
       const imagens =
         formato === "carrossel"
           ? [
-              await composeSlide({ url, formato, titulo, selo, chamada: "Deslize e veja" }),
+              await composeSlide({
+                url,
+                formato,
+                titulo,
+                selo,
+                chamada: "Deslize e veja",
+                passo: "1 / 2",
+                ancora: 0.5,
+              }),
               await composeBrandCard(formato, CHAMADA),
             ]
-          : [await composeSlide({ url, formato, titulo, selo })];
+          : [await composeSlide({ url, formato, titulo, selo, ancora: 0.5 })];
 
       setBusyLabel("Escrevendo a legenda…");
       const copies = await ShowcaseService.copyTema(tema);

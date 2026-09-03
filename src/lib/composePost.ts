@@ -348,7 +348,14 @@ function cabecalho(
 
 // Rodapé: fio neon, marca e a pista para deslizar. Enxuto de propósito — o
 // peso da arte é a manchete, não o rodapé.
-function rodape(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, chamada?: string) {
+function rodape(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  chamada?: string,
+  passo?: string,
+) {
   ctx.save();
   ctx.strokeStyle = gradienteNeon(ctx, x, x + w);
   ctx.lineWidth = 5;
@@ -369,6 +376,15 @@ function rodape(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, 
   ctx.fillStyle = COR.texto;
   ctx.fillText(SITE, x + 56, y + 56);
 
+  // Contador de slide (2/4). Diz quanto falta, o que é o que sustenta o
+  // deslize até o fim do carrossel.
+  if (passo) {
+    ctx.textAlign = "center";
+    ctx.fillStyle = COR.apagado;
+    ctx.font = `600 26px ${SANS}`;
+    ctx.fillText(passo, x + w / 2, y + 56);
+  }
+
   if (chamada?.trim()) {
     ctx.textAlign = "right";
     ctx.fillStyle = COR.rosa;
@@ -383,6 +399,8 @@ export interface ParParams extends CartaoParams {
   antesUrl: string;
   depoisUrl: string;
   formato: PostFormat;
+  /** Contador do carrossel, ex.: "1 / 4". */
+  passo?: string;
 }
 
 // Antes e depois LADO A LADO, colados, com a seta ligando os dois.
@@ -393,6 +411,7 @@ export async function composePair({
   titulo,
   chamada,
   selo,
+  passo,
 }: ParParams): Promise<string> {
   await fontesProntas();
   const [antes, depois] = await Promise.all([loadImage(antesUrl), loadImage(depoisUrl)]);
@@ -422,7 +441,7 @@ export async function composePair({
   // O selo cavalga a borda do bloco: metade no texto, metade na foto. É o que
   // dá profundidade e impede que ele pareça só mais um adesivo solto.
   if (selo?.trim()) seloNumero(ctx, selo.trim(), w - 148, fotoY);
-  rodape(ctx, 0, y + alturaCartao - ALTURA_RODAPE, w, chamada);
+  rodape(ctx, 0, y + alturaCartao - ALTURA_RODAPE, w, chamada, passo);
 
   return canvas.toDataURL("image/jpeg", 0.92);
 }
@@ -430,8 +449,16 @@ export async function composePair({
 export interface SlideParams extends CartaoParams {
   url: string;
   formato: PostFormat;
-  /** Sem texto nenhum: para os slides do meio de um carrossel. */
-  semTarja?: boolean;
+  /** Contador do carrossel, ex.: "2 / 4". */
+  passo?: string;
+  /**
+   * Onde o recorte da foto se apoia: 0 = topo, 0.5 = centro.
+   *
+   * Padrão topo, porque foto de cliente tem o rosto em cima e centralizar
+   * decapitava a pessoa. O anúncio criado do zero passa 0.5: ali a cena é
+   * composta no meio do quadro.
+   */
+  ancora?: number;
 }
 
 // Uma foto só, no mesmo molde.
@@ -441,7 +468,8 @@ export async function composeSlide({
   titulo,
   chamada,
   selo,
-  semTarja = false,
+  passo,
+  ancora = 0,
 }: SlideParams): Promise<string> {
   await fontesProntas();
   const img = await loadImage(url);
@@ -450,17 +478,15 @@ export async function composeSlide({
   const alturaCartao = formato === "story" ? h - STORY_TOPO - STORY_RODAPE : CARTAO.h;
   const y = formato === "story" ? STORY_TOPO : topo;
 
-  if (semTarja) {
-    drawCoverTop(ctx, img, 0, y, w, alturaCartao);
-  } else {
-    const fotoY = titulo?.trim() ? y + Math.round(alturaCartao * BLOCO_TITULO) : y;
-    // Centro, não topo: no anúncio criado do zero a cena é composta no meio
-    // do quadro, e ancorar no topo cortava as pessoas pela base.
-    drawCoverTop(ctx, img, 0, fotoY, w, y + alturaCartao - ALTURA_RODAPE - fotoY, 0.5);
-    cabecalho(ctx, 0, y, w, alturaCartao, { titulo });
-    if (selo?.trim()) seloNumero(ctx, selo.trim(), w - 148, fotoY);
-    rodape(ctx, 0, y + alturaCartao - ALTURA_RODAPE, w, chamada);
-  }
+  // NENHUM slide fica só com a foto: mesmo no meio do carrossel entram a
+  // manchete daquele slide, o contador e a assinatura. Um slide pelado no
+  // meio parece um álbum de fotos, não um post — e é onde a maioria desiste
+  // de deslizar.
+  const fotoY = titulo?.trim() ? y + Math.round(alturaCartao * BLOCO_TITULO) : y;
+  drawCoverTop(ctx, img, 0, fotoY, w, y + alturaCartao - ALTURA_RODAPE - fotoY, ancora);
+  cabecalho(ctx, 0, y, w, alturaCartao, { titulo });
+  if (selo?.trim()) seloNumero(ctx, selo.trim(), w - 148, fotoY);
+  rodape(ctx, 0, y + alturaCartao - ALTURA_RODAPE, w, chamada, passo);
 
   return canvas.toDataURL("image/jpeg", 0.92);
 }

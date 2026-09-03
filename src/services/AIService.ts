@@ -92,7 +92,7 @@ export const AIService = {
   // cada estouro de teto era imagem paga e jogada fora.
   async imageAsync(
     prompt: string,
-    feature: "tryon" | "post",
+    feature: "tryon" | "post" | "refine" | "clean_image" | "criar_corpo",
     generationId: string,
     refs?: ImageRefs,
   ): Promise<{ generationId: string; balance?: number }> {

@@ -7,7 +7,9 @@ export type PlanType = "starter" | "pro" | "business";
 export type UserRoleDb = "owner" | "manager" | "seller";
 export type StoreSegmentDb = "feminina" | "masculina" | "unissex";
 export type AssetType = "model" | "look" | "background" | "generated";
-export type GenerationTypeDb = "provador" | "post" | "scanner";
+// refino/limpeza/corpo entraram na migration 0029: existem para dar caminho
+// assíncrono a Refino, Limpar imagem e Criar corpo. Não são look de álbum.
+export type GenerationTypeDb = "provador" | "post" | "scanner" | "refino" | "limpeza" | "corpo";
 export type TransactionType = "credit" | "debit";
 export type InviteStatusDb = "pending" | "accepted" | "revoked";
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled";

@@ -80,6 +80,9 @@ function CatalogPage() {
   const [form, setForm] = useState<ItemForm>(EMPTY_FORM);
   const [busy, setBusy] = useState(false);
   const [cleaningImage, setCleaningImage] = useState(false);
+  // Segundos decorridos da limpeza: agora ela roda em segundo plano e pode
+  // passar de um minuto — sem um rótulo que anda, parece travada.
+  const [cleanLabel, setCleanLabel] = useState("Limpando a peça…");
   // Foto aberta em tela cheia (sem corte). null = fechada.
   const [viewing, setViewing] = useState<string | null>(null);
   // categoriesForSegment lê um cache mutável (customCategories); esse contador
@@ -161,9 +164,17 @@ function CatalogPage() {
       toast.error("Você já usou todas as gerações do mês. Adicione mais nas Configurações.");
       return;
     }
+    setCleanLabel("Limpando a peça…");
     setCleaningImage(true);
     try {
-      const { url: cleanUrl, balance } = await CatalogService.cleanPieceImage(form.imageUrl);
+      if (!session) return;
+      const { url: cleanUrl, balance } = await CatalogService.cleanPieceImage(
+        form.imageUrl,
+        session.store.id,
+        session.user.id,
+        (seg) =>
+          setCleanLabel(seg < 60 ? `Limpando a peça… ${seg}s` : `Ainda processando (${seg}s)…`),
+      );
       setForm((f) => ({ ...f, cleanImageUrl: cleanUrl }));
       TokenService.syncAfterServerDebit(CLEAN_IMAGE_COST, "Limpeza de peça (catálogo)", balance);
       toast.success("Peça limpa, isso melhora o resultado no Provador.");
@@ -419,6 +430,7 @@ function CatalogPage() {
           </div>
         </div>
         {busy ? <LoadingOverlay label={importLabel ?? "Importando…"} /> : null}
+        {cleaningImage ? <LoadingOverlay label={cleanLabel} /> : null}
       </AppLayout>
     );
   }
