@@ -81,12 +81,43 @@ const FORMATO_JSON =
   'impacto e "desc" são 2 a 4 frases desenvolvendo. NÃO escreva hashtags: elas são fixas e ' +
   "entram depois.";
 
+// ÂNGULOS. Um por post, sorteado quando o dono não escreve o dele.
+//
+// Existe porque as legendas saíam todas iguais: cinco posts seguidos abriam
+// com a mesma dúvida da cliente e fechavam com "sem ensaio fotográfico".
+// Pedir "varie" não resolve — o modelo volta ao mesmo miolo. Dar um ângulo
+// concreto e diferente a cada post resolve, porque muda o assunto, não o
+// estilo.
+const ANGULOS = [
+  "o tempo: o look pronto antes de a cliente perder o interesse",
+  "o provador que não trava mais a fila da loja",
+  "a peça que encalha porque ninguém imagina ela vestida",
+  "atender quem mora longe e nunca ia pisar na loja",
+  "a cliente que pede foto no WhatsApp e some quando você demora",
+  "o ensaio fotográfico que a loja pequena não tem como pagar",
+  "montar combinações do estoque parado",
+  "a troca que não acontece porque ela já viu como fica",
+];
+
+export const angulaAleatorio = (): string => ANGULOS[Math.floor(Math.random() * ANGULOS.length)];
+
+// Frases que o modelo repete sozinho, post após post. Listadas para ele ter o
+// que evitar — proibir o clichê é mais eficaz do que pedir originalidade.
+const REPETIDAS =
+  ' EVITE estas frases, já gastas de tanto uso: "sem sair de casa", "sem ensaio ' +
+  'fotográfico", "em segundos", "sem precisar ir até a loja", "caimento perfeito", ' +
+  '"impecável", "fecha a venda na hora". Diga a mesma ideia com outras palavras, ou ' +
+  "mude o que está sendo dito.";
+
 const TOM =
   " Escreva em português do Brasil, falando DIRETO COM A LOJISTA (você), com tom próximo e " +
-  "concreto. Fale de resultado no negócio — vender mais pelo WhatsApp, atender sem a cliente ir " +
-  "à loja, mostrar o catálogo inteiro — e não de tecnologia. Nada de jargão de IA, nada de " +
+  "concreto. Fale de resultado no negócio e não de tecnologia. Nada de jargão de IA, nada de " +
   "promessa exagerada de faturamento, sem emoji em excesso (no máximo 2). " +
-  `Termine o desc do instagram convidando para ${SITE}.`;
+  "ABRA de um jeito diferente do óbvio: pode ser uma cena do balcão, um número, uma " +
+  'objeção da cliente, uma comparação — o que NÃO pode é começar com "Sabe aquela ' +
+  'cliente que…" ou "Imagina…". ' +
+  REPETIDAS +
+  ` Termine o desc do instagram convidando para ${SITE}.`;
 
 export const ShowcaseService = {
   // Gerações prontas de todas as lojas, para servirem de antes/depois.
@@ -101,7 +132,9 @@ export const ShowcaseService = {
   // Legenda para um post de antes/depois: a IA OLHA o resultado e escreve em
   // cima do que aparece nele.
   async copyAntesDepois(depoisUrl: string, anguloExtra?: string): Promise<SocialCopySet> {
-    const extra = anguloExtra?.trim() ? ` Ângulo pedido: ${anguloExtra.trim()}.` : "";
+    // Sem ângulo escrito pelo dono, sorteia um: é o que impede cinco posts
+    // seguidos de dizerem a mesma coisa.
+    const extra = ` Escreva ESTE post em torno de: ${anguloExtra?.trim() || angulaAleatorio()}.`;
     const prompt =
       "Você é copywriter brasileiro e está escrevendo um post para vender um APLICATIVO a donas " +
       "de loja de moda. " +
@@ -122,6 +155,7 @@ export const ShowcaseService = {
       "de loja de moda. " +
       BRIEF_PRODUTO +
       ` O tema deste post é: ${tema.trim()}.` +
+      ` Escreva em torno de: ${angulaAleatorio()}.` +
       TOM +
       FORMATO_JSON;
     return parseCopy(await AIService.complete(prompt));
