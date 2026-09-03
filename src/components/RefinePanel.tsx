@@ -6,8 +6,9 @@
 
 import { useState } from "react";
 import { RotateCw, Sparkles } from "@/lib/icons";
-import { AIService } from "@/services/AIService";
+import { GenerationService } from "@/services/GenerationService";
 import { TokenService } from "@/services/TokenService";
+import { useAuth } from "@/hooks/useAuth";
 import { useTokens } from "@/hooks/useTokens";
 import {
   buildBackgroundClause,
@@ -35,12 +36,16 @@ interface Props {
 
 export function RefinePanel({ imageUrl, onRefined }: Props) {
   const { balance } = useTokens();
+  const { session } = useAuth();
   const [enabled, setEnabled] = useState(false);
   const [background, setBackground] = useState<string>("");
   const [bgRefUrl, setBgRefUrl] = useState<string>("");
   const [bgCustom, setBgCustom] = useState("");
   const [refine, setRefine] = useState("");
   const [busy, setBusy] = useState(false);
+  // Rótulo que anda: agora o refino roda em segundo plano e pode passar de um
+  // minuto — parado, a tela parece travada.
+  const [label, setLabel] = useState("Refinando…");
 
   const apply = async () => {
     const bg = BACKGROUNDS.find((b) => b.id === background);
@@ -52,6 +57,7 @@ export function RefinePanel({ imageUrl, onRefined }: Props) {
       toast.error("Você já usou todas as gerações do mês para refinar.");
       return;
     }
+    setLabel("Refinando…");
     setBusy(true);
     try {
       const changingScene = !!bg || !!bgCustom.trim();
@@ -70,10 +76,18 @@ export function RefinePanel({ imageUrl, onRefined }: Props) {
         GARMENT_FIDELITY_CLAUSE +
         " " +
         REF_APP_FIDELITY_CLOSING_CLAUSE;
-      const { url, balance } = await AIService.image(prompt, "refine", {
+      if (!session) return;
+      // Segundo plano, como as outras gerações pagas: acima de 150s a função
+      // síncrona era encerrada pela plataforma e a imagem — já cobrada pelo
+      // Google — se perdia junto com o token, sem linha para reembolsar.
+      const { url } = await GenerationService.runAsync({
+        feature: "refine",
+        prompt,
+        userId: session.user.id,
+        storeId: session.store.id,
         imageUrls: bg && bgRefUrl ? [imageUrl, bgRefUrl] : [imageUrl],
+        onTick: (seg) => setLabel(seg < 60 ? `Refinando… ${seg}s` : `Ainda processando (${seg}s)…`),
       });
-      TokenService.syncAfterServerDebit(REFINE_COST, "Refinar imagem", balance);
       onRefined(url);
       toast.success("Imagem atualizada.");
     } catch (e) {
@@ -121,7 +135,7 @@ export function RefinePanel({ imageUrl, onRefined }: Props) {
                 onClick={() => {
                   const deselecting = background === b.id;
                   setBackground(deselecting ? "" : b.id);
-                  setBgRefUrl(deselecting ? "" : b.refs[0]?.url ?? "");
+                  setBgRefUrl(deselecting ? "" : (b.refs[0]?.url ?? ""));
                 }}
                 className={cn(
                   "flex flex-col items-center gap-1 rounded-2xl border px-1 py-2.5 transition",
@@ -160,11 +174,12 @@ export function RefinePanel({ imageUrl, onRefined }: Props) {
             {busy ? (
               <>
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-clay-foreground border-t-transparent" />
-                Aplicando…
+                {label}
               </>
             ) : (
               <>
-                <RotateCw className="h-4 w-4" /> Aplicar mudanças · {Math.floor(balance / REFINE_COST)} gerações restantes
+                <RotateCw className="h-4 w-4" /> Aplicar mudanças ·{" "}
+                {Math.floor(balance / REFINE_COST)} gerações restantes
               </>
             )}
           </button>

@@ -287,12 +287,43 @@ function PostsPage() {
             imgs = [...imgs, ...bgRefUrls];
             stepAspectRatio = outputAspectRatio;
           }
-          const { url, balance } = await AIService.image(stepPrompt, "post", {
-            imageUrls: imgs.map(genUrl),
-            aspectRatio: stepAspectRatio,
-          });
-          running = url;
-          TokenService.syncAfterServerDebit(cost, "Geração: post", balance);
+          // Em segundo plano, como o resto. Cada passo é uma imagem paga: se
+          // o penúltimo estourasse o teto síncrono de 150s, todos os
+          // anteriores iam junto — pagos e perdidos.
+          //
+          // Só a ÚLTIMA etapa vira o post do álbum; as anteriores são etapas
+          // intermediárias e ficam fora dele (type "refine").
+          if (isLast) {
+            pedidaFinal = await GenerationService.startAsync({
+              type: "post",
+              feature: "post",
+              prompt: stepPrompt,
+              inputs: {
+                clientPhotoUrl: modelUrl,
+                notes: (refineOn ? refineText.trim() : "") || bgCustom.trim() || undefined,
+              },
+              tokenCost: cost,
+              userId: session.user.id,
+              storeId: session.store.id,
+              imageUrls: imgs.map(genUrl),
+              aspectRatio: stepAspectRatio,
+            });
+            running = (await acompanhar(pedidaFinal)).resultUrl;
+          } else {
+            const passo = i + 1;
+            const { url } = await GenerationService.runAsync({
+              feature: "post",
+              type: "refine",
+              prompt: stepPrompt,
+              userId: session.user.id,
+              storeId: session.store.id,
+              imageUrls: imgs.map(genUrl),
+              aspectRatio: stepAspectRatio,
+              onTick: (seg) =>
+                setBusyLabel(`Vestindo peça ${passo} de ${garments.length}… ${seg}s`),
+            });
+            running = url;
+          }
         }
         currentUrl = running!;
       }

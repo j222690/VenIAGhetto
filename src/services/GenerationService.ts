@@ -103,8 +103,10 @@ let generations: Generation[] = [];
 // peças (~R$0,43 Provador, ~R$0,45 Post com Gemini 3.1 Flash Image) — por
 // isso 1 peça e 2-4 peças custam o MESMO: 1 token. Margem a R$0,65: Provador
 // ~34%, Post ~31%, Scanner ~94% (custo real ~R$0,04). Looks de 5+ peças
-// (raro, fora da grade 2x2) caem no fallback sequencial antigo mas cobram só
-// 1 token — margem menor nesse caso extremo, aceito por simplicidade de preço.
+// (raro, fora da grade 2x2) caem no fallback sequencial, que faz UMA chamada de
+// imagem por peça — e o SERVIDOR debita em cada uma. Um look de 5 peças custa
+// 5 tokens, não 1. O comentário anterior aqui dizia o contrário e estava
+// errado; o extrato do lojista sempre mostrou peça por peça.
 const TOKEN_COST: Record<GenerationType, number> = {
   tryon: 1,
   post: 1,
@@ -352,7 +354,14 @@ export const GenerationService = {
   // linha para reembolsar. Por aqui são 400s de orçamento, reembolso
   // automático na falha e aviso por push quando termina.
   async runAsync(params: {
-    feature: "refine" | "clean_image" | "criar_corpo";
+    feature: "refine" | "clean_image" | "criar_corpo" | "post";
+    /**
+     * Tipo da linha, quando difere da feature. Serve aos passos INTERMEDIÁRIOS
+     * do look sequencial (5+ peças): eles são geração de post para efeito de
+     * custo, mas não são look — só a última etapa vira o post do álbum. Marcá-
+     * los como "refine" os mantém fora do álbum sem mentir sobre a cobrança.
+     */
+    type?: GenerationType;
     prompt: string;
     userId: string;
     storeId: string;
@@ -363,7 +372,7 @@ export const GenerationService = {
     onTick?: (segundos: number) => void;
   }): Promise<{ url: string; balance?: number }> {
     const pedida = await this.startAsync({
-      type: params.feature,
+      type: params.type ?? params.feature,
       feature: params.feature,
       inputs: params.inputs ?? {},
       userId: params.userId,
