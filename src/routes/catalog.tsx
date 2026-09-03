@@ -430,7 +430,6 @@ function CatalogPage() {
           </div>
         </div>
         {busy ? <LoadingOverlay label={importLabel ?? "Importando…"} /> : null}
-        {cleaningImage ? <LoadingOverlay label={cleanLabel} /> : null}
       </AppLayout>
     );
   }
@@ -581,6 +580,9 @@ function CatalogPage() {
             </button>
           </div>
         </form>
+        {/* Limpar peça agora roda em segundo plano e pode passar de um
+            minuto: sem o aviso, a tela parecia travada. */}
+        {cleaningImage ? <LoadingOverlay label={cleanLabel} /> : null}
       </AppLayout>
     );
   }
