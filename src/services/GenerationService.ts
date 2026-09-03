@@ -314,11 +314,26 @@ export const GenerationService = {
     generations = [criada, ...generations];
 
     // 2) Dispara. O servidor responde na hora e termina em background.
-    const { balance } = await AIService.imageAsync(params.prompt, params.feature, criada.id, {
-      imageUrls: params.imageUrls,
-      images: params.images,
-      aspectRatio: params.aspectRatio,
-    });
+    //
+    // Se o disparo FALHAR (rede fora, função recusando a origem), a linha tem
+    // de sair: o token não chegou a ser debitado — quem debita é o servidor,
+    // dentro da chamada que acabou de falhar —, mas a linha ficaria em
+    // "processando" para sempre. Dez minutos depois o resgate a marcaria como
+    // falha e DEVOLVERIA um token que ninguém cobrou, criando saldo do nada.
+    // Visto de verdade: uma porta de desenvolvimento fora da lista de origens
+    // permitidas deixou três linhas assim.
+    let balance: number | undefined;
+    try {
+      ({ balance } = await AIService.imageAsync(params.prompt, params.feature, criada.id, {
+        imageUrls: params.imageUrls,
+        images: params.images,
+        aspectRatio: params.aspectRatio,
+      }));
+    } catch (e) {
+      generations = generations.filter((g) => g.id !== criada.id);
+      await supabase.from("generations").delete().eq("id", criada.id);
+      throw e;
+    }
     TokenService.syncAfterServerDebit(cost, `Geração: ${params.type}`, balance);
     return criada;
   },
