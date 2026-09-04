@@ -399,7 +399,18 @@ function TryOnPage() {
               className="block w-full"
               aria-label="Ampliar imagem"
             >
-              <img src={result.resultUrl} alt="Resultado do provador" className="w-full" />
+              {/* aspect + fundo: enquanto a imagem não carrega, um <img> sem
+                  altura deixa o cartão COLAPSADO — a tela aparece com os
+                  botões e um vazio no lugar da foto, que é exatamente o que
+                  parece "não gerou". Com a moldura reservada, o lojista vê o
+                  quadro carregando. */}
+              <div className="aspect-[3/4] w-full bg-secondary">
+                <img
+                  src={result.resultUrl}
+                  alt="Resultado do provador"
+                  className="h-full w-full object-contain"
+                />
+              </div>
             </button>
             <div className="flex items-center justify-between gap-3 p-4">
               <div className="min-w-0">

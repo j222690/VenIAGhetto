@@ -85,6 +85,30 @@ export function thumbSrcSet(
   return partes.length ? partes.join(", ") : undefined;
 }
 
+// Larguras que as grades pedem de fato (ver o srcset do Álbum). Aquecer
+// exatamente estas evita calcular transformação que ninguém vai usar.
+const LARGURAS_QUENTES = [400, 600];
+
+// Manda o Storage CALCULAR as miniaturas agora, para elas já estarem prontas
+// quando o lojista abrir o álbum.
+//
+// MEDIDO numa imagem recém-gerada: a primeira miniatura leva de 1,2s a 1,5s,
+// porque a transformação é calculada sob demanda; a segunda vez leva 60ms. O
+// arquivo original leva 200ms — ou seja, para uma imagem nova a miniatura
+// chega DEPOIS do original. Era isso que fazia as imagens recentes
+// "travarem": as antigas já tinham cache, as novas pagavam o cálculo na
+// frente do lojista.
+//
+// Dispara e esquece: falhar aqui não é problema, só significa que a primeira
+// visita paga o que pagava antes.
+export function prewarmThumb(url: string | undefined | null): void {
+  if (!url || typeof fetch !== "function") return;
+  for (const width of LARGURAS_QUENTES) {
+    const alvo = thumbUrl(url, { width, dpr: 1 });
+    if (alvo) void fetch(alvo, { mode: "no-cors", cache: "force-cache" }).catch(() => {});
+  }
+}
+
 export function thumbUrl(url: string | undefined | null, opts: ThumbOptions): string | undefined {
   if (!url) return undefined;
   if (!url.includes(OBJECT_SEGMENT)) return url;

@@ -14,6 +14,7 @@ import type {
 } from "@/types";
 import type { Json } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
+import { prewarmThumb } from "@/lib/imageUrl";
 import { mapGeneration, GENERATION_TYPE_TO_DB } from "@/integrations/supabase/mappers";
 import { seedSocialCopy } from "./_temp/seed";
 import { AIService } from "./AIService";
@@ -459,6 +460,9 @@ export const GenerationService = {
         const g = mapGeneration(data);
         if (g.status !== "processando") {
           generations = generations.map((x) => (x.id === id ? g : x));
+          // Manda calcular as miniaturas agora: a imagem acabou de nascer e
+          // ninguém pediu transformação dela ainda (ver prewarmThumb).
+          prewarmThumb(g.resultUrl);
           return g;
         }
       }

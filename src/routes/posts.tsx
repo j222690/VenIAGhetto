@@ -332,7 +332,11 @@ function PostsPage() {
       <AppLayout title="Seu post">
         <div className="space-y-5">
           <div className="overflow-hidden rounded-3xl bg-card shadow-soft">
-            <img src={result.resultUrl} alt="post" className="w-full" />
+            {/* Moldura reservada: sem ela o cartão colapsa enquanto a
+                imagem carrega e a tela parece ter vindo sem foto. */}
+            <div className="aspect-[4/5] w-full bg-secondary">
+              <img src={result.resultUrl} alt="post" className="h-full w-full object-contain" />
+            </div>
           </div>
 
           <RefinePanel

@@ -507,17 +507,34 @@ export function fitExceptionClause(specText: string): string {
 // é INVENTADA. Não há como saber que calça ou sapato a pessoa usava — a peça
 // pedida aqui é neutra de propósito. Por isso a tela exige foto de meio corpo
 // pra cima: quanto mais corpo real na entrada, menos a IA precisa inventar.
+// Completa uma foto de meio corpo em corpo inteiro.
+//
+// O texto é escrito como EXPANSÃO DE TELA (outpainting), não como "gere a
+// pessoa de corpo inteiro" — e a diferença é grande na prática. Pedindo uma
+// pessoa, o modelo redesenha o rosto e devolve alguém parecido mas diferente:
+// foi o que aconteceu na primeira versão, e o lojista percebe na hora, porque
+// é o cliente dele. Pedindo para PRESERVAR os pixels existentes e só pintar
+// a área que falta embaixo, o rosto continua sendo o rosto.
 export const CREATE_BODY_CLAUSE =
-  "Isto é uma EDIÇÃO de uma foto real, não a criação de uma pessoa nova. A imagem mostra a pessoa " +
-  "CORTADA (não aparece de corpo inteiro). TAREFA: devolva a MESMA pessoa em enquadramento de CORPO " +
-  "INTEIRO, da cabeça aos pés, completando de forma realista a parte que está faltando (quadril, " +
-  "pernas e calçado). Mantenha EXATAMENTE iguais: rosto, cabelo, tom de pele, expressão, pose, " +
-  "ângulo do corpo, iluminação e a roupa da parte de cima já visível — não redesenhe nada disso. " +
-  "PROPORÇÃO: complete o corpo com proporções anatômicas coerentes com os ombros, o tronco e a " +
-  "cabeça que já aparecem na foto — não alongue nem afine a pessoa, e não a transforme num modelo " +
-  "de passarela; o corpo precisa parecer o corpo DAQUELA pessoa. A roupa da parte de baixo deve ser " +
-  "uma peça neutra e simples, coerente com a peça de cima; o calçado, um sapato ou tênis neutro " +
-  "condizente. Estenda o FUNDO da foto original de forma natural para preencher a parte nova, " +
-  "mantendo o mesmo cenário, a mesma luz e a mesma perspectiva — não troque o cenário nem use fundo " +
-  "de estúdio. Fotografia realista, sem aparência plástica ou de renderização 3D. Devolva UMA única " +
-  "foto, mostrando só a pessoa, sem colagem, grade ou painéis.";
+  "OUTPAINTING (expansão de tela). A foto enviada mostra uma pessoa real cortada na altura do " +
+  "quadril ou das coxas. Sua tarefa é ESTENDER a foto PARA BAIXO, pintando apenas o que ficou " +
+  "fora do quadro: quadril, pernas, pés e o chão. " +
+  "REGRA PRINCIPAL, acima de qualquer outra: TUDO o que já aparece na foto é INTOCÁVEL. Copie " +
+  "pixel a pixel o rosto, o cabelo, as orelhas, o pescoço, os ombros, os braços, as mãos, a " +
+  "roupa de cima, os acessórios e o fundo já visíveis. NÃO redesenhe o rosto, NÃO 'melhore' a " +
+  "pele, NÃO mude a expressão, o corte de cabelo, a idade aparente ou o formato do rosto. O " +
+  "resultado tem de ser reconhecível como A MESMA PESSOA por quem a conhece — se o rosto mudar, " +
+  "a imagem está errada, por melhor que esteja o resto. " +
+  "A parte NOVA (só da linha do corte para baixo) deve continuar o corpo com as mesmas " +
+  "proporções sugeridas pelos ombros e pelo tronco visíveis: mesma largura de quadril coerente, " +
+  "mesma constituição física. NÃO afine, NÃO alongue as pernas, NÃO transforme a pessoa em " +
+  "modelo de passarela — é o corpo DAQUELA pessoa, com a altura e a compleição que os ombros e a " +
+  "cabeça já indicam. " +
+  "Roupa de baixo: peça simples e neutra, coerente com a de cima (calça ou short liso), e um " +
+  "calçado neutro. Nada de estampa, logotipo ou detalhe chamativo inventado. " +
+  "Fundo: continue o MESMO cenário para baixo, com a mesma luz, as mesmas sombras, a mesma " +
+  "perspectiva e o mesmo chão. Não troque o cenário nem coloque fundo de estúdio. " +
+  "A emenda entre a parte original e a parte nova precisa ser invisível: mesma iluminação, mesmo " +
+  "grão, mesma temperatura de cor. " +
+  "Fotografia real, sem aparência plástica ou de renderização 3D. Devolva UMA única foto, com a " +
+  "pessoa inteira da cabeça aos pés, sem colagem, grade ou painéis.";

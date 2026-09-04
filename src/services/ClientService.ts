@@ -159,6 +159,14 @@ export const ClientService = {
       storeId,
       inputs: { clientPhotoUrl: sourcePhotoUrl },
       imageUrls: [genUrl(sourcePhotoUrl)],
+      // Retrato ALTO, e não a proporção da foto enviada.
+      //
+      // Sem isto o servidor deduz o formato pela foto de origem — que é o
+      // recorte de meio corpo, largo. O modelo então tem de caber a pessoa
+      // inteira na mesma altura, e para isso encolhe e redesenha o que já
+      // existia, inclusive o rosto. Pedindo 2:3 ele ganha o espaço vertical
+      // que as pernas precisam e pode deixar a parte de cima como está.
+      aspectRatio: "2:3",
       onTick,
     });
     return this.addPhoto(clientId, url);
