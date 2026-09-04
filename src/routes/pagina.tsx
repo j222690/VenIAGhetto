@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SALES_PHONE, SUPPORT_PHONE_LABEL, SUPPORT_WHATSAPP, waLink } from "@/constants/contact";
 
@@ -62,11 +62,12 @@ function SalesPage() {
           <div>
             <p className="eyebrow">Vest Ai · para lojas e vendedores de moda</p>
             <h1>
-              A IA criada para lojas de moda <span className="grad-text">venderem mais.</span>
+              Seu cliente não compra o que <span className="grad-text">não se vê usando.</span>
             </h1>
             <p className="hero-sub">
-              Vista suas peças em modelos, crie looks para seus clientes e produza conteúdo
-              profissional em segundos — tudo em um só lugar.
+              O Vest Ai mostra a peça vestida no corpo do próprio cliente, na hora, dentro da
+              conversa do WhatsApp. Menos dúvida, menos condicional na rua, mais venda fechada no
+              mesmo atendimento.
             </p>
             <div className="hero-ctas">
               <Link to="/welcome" className="btn btn-primary">
@@ -117,18 +118,18 @@ function SalesPage() {
             <div className="benefit-grid">
               <BenefitCard
                 numero="1"
-                titulo="Venda mais"
-                desc="Mostre para o cliente como aquela peça ou combinação pode ficar, inclusive durante um atendimento pelo WhatsApp."
+                titulo="Derrube a dúvida que trava a venda"
+                desc="“Será que fica bom em mim?” é a objeção que mais faz o cliente dizer que vai pensar. Responda com a peça já vestida nele, antes de ele sair da conversa."
               />
               <BenefitCard
                 numero="2"
-                titulo="Produza mais conteúdo"
-                desc="Transforme foto de produto em conteúdo profissional sem depender de fotógrafo, modelo, estúdio ou agenda."
+                titulo="Mande menos condicional"
+                desc="Cada condicional é peça parada, risco de dano e viagem perdida. Quando o cliente vê o look no próprio corpo, ele pede o que realmente quer comprar."
               />
               <BenefitCard
                 numero="3"
-                titulo="Economize tempo e dinheiro"
-                desc="Uma ferramenta que entra na rotina do vendedor e da loja, não apenas do marketing."
+                titulo="Venda para quem não vai à loja"
+                desc="Quem mora longe, quem trabalha o dia todo e quem só responde de noite continua comprando: o provador vai junto com a conversa."
               />
             </div>
           </div>
@@ -178,7 +179,7 @@ function SalesPage() {
           <div className="wrap">
             <div className="section-head reveal">
               <p className="eyebrow">O que você recebe</p>
-              <h2>Tudo que um ensaio faria — sem marcar ensaio nenhum.</h2>
+              <h2>Ferramentas de venda, não de marketing.</h2>
             </div>
             <div className="feature-grid">
               <FeatureCard
@@ -231,7 +232,7 @@ function SalesPage() {
               <ExampleCard
                 scenario="Peça nova no estoque"
                 title="Chegou de manhã, no feed até o meio-dia"
-                desc="Fotografa a peça, escolhe o modelo e já sai vestida — sem esperar agenda de fotógrafo pra lançar."
+                desc="Fotografa a peça, escolhe o cliente e já manda vestida — a novidade chega antes de esfriar."
               />
               <ExampleCard
                 scenario="Atendimento pelo WhatsApp"
@@ -254,9 +255,9 @@ function SalesPage() {
                 desc="A grade de looks ajuda o cliente a decidir mostrando a peça combinada de formas diferentes, numa imagem só."
               />
               <ExampleCard
-                scenario="Fim de semana, fotógrafo indisponível"
-                title="Lança normalmente, sem depender de terceiros"
-                desc="O provador funciona quando você precisar — a loja não fica esperando a agenda de mais ninguém."
+                scenario="Cliente pediu condicional de cinco peças"
+                title="Manda o look pronto e ela escolhe duas"
+                desc="Em vez de sair peça na rua sem garantia de venda, ela vê tudo vestido e pede só o que vai ficar."
               />
             </div>
           </div>
@@ -284,11 +285,12 @@ function SalesPage() {
                   lineHeight: "1.16",
                 }}
               >
-                Você ainda paga fotógrafo pra cada peça nova que chega?
+                Quantas vendas você perde para o “vou pensar”?
               </h2>
               <p>
-                Fotógrafo, modelo, estúdio e edição custam caro e levam dias — e nesse tempo a peça
-                fica parada no cabide, sem converter em venda.
+                Na maioria das vezes o cliente não está pensando no preço: ele não consegue imaginar
+                a peça no próprio corpo. Sem essa resposta, a conversa esfria e a peça continua no
+                cabide.
               </p>
               <p>
                 O Vest Ai troca esse processo inteiro por um clique: sobe a foto da peça, escolhe o
@@ -328,8 +330,8 @@ function SalesPage() {
                     <path d="M12 7v5l3 3" />
                   </>
                 }
-                title="Você para de depender da agenda de terceiros"
-                desc="Não precisa mais esperar fotógrafo, modelo ou estúdio livre pra lançar uma peça nova."
+                title="A peça nova entra vendendo no mesmo dia"
+                desc="Chegou coleção? No mesmo dia ela já está vestida nos clientes certos, em vez de esperar a vez de aparecer."
               />
               <ChangeItem
                 icon={
@@ -411,10 +413,10 @@ function SalesPage() {
           <div className="wrap">
             <div className="section-head reveal">
               <p className="eyebrow">Investimento</p>
-              <h2>Um plano mensal no lugar de cada ensaio.</h2>
+              <h2>Custa menos que uma peça que volta.</h2>
               <p>
                 Todos os planos incluem provador, scanner de catálogo, grade de looks e posts
-                prontos. A diferença é quantas fotos sua loja gera por mês.
+                prontos. A diferença é quantos atendimentos sua loja atende por mês.
               </p>
             </div>
             <div className="pricing-grid">
@@ -489,7 +491,9 @@ function SalesPage() {
 
         <section className="closing">
           <div className="wrap">
-            <h2 className="reveal">Sua loja não precisa mais esperar fotógrafo pra vender.</h2>
+            <h2 className="reveal">
+              Quem experimenta, compra. Faça o cliente experimentar sem sair da conversa.
+            </h2>
             <div className="hero-ctas">
               <Link to="/welcome" className="btn btn-primary">
                 Começar agora
@@ -504,7 +508,7 @@ function SalesPage() {
           <div className="wrap">
             <div className="section-head reveal">
               <p className="eyebrow">Como funciona</p>
-              <h2>Da peça no cabide à foto pronta, em três passos.</h2>
+              <h2>Da dúvida do cliente à venda fechada, em três passos.</h2>
             </div>
             <div className="steps">
               <div className="step reveal">
@@ -572,6 +576,23 @@ function BeforeAfter({
   rotuloDepois: string;
 }) {
   const [pos, setPos] = useState(50);
+  const quadro = useRef<HTMLDivElement>(null);
+
+  // O arrasto é tratado aqui, no quadro inteiro, e não pelo <input type="range">.
+  //
+  // O range só se move quando o dedo cai EM CIMA do polegar dele — no celular
+  // isso vira "clicar na bolinha e arrastar", e quem tenta arrastar a foto não
+  // consegue. Com pointer events no quadro, arrastar de qualquer ponto funciona,
+  // e o toque simples já leva a divisória para onde o dedo tocou.
+  //
+  // O <input> continua embaixo, invisível: é ele que dá teclado e leitor de
+  // tela de graça.
+  const mover = (clientX: number) => {
+    const caixa = quadro.current?.getBoundingClientRect();
+    if (!caixa || caixa.width === 0) return;
+    const fracao = (clientX - caixa.left) / caixa.width;
+    setPos(Math.min(100, Math.max(0, fracao * 100)));
+  };
 
   return (
     <div className="phone reveal">
@@ -580,7 +601,21 @@ function BeforeAfter({
         <span className="app-tag">Vest Ai</span>
       </div>
 
-      <div className="ba-slider" style={{ ["--pos" as string]: `${pos}%` }}>
+      <div
+        ref={quadro}
+        className="ba-slider"
+        style={{ ["--pos" as string]: `${pos}%` }}
+        onPointerDown={(e) => {
+          // Captura o ponteiro: o dedo pode sair do quadro no meio do arrasto
+          // e os eventos continuam chegando aqui.
+          e.currentTarget.setPointerCapture(e.pointerId);
+          mover(e.clientX);
+        }}
+        onPointerMove={(e) => {
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) mover(e.clientX);
+        }}
+        onPointerUp={(e) => e.currentTarget.releasePointerCapture(e.pointerId)}
+      >
         {/* Base: a foto DEPOIS ocupa o quadro inteiro. */}
         <img className="ba-img" src={depois} alt="A mesma pessoa com o look gerado pelo Vest Ai" />
         {/* Por cima, a foto ANTES recortada até a divisória. */}
@@ -619,7 +654,7 @@ function BeforeAfter({
         />
       </div>
 
-      <p className="ba-hint">Arraste para comparar</p>
+      <p className="ba-hint">Arraste a foto para comparar</p>
     </div>
   );
 }
@@ -880,7 +915,7 @@ const CSS = `
 .pv .look-cell img { width: 100%; height: 100%; object-fit: cover; }
 .pv .look-cell.hero-photo { aspect-ratio: 3/4; border-radius: 1.4rem; }
 /* ── Comparador antes/depois (topo) ────────────────────────────────────── */
-.pv .ba-slider { position: relative; aspect-ratio: 3/4; border-radius: 1.4rem; overflow: hidden; border: 1px solid var(--line); background: var(--card-2); touch-action: pan-y; }
+.pv .ba-slider { position: relative; cursor: ew-resize; aspect-ratio: 3/4; border-radius: 1.4rem; overflow: hidden; border: 1px solid var(--line); background: var(--card-2); touch-action: pan-y; }
 .pv .ba-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; user-select: none; -webkit-user-drag: none; }
 /* Revela a foto "antes" até a divisória com clip-path, NÃO com largura.
    Estreitar o contêiner espremia a imagem (medido: 238px em vez de 476px) e
@@ -894,7 +929,9 @@ const CSS = `
 .pv .ba-grip { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 2.4rem; height: 2.4rem; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); box-shadow: var(--glow); }
 /* O range é a interação REAL (funciona por toque, mouse e teclado); fica
    invisível por cima do quadro inteiro. */
-.pv .ba-range { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; -webkit-appearance: none; appearance: none; background: transparent; }
+/* pointer-events: none — quem trata o arrasto é o quadro (ver BeforeAfter).
+   O input fica só para teclado e leitor de tela. */
+.pv .ba-range { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; pointer-events: none; -webkit-appearance: none; appearance: none; background: transparent; }
 .pv .ba-range::-webkit-slider-thumb { -webkit-appearance: none; width: 3rem; height: 100%; cursor: ew-resize; }
 .pv .ba-range::-moz-range-thumb { width: 3rem; height: 100%; border: 0; background: transparent; cursor: ew-resize; }
 .pv .ba-range:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 3px; border-radius: 1.4rem; }
