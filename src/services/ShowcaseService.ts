@@ -113,6 +113,10 @@ const TOM =
   " Escreva em português do Brasil, falando DIRETO COM A LOJISTA (você), com tom próximo e " +
   "concreto. Fale de resultado no negócio e não de tecnologia. Nada de jargão de IA, nada de " +
   "promessa exagerada de faturamento, sem emoji em excesso (no máximo 2). " +
+  'NUNCA invente estatística, porcentagem ou pesquisa: nada de "70% das conversas", ' +
+  '"aumente 3x", "a maioria dos lojistas". Não temos esses números, e quem lê pode ' +
+  "perguntar de onde saíram. Fale do mecanismo — o que acontece no atendimento — que é " +
+  "verdade sem precisar de número. " +
   "ABRA de um jeito diferente do óbvio: pode ser uma cena do balcão, um número, uma " +
   'objeção da cliente, uma comparação — o que NÃO pode é começar com "Sabe aquela ' +
   'cliente que…" ou "Imagina…". ' +

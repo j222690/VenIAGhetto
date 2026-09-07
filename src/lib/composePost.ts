@@ -287,6 +287,10 @@ function chapeu(
 }
 
 // Véu por baixo do texto: escuro na base, transparente no meio da foto.
+//
+// Precisa ser mais forte do que a intuição sugere. Num fundo movimentado —
+// prédio à noite, arara de roupa — um véu suave deixa a frase legível "quase
+// sempre", e quase sempre não serve: o post é lido de passagem.
 function veuInferior(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -296,15 +300,19 @@ function veuInferior(
 ) {
   const g = ctx.createLinearGradient(0, baseY - altura, 0, baseY);
   g.addColorStop(0, "rgba(10,10,12,0)");
-  g.addColorStop(0.45, "rgba(10,10,12,0.75)");
-  g.addColorStop(1, "rgba(10,10,12,0.97)");
+  g.addColorStop(0.35, "rgba(10,10,12,0.68)");
+  g.addColorStop(0.62, "rgba(10,10,12,0.93)");
+  g.addColorStop(1, "rgba(10,10,12,1)");
   ctx.fillStyle = g;
   ctx.fillRect(x, baseY - altura, w, altura);
 }
 
 const MARGEM = 78;
 // Respiro maior embaixo das fotos: com 78 a última linha encostava na borda.
-const MARGEM_BASE = 120;
+// Foi de 78 para 120 porque a última linha encostava na borda, e de 120 para
+// 168 comparando com a referência: lá o bloco termina bem acima do fim do
+// quadro, e é isso que faz a frase parecer assentada em vez de espremida.
+const MARGEM_BASE = 168;
 
 // ---------------------------------------------------------------------------
 // Slides
@@ -377,7 +385,7 @@ export async function composeFoto({
   const larguraMax = w - MARGEM * 2;
   const { tam, altura: alturaTitulo } = mediaManchete(titulo, larguraMax, 84);
   const alturaChapeu = linha?.trim() ? 62 : 0;
-  veuInferior(ctx, 0, topo + alturaCartao, w, alturaTitulo + alturaChapeu + MARGEM_BASE * 2.2);
+  veuInferior(ctx, 0, topo + alturaCartao, w, alturaTitulo + alturaChapeu + MARGEM_BASE * 2.4);
 
   const topoTitulo = base - alturaTitulo;
   if (linha?.trim()) chapeu(ctx, linha, w / 2, topoTitulo - 26, larguraMax);
@@ -498,7 +506,7 @@ export async function composePair({
   const base = topo + alturaCartao - MARGEM_BASE;
   const larguraMax = w - MARGEM * 2;
   const { tam, altura: alturaTitulo } = mediaManchete(titulo, larguraMax, 84);
-  veuInferior(ctx, 0, topo + alturaCartao, w, alturaTitulo + (linha ? 62 : 0) + MARGEM_BASE * 2.2);
+  veuInferior(ctx, 0, topo + alturaCartao, w, alturaTitulo + (linha ? 62 : 0) + MARGEM_BASE * 2.4);
 
   const topoTitulo = base - alturaTitulo;
   if (linha?.trim()) chapeu(ctx, linha, w / 2, topoTitulo - 26, larguraMax);
