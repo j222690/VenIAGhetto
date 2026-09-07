@@ -22,7 +22,13 @@ import { Copy, Download, Megaphone, Sparkles } from "@/lib/icons";
 import { AppLayout } from "@/layouts/AppLayout";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { ShowcaseService, type ShowcaseItem } from "@/services/ShowcaseService";
-import { composeBrandCard, composePair, composeSlide, type PostFormat } from "@/lib/composePost";
+import {
+  composeCta,
+  composeFoto,
+  composeHook,
+  composePair,
+  type PostFormat,
+} from "@/lib/composePost";
 import { isAppAdmin } from "@/constants/admins";
 import { describeApiError } from "@/lib/apiErrors";
 import { useAuth } from "@/hooks/useAuth";
@@ -42,7 +48,11 @@ type Canal = "instagram" | "whatsapp" | "facebook";
 type Carrossel = "revela" | "looks";
 
 const MAX_LOOKS = 5;
-const CHAMADA = "Sua cliente prova a roupa sem sair de casa.";
+// Fecho do carrossel, no molde da referência: pergunta curta com a palavra do
+// destaque, botão em pílula e uma linha discreta embaixo.
+const CTA_TITULO = "Quer ver *funcionando*?";
+const CTA_BOTAO = "Saiba mais";
+const CTA_RODAPE = "vestaiapp.com";
 
 interface Resultado {
   /** Um item = post simples. Vários = slides do carrossel, na ordem. */
@@ -66,9 +76,10 @@ function DivulgarPage() {
   // no ar resultado que ele não teria escolhido.
   const [soFavoritos, setSoFavoritos] = useState(true);
   const [titulo, setTitulo] = useState("");
-  // Selo curto sobre a foto. Número é o que o olho pega primeiro no feed, e é
-  // ele que abre a curiosidade que a legenda fecha.
-  const [selo, setSelo] = useState("");
+  // Linha pequena acima da manchete, como na referência ("Sua cliente olha a
+  // foto do catálogo e pensa:"). Opcional: só entra quando a frase precisa de
+  // contexto para fazer sentido sozinha.
+  const [chapeu, setChapeu] = useState("");
 
   const [tema, setTema] = useState("");
 
@@ -128,67 +139,60 @@ function DivulgarPage() {
             depoisUrl: principal.resultUrl,
             formato,
             titulo,
-            selo,
+            chapeu: chapeu.trim() || undefined,
           }),
-        ];
-      } else if (carrossel === "revela") {
-        // O deslize É a revelação: cada foto ocupa um slide inteiro, e quem vê
-        // descobre o depois no gesto. Lado a lado num slide só entregaria tudo
-        // de uma vez e desperdiçaria o formato.
-        imagens = [
-          await composePair({
-            antesUrl: principal.clientPhotoUrl,
-            depoisUrl: principal.resultUrl,
-            formato,
-            titulo,
-            selo,
-            chamada: "Deslize e veja",
-            passo: "1 / 3",
-          }),
-          await composeSlide({
-            url: principal.resultUrl,
-            formato,
-            titulo: "O resultado que a cliente recebe",
-            chamada: "Falta um",
-            passo: "2 / 3",
-          }),
-          await composeBrandCard(formato, CHAMADA),
         ];
       } else {
-        // Vitrine: abre com o par, para prender, e segue com um look por slide.
-        // +1 pelo cartão de marca no fim.
-        const total = escolhidos.length + 1;
-        const slides = [
-          await composePair({
-            antesUrl: principal.clientPhotoUrl,
-            depoisUrl: principal.resultUrl,
-            formato,
-            titulo,
-            selo,
-            chamada: "Deslize e veja",
-            passo: `1 / ${total}`,
-          }),
-        ];
-        // Cada look tem manchete própria e o contador: nenhum slide entra só
-        // como foto, que é o que fazia o carrossel parecer uma galeria.
-        const olhares = [
-          "A mesma pessoa, outra peça",
-          "Mais um look do seu catálogo",
-          "Tudo isso sem ensaio",
-          "E ainda tem mais",
-        ];
-        for (const [i, m] of escolhidos.slice(1).entries()) {
+        // O carrossel segue a estrutura da referência: ABRE com um slide só
+        // texto (o gancho, que é o que faz parar o dedo), mostra a prova no
+        // meio e FECHA com a chamada. Slide de foto sem texto não entra.
+        const slides = [await composeHook({ formato, titulo, chapeu: chapeu.trim() || undefined })];
+
+        if (carrossel === "revela") {
           slides.push(
-            await composeSlide({
-              url: m.resultUrl,
+            await composeFoto({
+              url: principal.clientPhotoUrl,
               formato,
-              titulo: olhares[i % olhares.length],
-              chamada: i === escolhidos.length - 2 ? "Falta um" : "Deslize",
-              passo: `${i + 2} / ${total}`,
+              chapeu: "A foto que a cliente mandou",
+              titulo: "É só isso que você *precisa*.",
+            }),
+            await composeFoto({
+              url: principal.resultUrl,
+              formato,
+              chapeu: "A mesma pessoa, a peça da sua loja",
+              titulo: "E isso é o que ela *recebe*.",
             }),
           );
+        } else {
+          slides.push(
+            await composePair({
+              antesUrl: principal.clientPhotoUrl,
+              depoisUrl: principal.resultUrl,
+              formato,
+              chapeu: "Uma foto, a peça da sua loja",
+              titulo: "A mesma pessoa, *vestida*.",
+            }),
+          );
+          const falas = [
+            "Outra peça, *sem* nova foto.",
+            "O catálogo inteiro *nela*.",
+            "Combinações que ela *não imaginava*.",
+            "E o estoque parado *girando*.",
+          ];
+          for (const [i, m] of escolhidos.slice(1).entries()) {
+            slides.push(
+              await composeFoto({
+                url: m.resultUrl,
+                formato,
+                titulo: falas[i % falas.length],
+              }),
+            );
+          }
         }
-        slides.push(await composeBrandCard(formato, CHAMADA));
+
+        slides.push(
+          await composeCta({ formato, titulo: CTA_TITULO, botao: CTA_BOTAO, rodape: CTA_RODAPE }),
+        );
         imagens = slides;
       }
 
@@ -213,18 +217,29 @@ function DivulgarPage() {
       const imagens =
         formato === "carrossel"
           ? [
-              await composeSlide({
+              await composeHook({ formato, titulo, chapeu: chapeu.trim() || undefined }),
+              await composeFoto({
+                url,
+                formato,
+                titulo: "É assim que a sua loja *vende* hoje.",
+                ancora: 0.5,
+              }),
+              await composeCta({
+                formato,
+                titulo: CTA_TITULO,
+                botao: CTA_BOTAO,
+                rodape: CTA_RODAPE,
+              }),
+            ]
+          : [
+              await composeFoto({
                 url,
                 formato,
                 titulo,
-                selo,
-                chamada: "Deslize e veja",
-                passo: "1 / 2",
+                chapeu: chapeu.trim() || undefined,
                 ancora: 0.5,
               }),
-              await composeBrandCard(formato, CHAMADA),
-            ]
-          : [await composeSlide({ url, formato, titulo, selo, ancora: 0.5 })];
+            ];
 
       setBusyLabel("Escrevendo a legenda…");
       const copies = await ShowcaseService.copyTema(tema);
@@ -294,18 +309,23 @@ function DivulgarPage() {
         {/* Fora das abas de propósito: a manchete é a maior peça da arte nos
             dois caminhos. Ficando só na aba de antes/depois, o post "do zero"
             herdava calado o título do post anterior. */}
-        <input
-          value={titulo}
-          onChange={(e) => setTitulo(e.target.value)}
-          placeholder="Manchete: curta e forte, ex. Ela prova sem sair de casa"
-          className="w-full rounded-2xl border border-input bg-card px-4 py-3 text-sm outline-none focus:border-clay"
-        />
+        <div className="space-y-1.5">
+          <input
+            value={titulo}
+            onChange={(e) => setTitulo(e.target.value)}
+            placeholder="Manchete: ex. Ela não compra porque não consegue *se ver* na roupa"
+            className="w-full rounded-2xl border border-input bg-card px-4 py-3 text-sm outline-none focus:border-clay"
+          />
+          <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
+            A palavra entre <span className="font-medium text-foreground">*asteriscos*</span> sai em
+            maiúscula, inclinada e em rosa — é o único destaque da arte.
+          </p>
+        </div>
 
         <input
-          value={selo}
-          onChange={(e) => setSelo(e.target.value)}
-          maxLength={12}
-          placeholder="Selo (opcional): ex. 30s, 1 foto, R$ 0"
+          value={chapeu}
+          onChange={(e) => setChapeu(e.target.value)}
+          placeholder="Linha de cima (opcional): ex. Sua cliente olha a foto e pensa:"
           className="w-full rounded-2xl border border-input bg-card px-4 py-3 text-sm outline-none focus:border-clay"
         />
 

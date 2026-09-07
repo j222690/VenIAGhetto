@@ -6,24 +6,23 @@
 // pagar por uma imagem que já temos — e que nem seria prova, por não ter saído
 // do produto.
 //
-// O MOLDE segue o que a pesquisa de capa de carrossel recomenda, e cada peça
-// está aqui por um motivo:
-//   • MANCHETE NO TERÇO SUPERIOR e o maior texto da arte. O feed é percorrido
-//     a 3–4 posts por segundo; o que estiver embaixo não é lido antes do
-//     polegar passar. (Era o erro da versão anterior: manchete no rodapé.)
-//   • SELO COM NÚMERO — a lacuna de curiosidade. Número é o que o olho pega
-//     primeiro, e ele promete o que a legenda vai entregar.
-//   • PISTA DIRECIONAL: a seta entre as fotos e o "deslize" no rodapé.
-//   • TRÊS CORES, na proporção 60-30-10: grafite de base, branco no texto,
-//     neon só no acento. A versão anterior usava cinco e ficava carnavalesca.
-//   • CONTRASTE: texto sobre foto sempre com véu escuro por baixo — sem ele a
-//     manchete some numa foto clara.
-// Fontes: panocollages.com/blog/best-practices-for-first-slide-carousel-hooks
-// e imagine.art/blogs/best-carousel-hooks (consultadas em 2026-09).
+// O MOLDE veio de referências que o Victor escolheu (perfil @metakosmoslab).
+// Lendo os cinco slides, a linguagem é:
+//   • PRETO PURO. Sem cartão, sem moldura, sem gradiente decorativo.
+//   • TEXTO EMBAIXO nas fotos, não em cima. Sobre a foto entra um véu escuro
+//     que só existe onde o texto passa.
+//   • MANCHETE EM CAIXA MISTA, pesada e condensada, com UMA palavra em
+//     MAIÚSCULA, itálica e magenta. É o único acento da arte — e o que faz o
+//     olho parar.
+//   • CHAPÉU: uma linha pequena e cinza acima da manchete, quando a frase
+//     precisa de contexto ("Sua cliente olha a foto do catálogo e pensa:").
+//   • O carrossel abre com um slide SÓ TEXTO (o gancho) e fecha com outro só
+//     texto (a chamada), com botão em pílula branca.
+//   • Sem contador de slide, sem rodapé com o site em toda arte. A referência
+//     não tem, e cada elemento a mais rouba peso da manchete.
 //
-// As CORES são as do app (ver THEME.md). Ficam em hexadecimal aqui porque
-// canvas não lê CSS custom property; cada uma está anotada com o token que
-// espelha, lido do próprio app.
+// A versão anterior tinha selo redondo, fio neon e rodapé em todos os slides.
+// Saiu tudo: era desenho meu, não a referência escolhida.
 
 export type PostFormat = "story" | "feed" | "carrossel";
 
@@ -33,38 +32,31 @@ const DIMENSOES: Record<PostFormat, { w: number; h: number }> = {
   carrossel: { w: 1080, h: 1350 },
 };
 
-// A arte é desenhada sempre em 4:5 — a proporção em que este molde funciona.
-// No story ela é centralizada no 9:16, e a sobra em cima e embaixo vira zona
-// segura para a interface do Instagram (perfil no topo, resposta no rodapé).
+// A arte é desenhada em 4:5. No story ela é centralizada no 9:16, e a sobra
+// vira zona segura para a interface do Instagram (perfil no topo, resposta no
+// rodapé) — sem isso o texto fica debaixo dos controles dele.
 const CARTAO = { w: 1080, h: 1350 };
-
-// Zonas seguras do story: o Instagram desenha o perfil no topo e a caixa de
-// resposta no rodapé. Sem reservar essa faixa, a manchete e a assinatura
-// ficavam debaixo da interface dele — o rodapé sumia inteiro.
 const STORY_TOPO = 150;
 const STORY_RODAPE = 260;
 
-// Espelho da paleta do app (src/styles.css).
 const COR = {
-  fundo: "#0b0d16", // --background     oklch(0.16 0.02 275)
-  texto: "#f4f5f9", // --foreground     oklch(0.97 0.006 285)
-  rosa: "#ff37b6", // --neon-pink      (--clay/--accent no segmento padrão)
-  roxo: "#b144ff", // --neon-purple    (--accent-2)
-  azul: "#00c8ff", // --neon-blue
-  apagado: "#a4a6bb", // --muted-foreground
+  fundo: "#0a0a0c",
+  texto: "#ffffff",
+  // Magenta da referência, que é praticamente o --neon-pink do app.
+  acento: "#ff2fb4",
+  chapeu: "rgba(255,255,255,0.72)",
+  sub: "rgba(255,255,255,0.55)",
 };
 
-const SITE = "vestaiapp.com";
-// Anton: caixa alta pesada e condensada, que é o que dá peso à manchete deste
-// molde. Não é fonte do app — o app usa Fraunces/Inter —, então é carregada só
-// aqui, quando um post é montado, e não no carregamento de todas as telas.
+// Anton: caixa alta pesada e condensada, o desenho da manchete da referência.
+// Não é fonte do app (o app usa Fraunces/Inter), então é carregada só aqui,
+// quando um post é montado.
 const TITULO_FONT = '"Anton", "Arial Narrow", Impact, sans-serif';
 const SANS = '"Inter", system-ui, -apple-system, sans-serif';
 const ANTON_CSS = "https://fonts.googleapis.com/css2?family=Anton&display=swap";
 
-// Devolve só quando a folha de estilo da fonte terminou de carregar. Pedir o
-// carregamento da fonte antes disso falha calado, e a manchete sai na fonte de
-// reserva — foi o que aconteceu na primeira prova.
+// Devolve só quando a folha de estilo terminou de carregar. Pedir a fonte
+// antes disso falha calado e a manchete sai na fonte de reserva.
 function garanteAnton(): Promise<void> {
   const existente = document.querySelector<HTMLLinkElement>(`link[href="${ANTON_CSS}"]`);
   if (existente?.dataset.pronto === "1") return Promise.resolve();
@@ -76,7 +68,6 @@ function garanteAnton(): Promise<void> {
     document.head.appendChild(link);
   }
   return new Promise((resolve) => {
-    // Teto de 3s: sem a fonte a arte ainda sai, e travar a montagem seria pior.
     const pronto = () => {
       link.dataset.pronto = "1";
       resolve();
@@ -84,22 +75,20 @@ function garanteAnton(): Promise<void> {
     if ((link.sheet as CSSStyleSheet | null) !== null) return pronto();
     link.addEventListener("load", pronto, { once: true });
     link.addEventListener("error", () => resolve(), { once: true });
+    // Teto de 3s: sem a fonte a arte ainda sai, e travar a montagem seria pior.
     setTimeout(resolve, 3000);
   });
 }
 
-// Sem esperar o carregamento, o canvas cai calado numa fonte do sistema e a
-// arte sai com outro desenho.
 async function fontesProntas(): Promise<void> {
   await garanteAnton();
   try {
-    // Nome da família SOZINHO, sem a pilha de reserva: com a pilha, o
-    // navegador se dá por satisfeito ao encontrar a primeira fonte que já
-    // tem e nunca busca a Anton.
+    // Nome da família SOZINHO: com a pilha de reserva o navegador se contenta
+    // com a primeira fonte que já tem e nunca busca a Anton.
     await Promise.all([
       document.fonts.load('400 96px "Anton"'),
-      document.fonts.load('600 34px "Inter"'),
-      document.fonts.load('700 30px "Inter"'),
+      document.fonts.load('400 34px "Inter"'),
+      document.fonts.load('600 40px "Inter"'),
     ]);
     await document.fonts.ready;
   } catch {
@@ -119,7 +108,6 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
-// Canvas do formato final, com a área 4:5 já posicionada dentro dele.
 function novoCanvas(formato: PostFormat) {
   const { w, h } = DIMENSOES[formato];
   const canvas = document.createElement("canvas");
@@ -129,21 +117,21 @@ function novoCanvas(formato: PostFormat) {
   if (!ctx) throw new Error("Canvas indisponível neste navegador.");
   ctx.fillStyle = COR.fundo;
   ctx.fillRect(0, 0, w, h);
-  const topo = formato === "story" ? Math.round((h - CARTAO.h) / 2) : 0;
-  return { canvas, ctx, w, h, topo };
+
+  const alturaCartao = formato === "story" ? h - STORY_TOPO - STORY_RODAPE : CARTAO.h;
+  const topo = formato === "story" ? STORY_TOPO : 0;
+  return { canvas, ctx, w, h, topo, alturaCartao };
 }
 
-// "cover": preenche o painel cortando o excesso, sem distorcer. Ancorado no
-// TOPO (não no centro) porque em foto de pessoa o que não pode sumir é o
-// rosto — o mesmo motivo do object-position: top nas miniaturas do álbum.
-function drawCoverTop(
+// "cover": preenche a área cortando o excesso, sem distorcer.
+function drawCover(
   ctx: CanvasRenderingContext2D,
   img: HTMLImageElement,
   x: number,
   y: number,
   w: number,
   h: number,
-  /** 0 = topo (foto de cliente, onde o rosto está em cima), 0.5 = centro. */
+  /** 0 = topo (foto de pessoa, rosto em cima), 0.5 = centro. */
   ancora = 0,
 ) {
   const escala = Math.max(w / img.width, h / img.height);
@@ -152,368 +140,369 @@ function drawCoverTop(
   ctx.drawImage(img, (img.width - sw) / 2, (img.height - sh) * ancora, sw, sh, x, y, w, h);
 }
 
-function gradienteNeon(ctx: CanvasRenderingContext2D, x0: number, x1: number): CanvasGradient {
-  const g = ctx.createLinearGradient(x0, 0, x1, 0);
-  g.addColorStop(0, COR.azul);
-  g.addColorStop(0.5, COR.rosa);
-  g.addColorStop(1, COR.roxo);
-  return g;
+// ---------------------------------------------------------------------------
+// Manchete
+//
+// A palavra destacada é marcada com *asteriscos* no texto: "A foto do seu
+// catálogo *mente*". Uma marca no próprio texto, em vez de um segundo campo,
+// porque o destaque pertence à frase — separá-los faria escrever a frase duas
+// vezes e deixaria os dois campos saírem de sincronia.
+// ---------------------------------------------------------------------------
+
+interface Pedaco {
+  texto: string;
+  acento: boolean;
 }
 
-// Seta curva de uma foto para a outra: é ela que diz "isto virou aquilo".
-function setaCurva(ctx: CanvasRenderingContext2D, cx: number, cy: number) {
-  const vao = 155;
-  const p0 = { x: cx - vao, y: cy };
-  const ctrl = { x: cx, y: cy + 96 };
-  const p1 = { x: cx + vao, y: cy + 22 };
-
-  ctx.save();
-  ctx.strokeStyle = gradienteNeon(ctx, p0.x, p1.x);
-  ctx.lineWidth = 11;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.shadowColor = COR.rosa;
-  ctx.shadowBlur = 26;
-
-  ctx.beginPath();
-  ctx.moveTo(p0.x, p0.y);
-  ctx.quadraticCurveTo(ctrl.x, ctrl.y, p1.x, p1.y);
-  ctx.stroke();
-
-  // Ponta na inclinação REAL do fim da curva: a derivada da quadrática em
-  // t=1 é 2*(P1 - C). Calcular à mão deixava a ponta torta.
-  const ang = Math.atan2(p1.y - ctrl.y, p1.x - ctrl.x);
-  const p = 38;
-  const abertura = 0.62;
-  ctx.beginPath();
-  ctx.moveTo(p1.x - p * Math.cos(ang - abertura), p1.y - p * Math.sin(ang - abertura));
-  ctx.lineTo(p1.x, p1.y);
-  ctx.lineTo(p1.x - p * Math.cos(ang + abertura), p1.y - p * Math.sin(ang + abertura));
-  ctx.stroke();
-  ctx.restore();
+function separaDestaque(frase: string): Pedaco[] {
+  const partes: Pedaco[] = [];
+  for (const bruto of frase.split(/(\*[^*]+\*)/g)) {
+    if (!bruto) continue;
+    const acento = bruto.startsWith("*") && bruto.endsWith("*") && bruto.length > 2;
+    const texto = acento ? bruto.slice(1, -1).toUpperCase() : bruto;
+    for (const palavra of texto.split(/(\s+)/)) {
+      if (palavra) partes.push({ texto: palavra, acento });
+    }
+  }
+  return partes;
 }
 
-// Linha fina com a marca no meio, como o crédito do post de referência.
-function linhaMarca(ctx: CanvasRenderingContext2D, w: number, x: number, y: number) {
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.font = `600 30px ${SANS}`;
-  const larguraTexto = ctx.measureText(SITE).width;
-  const margem = 70;
-  const vao = larguraTexto / 2 + 26;
+const OBLIQUO = -0.18; // inclinação do destaque: a Anton não tem itálico real
 
-  ctx.save();
-  ctx.strokeStyle = gradienteNeon(ctx, x + margem, x + w - margem);
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(x + margem, y);
-  ctx.lineTo(x + w / 2 - vao, y);
-  ctx.moveTo(x + w / 2 + vao, y);
-  ctx.lineTo(x + w - margem, y);
-  ctx.stroke();
-  ctx.restore();
-
-  ctx.fillStyle = COR.rosa;
-  ctx.fillText(SITE, x + w / 2, y + 1);
+function fonteDe(tam: number): string {
+  return `400 ${tam}px ${TITULO_FONT}`;
 }
 
-// Manchete em caixa alta, quebrando em linhas e encolhendo se precisar caber.
+function largura(ctx: CanvasRenderingContext2D, p: Pedaco, tam: number): number {
+  ctx.font = fonteDe(tam);
+  return ctx.measureText(p.texto).width;
+}
+
+function quebra(
+  ctx: CanvasRenderingContext2D,
+  pedacos: Pedaco[],
+  tam: number,
+  limite: number,
+): Pedaco[][] {
+  const linhas: Pedaco[][] = [];
+  let atual: Pedaco[] = [];
+  let larguraAtual = 0;
+  for (const p of pedacos) {
+    const l = largura(ctx, p, tam);
+    const soEspaco = p.texto.trim() === "";
+    if (larguraAtual + l > limite && atual.length && !soEspaco) {
+      linhas.push(atual);
+      atual = [];
+      larguraAtual = 0;
+    }
+    if (soEspaco && !atual.length) continue; // não começa linha com espaço
+    atual.push(p);
+    larguraAtual += l;
+  }
+  if (atual.length) linhas.push(atual);
+  return linhas;
+}
+
+function desenhaLinha(
+  ctx: CanvasRenderingContext2D,
+  linha: Pedaco[],
+  tam: number,
+  centroX: number,
+  y: number,
+) {
+  const total = linha.reduce((s, p) => s + largura(ctx, p, tam), 0);
+  let x = centroX - total / 2;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  for (const p of linha) {
+    const l = largura(ctx, p, tam);
+    ctx.font = fonteDe(tam);
+    if (p.acento) {
+      // Inclina só o pedaço destacado, girando em torno da própria base.
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.transform(1, 0, OBLIQUO, 1, 0, 0);
+      ctx.fillStyle = COR.acento;
+      ctx.fillText(p.texto, 0, 0);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = COR.texto;
+      ctx.fillText(p.texto, x, y);
+    }
+    x += l;
+  }
+}
+
+/** Desenha a manchete centrada no eixo X. Devolve a altura ocupada. */
 function manchete(
   ctx: CanvasRenderingContext2D,
-  texto: string,
-  x: number,
-  w: number,
+  frase: string,
+  centroX: number,
   topoY: number,
-  alturaDisponivel: number,
-  margem = 110,
+  larguraMax: number,
+  alturaMax: number,
+  tamMax = 96,
 ): number {
-  const limite = w - margem;
-  const alvo = texto.toUpperCase();
-
-  // Começa grande: a manchete tem de ser o MAIOR texto da arte. Só encolhe
-  // quando não cabe.
-  for (const tam of [104, 96, 88, 80, 72, 64, 58, 52]) {
-    ctx.font = `400 ${tam}px ${TITULO_FONT}`;
-    const linhas: string[] = [];
-    let atual = "";
-    for (const palavra of alvo.split(" ")) {
-      const teste = atual ? `${atual} ${palavra}` : palavra;
-      if (ctx.measureText(teste).width > limite && atual) {
-        linhas.push(atual);
-        atual = palavra;
-      } else atual = teste;
-    }
-    if (atual) linhas.push(atual);
-
-    const entrelinha = Math.round(tam * 1.04);
+  const pedacos = separaDestaque(frase.trim());
+  for (let tam = tamMax; tam >= 44; tam -= 4) {
+    const linhas = quebra(ctx, pedacos, tam, larguraMax);
+    const entrelinha = Math.round(tam * 1.02);
     const altura = linhas.length * entrelinha;
-    if (altura > alturaDisponivel && tam > 52) continue;
-
-    ctx.textAlign = "center";
-    ctx.textBaseline = "top";
-    ctx.fillStyle = COR.texto;
-    linhas.forEach((linha, i) => ctx.fillText(linha, x + w / 2, topoY + i * entrelinha));
-    return topoY + altura;
+    if (altura > alturaMax && tam > 44) continue;
+    linhas.forEach((linha, i) =>
+      desenhaLinha(ctx, linha, tam, centroX, topoY + (i + 0.82) * entrelinha),
+    );
+    return altura;
   }
-  return topoY;
+  return 0;
 }
 
-export interface CartaoParams {
-  /** Manchete em caixa alta, no terço superior. É o que carrega o post. */
-  titulo?: string;
-  /** Chamada pequena no rodapé (ex.: "Deslize e veja"). */
-  chamada?: string;
-  /** Selo curto sobre a foto, de preferência com número: "30s", "1 foto". */
-  selo?: string;
-}
-
-// Altura do bloco do cabeçalho, em fração do cartão. O terço superior é o que
-// a pesquisa manda reservar para o gancho.
-const BLOCO_TITULO = 0.27;
-const ALTURA_RODAPE = 107;
-
-// O texto vive num BLOCO SÓLIDO, não sobre a foto. Testei por cima com véu e a
-// manchete caía no rosto da pessoa — texto sobre rosto é o erro clássico, e
-// com foto de cliente variável não dá para garantir uma área limpa.
-
-// Selo com o número. Fica sobre a foto, do lado direito, longe da manchete.
-function seloNumero(ctx: CanvasRenderingContext2D, texto: string, cx: number, cy: number) {
-  const r = 92;
-  ctx.save();
-  ctx.fillStyle = COR.rosa;
-  ctx.shadowColor = COR.rosa;
-  ctx.shadowBlur = 34;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-
-  // Texto escuro sobre o rosa: o contraste inverte e o selo salta.
-  ctx.fillStyle = COR.fundo;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  let tam = 62;
-  ctx.font = `400 ${tam}px ${TITULO_FONT}`;
-  while (ctx.measureText(texto).width > r * 1.6 && tam > 26) {
-    tam -= 4;
-    ctx.font = `400 ${tam}px ${TITULO_FONT}`;
-  }
-  ctx.fillText(texto.toUpperCase(), cx, cy + 2);
-}
-
-// Etiqueta pequena no pé da foto (ANTES / DEPOIS). Fica embaixo, e não no
-// topo, para não disputar espaço com a manchete.
-function etiquetaPe(ctx: CanvasRenderingContext2D, texto: string, cx: number, baseY: number) {
-  ctx.font = `700 26px ${SANS}`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  const larg = ctx.measureText(texto).width + 44;
-  const alt = 50;
-  ctx.save();
-  ctx.fillStyle = "rgba(11,13,22,0.82)";
-  ctx.beginPath();
-  ctx.roundRect(cx - larg / 2, baseY - alt, larg, alt, 25);
-  ctx.fill();
-  ctx.restore();
-  ctx.fillStyle = COR.texto;
-  ctx.fillText(texto.toUpperCase(), cx, baseY - alt / 2 + 1);
-}
-
-// Cabeçalho: bloco sólido no topo com a manchete. Devolve onde a foto começa.
-function cabecalho(
+/** Linha pequena acima da manchete. Devolve a altura ocupada. */
+function chapeu(
   ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  alturaCartao: number,
-  { titulo }: CartaoParams,
+  texto: string,
+  centroX: number,
+  baseY: number,
+  larguraMax: number,
 ): number {
-  if (!titulo?.trim()) return y;
+  const tam = 34;
+  ctx.font = `400 ${tam}px ${SANS}`;
+  ctx.fillStyle = COR.chapeu;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
 
-  const alturaBloco = Math.round(alturaCartao * BLOCO_TITULO);
-  ctx.fillStyle = COR.fundo;
-  ctx.fillRect(x, y, w, alturaBloco);
-
-  const alturaTexto = manchete(ctx, titulo.trim(), x, w, y + 56, alturaBloco - 96, 120) - (y + 56);
-  // Centraliza o texto no bloco: sobra igual em cima e embaixo.
-  const folga = Math.max(0, alturaBloco - 96 - alturaTexto);
-  if (folga > 12) {
-    ctx.fillStyle = COR.fundo;
-    ctx.fillRect(x, y, w, alturaBloco);
-    manchete(ctx, titulo.trim(), x, w, y + 56 + Math.round(folga / 2), alturaBloco - 96, 120);
+  const linhas: string[] = [];
+  let atual = "";
+  for (const palavra of texto.trim().split(" ")) {
+    const teste = atual ? `${atual} ${palavra}` : palavra;
+    if (ctx.measureText(teste).width > larguraMax && atual) {
+      linhas.push(atual);
+      atual = palavra;
+    } else atual = teste;
   }
-
-  return y + alturaBloco;
+  if (atual) linhas.push(atual);
+  const entrelinha = Math.round(tam * 1.35);
+  linhas.forEach((l, i) => ctx.fillText(l, centroX, baseY - (linhas.length - 1 - i) * entrelinha));
+  return linhas.length * entrelinha;
 }
 
-// Rodapé: fio neon, marca e a pista para deslizar. Enxuto de propósito — o
-// peso da arte é a manchete, não o rodapé.
-function rodape(
+// Véu por baixo do texto: escuro na base, transparente no meio da foto.
+function veuInferior(
   ctx: CanvasRenderingContext2D,
   x: number,
-  y: number,
+  baseY: number,
   w: number,
-  chamada?: string,
-  passo?: string,
+  altura: number,
 ) {
-  ctx.save();
-  ctx.strokeStyle = gradienteNeon(ctx, x, x + w);
-  ctx.lineWidth = 5;
-  ctx.shadowColor = COR.rosa;
-  ctx.shadowBlur = 20;
-  ctx.beginPath();
-  ctx.moveTo(x, y);
-  ctx.lineTo(x + w, y);
-  ctx.stroke();
-  ctx.restore();
-
-  ctx.fillStyle = COR.fundo;
-  ctx.fillRect(x, y + 3, w, 104);
-
-  ctx.textBaseline = "middle";
-  ctx.font = `600 30px ${SANS}`;
-  ctx.textAlign = "left";
-  ctx.fillStyle = COR.texto;
-  ctx.fillText(SITE, x + 56, y + 56);
-
-  // Contador de slide (2/4). Diz quanto falta, o que é o que sustenta o
-  // deslize até o fim do carrossel.
-  if (passo) {
-    ctx.textAlign = "center";
-    ctx.fillStyle = COR.apagado;
-    ctx.font = `600 26px ${SANS}`;
-    ctx.fillText(passo, x + w / 2, y + 56);
-  }
-
-  if (chamada?.trim()) {
-    ctx.textAlign = "right";
-    ctx.fillStyle = COR.rosa;
-    ctx.font = `700 30px ${SANS}`;
-    // Tira setas que já venham no texto: com elas saía "DESLIZE >>>  →".
-    const limpo = chamada.trim().replace(/[>»→\s]+$/u, "");
-    ctx.fillText(`${limpo.toUpperCase()}  →`, x + w - 56, y + 56);
-  }
+  const g = ctx.createLinearGradient(0, baseY - altura, 0, baseY);
+  g.addColorStop(0, "rgba(10,10,12,0)");
+  g.addColorStop(0.45, "rgba(10,10,12,0.75)");
+  g.addColorStop(1, "rgba(10,10,12,0.97)");
+  ctx.fillStyle = g;
+  ctx.fillRect(x, baseY - altura, w, altura);
 }
 
-export interface ParParams extends CartaoParams {
+const MARGEM = 78;
+// Respiro maior embaixo das fotos: com 78 a última linha encostava na borda.
+const MARGEM_BASE = 120;
+
+// ---------------------------------------------------------------------------
+// Slides
+// ---------------------------------------------------------------------------
+
+// Altura que a manchete vai ocupar, medida antes de pintar. Sem isto não dá
+// para centralizar o bloco: o texto saía de um ponto fixo e ficava sempre
+// acima do centro.
+function mediaManchete(frase: string, larguraMax: number, tamMax: number) {
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  const pedacos = separaDestaque(frase.trim());
+  for (let tam = tamMax; tam >= 44; tam -= 4) {
+    const linhas = quebra(ctx, pedacos, tam, larguraMax);
+    const altura = linhas.length * Math.round(tam * 1.02);
+    if (linhas.length <= 4 || tam === 44) return { tam, altura };
+  }
+  return { tam: 44, altura: 0 };
+}
+
+export interface TextoParams {
+  formato: PostFormat;
+  /** Manchete. Marque a palavra do destaque com *asteriscos*. */
+  titulo: string;
+  /** Linha pequena acima da manchete. */
+  chapeu?: string;
+}
+
+/** Slide SÓ TEXTO — o gancho que abre o carrossel. */
+export async function composeHook({
+  formato,
+  titulo,
+  chapeu: linha,
+}: TextoParams): Promise<string> {
+  await fontesProntas();
+  const { canvas, ctx, w, topo, alturaCartao } = novoCanvas(formato);
+  const centroY = topo + alturaCartao / 2;
+  const larguraMax = w - MARGEM * 2;
+
+  const { tam, altura } = mediaManchete(titulo, larguraMax, 104);
+  const alturaChapeu = linha?.trim() ? 62 : 0;
+  const topoBloco = centroY - (altura + alturaChapeu) / 2;
+
+  if (linha?.trim()) chapeu(ctx, linha, w / 2, topoBloco - 18, larguraMax);
+  manchete(ctx, titulo, w / 2, topoBloco, larguraMax, alturaCartao * 0.6, tam);
+
+  return canvas.toDataURL("image/jpeg", 0.92);
+}
+
+export interface FotoParams extends TextoParams {
+  url: string;
+  /** 0 = topo (foto de cliente), 0.5 = centro (anúncio criado do zero). */
+  ancora?: number;
+}
+
+/** Foto ocupando o quadro, com o texto embaixo. */
+export async function composeFoto({
+  url,
+  formato,
+  titulo,
+  chapeu: linha,
+  ancora = 0,
+}: FotoParams): Promise<string> {
+  await fontesProntas();
+  const img = await loadImage(url);
+  const { canvas, ctx, w, topo, alturaCartao } = novoCanvas(formato);
+
+  drawCover(ctx, img, 0, topo, w, alturaCartao, ancora);
+
+  const base = topo + alturaCartao - MARGEM_BASE;
+  const larguraMax = w - MARGEM * 2;
+  const { tam, altura: alturaTitulo } = mediaManchete(titulo, larguraMax, 84);
+  const alturaChapeu = linha?.trim() ? 62 : 0;
+  veuInferior(ctx, 0, topo + alturaCartao, w, alturaTitulo + alturaChapeu + MARGEM_BASE * 2.2);
+
+  const topoTitulo = base - alturaTitulo;
+  if (linha?.trim()) chapeu(ctx, linha, w / 2, topoTitulo - 26, larguraMax);
+  manchete(ctx, titulo, w / 2, topoTitulo, larguraMax, alturaCartao * 0.45, tam);
+
+  return canvas.toDataURL("image/jpeg", 0.92);
+}
+
+export interface CtaParams extends TextoParams {
+  /** Texto do botão em pílula. */
+  botao: string;
+  /** Linha pequena embaixo do botão. */
+  rodape?: string;
+}
+
+/** Slide final: chamada + botão em pílula branca. */
+export async function composeCta({ formato, titulo, botao, rodape }: CtaParams): Promise<string> {
+  await fontesProntas();
+  const { canvas, ctx, w, topo, alturaCartao } = novoCanvas(formato);
+  const centroY = topo + alturaCartao / 2;
+  const larguraMax = w - MARGEM * 2;
+
+  // Altura do conjunto (manchete + pílula + rodapé) para centralizar tudo.
+  const medida = mediaManchete(titulo, larguraMax, 96);
+  const topoBloco = centroY - (medida.altura + 70 + 108 + (rodape?.trim() ? 72 : 0)) / 2;
+  const alturaTitulo = manchete(ctx, titulo, w / 2, topoBloco, larguraMax, 320, medida.tam);
+
+  // Pílula branca, como na referência: texto escuro e um círculo com a seta.
+  const yPilula = topoBloco + alturaTitulo + 70;
+  ctx.font = `600 40px ${SANS}`;
+  const larguraTexto = ctx.measureText(botao).width;
+  const alturaPilula = 108;
+  const raioCirculo = 34;
+  const larguraPilula = larguraTexto + raioCirculo * 2 + 130;
+  const xPilula = (w - larguraPilula) / 2;
+
+  ctx.fillStyle = "#f7f5f2";
+  ctx.beginPath();
+  ctx.roundRect(xPilula, yPilula, larguraPilula, alturaPilula, alturaPilula / 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#111114";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(botao, xPilula + 46, yPilula + alturaPilula / 2 + 2);
+
+  const cx = xPilula + larguraPilula - 46 - raioCirculo;
+  const cy = yPilula + alturaPilula / 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, raioCirculo, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#f7f5f2";
+  ctx.lineWidth = 3.5;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(cx - 13, cy);
+  ctx.lineTo(cx + 13, cy);
+  ctx.moveTo(cx + 4, cy - 9);
+  ctx.lineTo(cx + 13, cy);
+  ctx.lineTo(cx + 4, cy + 9);
+  ctx.stroke();
+
+  if (rodape?.trim()) {
+    ctx.font = `400 32px ${SANS}`;
+    ctx.fillStyle = COR.sub;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(rodape.trim(), w / 2, yPilula + alturaPilula + 72);
+  }
+
+  return canvas.toDataURL("image/jpeg", 0.92);
+}
+
+export interface ParParams extends TextoParams {
   antesUrl: string;
   depoisUrl: string;
-  formato: PostFormat;
-  /** Contador do carrossel, ex.: "1 / 4". */
-  passo?: string;
 }
 
-// Antes e depois LADO A LADO, colados, com a seta ligando os dois.
+/** Antes e depois lado a lado, com o texto embaixo. É a nossa prova. */
 export async function composePair({
   antesUrl,
   depoisUrl,
   formato,
   titulo,
-  chamada,
-  selo,
-  passo,
+  chapeu: linha,
 }: ParParams): Promise<string> {
   await fontesProntas();
   const [antes, depois] = await Promise.all([loadImage(antesUrl), loadImage(depoisUrl)]);
-  const { canvas, ctx, w, h, topo } = novoCanvas(formato);
+  const { canvas, ctx, w, topo, alturaCartao } = novoCanvas(formato);
 
-  // A foto ocupa TUDO: manchete e rodapé vivem sobre ela. Assim a arte não
-  // gasta um terço da área em tarja preta, e a foto é o que segura o olhar.
-  const alturaCartao = formato === "story" ? h - STORY_TOPO - STORY_RODAPE : CARTAO.h;
-  const y = formato === "story" ? STORY_TOPO : topo;
   const meio = Math.round(w / 2);
-
-  const fotoY = titulo?.trim() ? y + Math.round(alturaCartao * BLOCO_TITULO) : y;
-  const fotoH = y + alturaCartao - ALTURA_RODAPE - fotoY;
-
-  drawCoverTop(ctx, antes, 0, fotoY, meio, fotoH);
-  drawCoverTop(ctx, depois, meio, fotoY, w - meio, fotoH);
+  drawCover(ctx, antes, 0, topo, meio, alturaCartao);
+  drawCover(ctx, depois, meio, topo, w - meio, alturaCartao);
 
   // Costura fina entre as duas: sem ela as fotos se confundem numa só.
   ctx.fillStyle = COR.fundo;
-  ctx.fillRect(meio - 1, fotoY, 2, fotoH);
+  ctx.fillRect(meio - 1, topo, 2, alturaCartao);
 
-  setaCurva(ctx, meio, fotoY + Math.round(fotoH * 0.5));
-  etiquetaPe(ctx, "Antes", meio / 2, fotoY + fotoH - 34);
-  etiquetaPe(ctx, "Depois", meio + meio / 2, fotoY + fotoH - 34);
-
-  cabecalho(ctx, 0, y, w, alturaCartao, { titulo });
-  // O selo cavalga a borda do bloco: metade no texto, metade na foto. É o que
-  // dá profundidade e impede que ele pareça só mais um adesivo solto.
-  if (selo?.trim()) seloNumero(ctx, selo.trim(), w - 148, fotoY);
-  rodape(ctx, 0, y + alturaCartao - ALTURA_RODAPE, w, chamada, passo);
-
-  return canvas.toDataURL("image/jpeg", 0.92);
-}
-
-export interface SlideParams extends CartaoParams {
-  url: string;
-  formato: PostFormat;
-  /** Contador do carrossel, ex.: "2 / 4". */
-  passo?: string;
-  /**
-   * Onde o recorte da foto se apoia: 0 = topo, 0.5 = centro.
-   *
-   * Padrão topo, porque foto de cliente tem o rosto em cima e centralizar
-   * decapitava a pessoa. O anúncio criado do zero passa 0.5: ali a cena é
-   * composta no meio do quadro.
-   */
-  ancora?: number;
-}
-
-// Uma foto só, no mesmo molde.
-export async function composeSlide({
-  url,
-  formato,
-  titulo,
-  chamada,
-  selo,
-  passo,
-  ancora = 0,
-}: SlideParams): Promise<string> {
-  await fontesProntas();
-  const img = await loadImage(url);
-  const { canvas, ctx, w, h, topo } = novoCanvas(formato);
-
-  const alturaCartao = formato === "story" ? h - STORY_TOPO - STORY_RODAPE : CARTAO.h;
-  const y = formato === "story" ? STORY_TOPO : topo;
-
-  // NENHUM slide fica só com a foto: mesmo no meio do carrossel entram a
-  // manchete daquele slide, o contador e a assinatura. Um slide pelado no
-  // meio parece um álbum de fotos, não um post — e é onde a maioria desiste
-  // de deslizar.
-  const fotoY = titulo?.trim() ? y + Math.round(alturaCartao * BLOCO_TITULO) : y;
-  drawCoverTop(ctx, img, 0, fotoY, w, y + alturaCartao - ALTURA_RODAPE - fotoY, ancora);
-  cabecalho(ctx, 0, y, w, alturaCartao, { titulo });
-  if (selo?.trim()) seloNumero(ctx, selo.trim(), w - 148, fotoY);
-  rodape(ctx, 0, y + alturaCartao - ALTURA_RODAPE, w, chamada, passo);
-
-  return canvas.toDataURL("image/jpeg", 0.92);
-}
-
-// Último slide do carrossel: só marca e chamada, sem foto.
-export async function composeBrandCard(formato: PostFormat, chamada: string): Promise<string> {
-  await fontesProntas();
-  const { canvas, ctx, w, h, topo } = novoCanvas(formato);
-
-  // Brilho suave ao fundo — a mesma sensação do --shadow-glow do app, que é o
-  // que separa esta arte de um cartão preto qualquer.
-  const cy = topo + CARTAO.h / 2;
-  const brilho = ctx.createRadialGradient(w / 2, cy, 0, w / 2, cy, w * 0.8);
-  brilho.addColorStop(0, "rgba(255,55,182,0.18)");
-  brilho.addColorStop(0.5, "rgba(177,68,255,0.08)");
-  brilho.addColorStop(1, "rgba(11,13,22,0)");
-  ctx.fillStyle = brilho;
-  ctx.fillRect(0, 0, w, h);
-
-  linhaMarca(ctx, w, 0, cy - 210);
-  const fim = manchete(ctx, chamada, 0, w, cy - 150, 320);
-
+  // Etiquetas discretas no alto, para o par se explicar sozinho.
+  ctx.font = `600 26px ${SANS}`;
   ctx.textAlign = "center";
-  ctx.textBaseline = "top";
-  ctx.font = `700 34px ${SANS}`;
-  ctx.fillStyle = COR.azul;
-  ctx.fillText("COMECE HOJE · VESTAIAPP.COM", w / 2, fim + 46);
+  ctx.textBaseline = "middle";
+  for (const [rotulo, cx] of [
+    ["ANTES", meio / 2],
+    ["DEPOIS", meio + meio / 2],
+  ] as [string, number][]) {
+    const larguraRot = ctx.measureText(rotulo).width + 40;
+    ctx.fillStyle = "rgba(10,10,12,0.72)";
+    ctx.beginPath();
+    ctx.roundRect(cx - larguraRot / 2, topo + 34, larguraRot, 48, 24);
+    ctx.fill();
+    ctx.fillStyle = COR.texto;
+    ctx.fillText(rotulo, cx, topo + 59);
+  }
+
+  const base = topo + alturaCartao - MARGEM_BASE;
+  const larguraMax = w - MARGEM * 2;
+  const { tam, altura: alturaTitulo } = mediaManchete(titulo, larguraMax, 84);
+  veuInferior(ctx, 0, topo + alturaCartao, w, alturaTitulo + (linha ? 62 : 0) + MARGEM_BASE * 2.2);
+
+  const topoTitulo = base - alturaTitulo;
+  if (linha?.trim()) chapeu(ctx, linha, w / 2, topoTitulo - 26, larguraMax);
+  manchete(ctx, titulo, w / 2, topoTitulo, larguraMax, alturaCartao * 0.45, tam);
 
   return canvas.toDataURL("image/jpeg", 0.92);
 }
