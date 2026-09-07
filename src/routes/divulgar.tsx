@@ -146,11 +146,19 @@ function DivulgarPage() {
           }),
         ];
       } else {
-        // O carrossel segue a estrutura da referência: ABRE com um slide só
-        // texto (o gancho, que é o que faz parar o dedo), mostra a prova no
-        // meio e FECHA com a chamada. Slide de foto sem texto não entra.
+        // O carrossel ABRE com o gancho (que é o que faz parar o dedo), mostra
+        // a prova no meio e FECHA com a chamada. Slide de foto sem texto não
+        // entra. O gancho leva a foto da geração por trás, bem escurecida: é a
+        // mesma pessoa que aparece revelada logo em seguida, então o slide 1
+        // já planta quem é a história antes de a frase ser lida.
         const slides = [
-          await composeHook({ estilo, formato, titulo, chapeu: chapeu.trim() || undefined }),
+          await composeHook({
+            estilo,
+            formato,
+            titulo,
+            chapeu: chapeu.trim() || undefined,
+            fundoUrl: principal.resultUrl,
+          }),
         ];
 
         if (carrossel === "revela") {
@@ -232,7 +240,13 @@ function DivulgarPage() {
       const imagens =
         formato === "carrossel"
           ? [
-              await composeHook({ estilo, formato, titulo, chapeu: chapeu.trim() || undefined }),
+              await composeHook({
+                estilo,
+                formato,
+                titulo,
+                chapeu: chapeu.trim() || undefined,
+                fundoUrl: url,
+              }),
               await composeFoto({
                 estilo,
                 url,

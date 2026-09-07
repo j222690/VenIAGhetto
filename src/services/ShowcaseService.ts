@@ -166,15 +166,32 @@ export const ShowcaseService = {
   },
 
   // Imagem de anúncio criada do zero. Custa 1 geração (feature "post").
-  async imagemTema(tema: string, formato: "feed" | "story" | "carrossel"): Promise<string> {
+  //
+  // `referenciaUrl` é uma cena JÁ GERADA cuja pessoa deve reaparecer nesta.
+  // Num carrossel é o que separa cinco fotos soltas de uma história: se a cada
+  // slide aparece outra mulher, ninguém entende que é a mesma cliente antes e
+  // depois. A referência entra como imagem de entrada, não como texto — pedir
+  // "mulher de cabelo cacheado" de novo devolve outra pessoa.
+  async imagemTema(
+    tema: string,
+    formato: "feed" | "story" | "carrossel",
+    referenciaUrl?: string,
+  ): Promise<string> {
     const prompt =
       "Fotografia publicitária realista para um anúncio de aplicativo voltado a lojas de moda no " +
       "Brasil. " +
       `Cena: ${tema.trim()}. ` +
+      (referenciaUrl
+        ? "A pessoa desta cena é EXATAMENTE a mesma da imagem de referência: mesmo rosto, mesmo " +
+          "cabelo, mesma cor de pele, mesma idade. Copie o rosto da referência. Mude apenas o " +
+          "cenário, a pose e a roupa conforme a cena pedida. "
+        : "") +
       "Luz natural, cores quentes e suaves, aparência de foto de celular profissional — não de " +
       "render 3D nem de ilustração. Pessoas brasileiras, roupas atuais, ambiente de loja de roupas " +
       "Enquadre as pessoas no CENTRO, de corpo inteiro ou meio corpo, com folga " +
       "em volta: a imagem é recortada para caber no post, e sujeito colado na borda perde a cabeça. " +
+      "Sacolas, etiquetas e vitrines SEM MARCA e SEM TEXTO: uma sacola com nome de loja inventado " +
+      "vira propaganda de concorrente, e já saiu uma com o nome de uma marca real. " +
       "NÃO escreva nenhuma palavra, letra, número, logo ou interface de aplicativo na imagem: " +
       "texto gerado por IA sai deformado e estraga o anúncio.";
     // A proporção pedida é a da ÁREA DA FOTO, não a do post: depois do bloco
@@ -183,6 +200,7 @@ export const ShowcaseService = {
     // saiu com os rostos cortados na base.
     const { url } = await AIService.image(prompt, "post", {
       aspectRatio: formato === "story" ? "1:1" : "5:4",
+      imageUrls: referenciaUrl ? [referenciaUrl] : undefined,
     });
     return url;
   },

@@ -14,10 +14,12 @@
 //   • MANCHETE EM CAIXA MISTA, pesada e condensada, com UMA palavra em
 //     MAIÚSCULA, itálica e magenta. É o único acento da arte — e o que faz o
 //     olho parar.
-//   • CHAPÉU: uma linha pequena e cinza acima da manchete, quando a frase
-//     precisa de contexto ("Sua cliente olha a foto do catálogo e pensa:").
-//   • O carrossel abre com um slide SÓ TEXTO (o gancho) e fecha com outro só
-//     texto (a chamada), com botão em pílula branca.
+//   • CHAPÉU: uma sobrelinha em caixa alta espaçada acima da manchete, na
+//     mesma família dela, quando a frase precisa de contexto ("Sua cliente
+//     olha a foto do catálogo e pensa:").
+//   • O carrossel abre com um slide de gancho e fecha com a chamada, em pílula
+//     branca. O gancho leva uma cena por trás, coberta por véu: sobre preto
+//     puro ele se perde no feed, que já é escuro.
 //   • Sem contador de slide, sem rodapé com o site em toda arte. A referência
 //     não tem, e cada elemento a mais rouba peso da manchete.
 //
@@ -56,7 +58,6 @@ const COR = {
   texto: "#ffffff",
   // Magenta da referência, que é praticamente o --neon-pink do app.
   acento: "#ff2fb4",
-  chapeu: "rgba(255,255,255,0.72)",
   sub: "rgba(255,255,255,0.55)",
   // Luminoso: núcleo quase branco-rosado e halo magenta em volta.
   neonTexto: "#ffb3ec",
@@ -301,7 +302,41 @@ function manchete(
   return 0;
 }
 
-/** Linha pequena acima da manchete. Devolve a altura ocupada. */
+// Espaçamento entre letras do chapéu. `ctx.letterSpacing` existe, mas só no
+// Chrome e no Safari recente — desenhar letra a letra funciona em todo lugar
+// e ainda deixa medir a linha com a mesma conta que a pinta.
+const CHAPEU_TAM = 30;
+const CHAPEU_TRACKING = 0.2;
+
+function larguraTracked(ctx: CanvasRenderingContext2D, texto: string, tracking: number): number {
+  let total = 0;
+  for (const ch of texto) total += ctx.measureText(ch).width + tracking;
+  return total - tracking;
+}
+
+function desenhaTracked(
+  ctx: CanvasRenderingContext2D,
+  texto: string,
+  centroX: number,
+  y: number,
+  tracking: number,
+) {
+  let x = centroX - larguraTracked(ctx, texto, tracking) / 2;
+  for (const ch of texto) {
+    ctx.fillText(ch, x, y);
+    x += ctx.measureText(ch).width + tracking;
+  }
+}
+
+/**
+ * Linha pequena acima da manchete. Devolve a altura ocupada.
+ *
+ * Era Inter cinza, e ao lado de uma manchete display isso não parecia uma
+ * escolha — parecia texto que ninguém tratou. Agora usa a MESMA família da
+ * manchete, em caixa alta, pequena e espaçada: vira sobrelinha de revista, que
+ * é o papel que ela cumpre. A cor troca de lado em cada estilo para não somir
+ * dentro da manchete — magenta sobre texto branco, branco sobre o neon rosa.
+ */
 function chapeu(
   ctx: CanvasRenderingContext2D,
   texto: string,
@@ -309,24 +344,29 @@ function chapeu(
   baseY: number,
   larguraMax: number,
 ): number {
-  const tam = 34;
-  ctx.font = `400 ${tam}px ${SANS}`;
-  ctx.fillStyle = COR.chapeu;
-  ctx.textAlign = "center";
+  const tam = CHAPEU_TAM;
+  const tracking = tam * CHAPEU_TRACKING;
+  ctx.font =
+    estiloAtual === "neon" ? `600 ${tam}px ${NEON_FONT}` : `400 ${tam}px ${TITULO_FONT}`;
+  ctx.fillStyle = estiloAtual === "neon" ? "rgba(255,255,255,0.9)" : COR.acento;
+  ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
 
   const linhas: string[] = [];
   let atual = "";
-  for (const palavra of texto.trim().split(" ")) {
+  for (const palavra of texto.trim().toUpperCase().split(" ")) {
     const teste = atual ? `${atual} ${palavra}` : palavra;
-    if (ctx.measureText(teste).width > larguraMax && atual) {
+    if (larguraTracked(ctx, teste, tracking) > larguraMax && atual) {
       linhas.push(atual);
       atual = palavra;
     } else atual = teste;
   }
   if (atual) linhas.push(atual);
-  const entrelinha = Math.round(tam * 1.35);
-  linhas.forEach((l, i) => ctx.fillText(l, centroX, baseY - (linhas.length - 1 - i) * entrelinha));
+  const entrelinha = Math.round(tam * 1.5);
+  linhas.forEach((l, i) =>
+    desenhaTracked(ctx, l, centroX, baseY - (linhas.length - 1 - i) * entrelinha, tracking),
+  );
+  ctx.textAlign = "center";
   return linhas.length * entrelinha;
 }
 
@@ -384,6 +424,45 @@ export interface TextoParams {
   titulo: string;
   /** Linha pequena acima da manchete. */
   chapeu?: string;
+  /**
+   * Foto atrás do texto, coberta por um véu forte.
+   *
+   * Slide de texto sobre preto puro some no feed: o Instagram já é escuro, e
+   * um retângulo preto passa como espaço vazio entre dois posts. Com uma cena
+   * por trás o quadro tem para onde o olho ir enquanto lê. Não é o mesmo que
+   * `composeFoto`, onde a foto é o assunto e o texto assenta embaixo — aqui a
+   * foto é ambiente e o texto continua no centro.
+   */
+  fundoUrl?: string;
+}
+
+/**
+ * Escurece a foto de fundo até o texto mandar no quadro.
+ *
+ * Um véu chapado deixa a imagem lavada e sem profundidade; um degradê só nas
+ * pontas deixa o miolo claro demais bem onde a manchete passa. São os dois:
+ * uma base parelha e o degradê fechando topo e base em preto.
+ */
+async function pintaFundo(
+  ctx: CanvasRenderingContext2D,
+  url: string,
+  w: number,
+  topo: number,
+  alturaCartao: number,
+) {
+  const img = await loadImage(url);
+  drawCover(ctx, img, 0, topo, w, alturaCartao, 0.35);
+
+  ctx.fillStyle = "rgba(10,10,12,0.62)";
+  ctx.fillRect(0, topo, w, alturaCartao);
+
+  const g = ctx.createLinearGradient(0, topo, 0, topo + alturaCartao);
+  g.addColorStop(0, "rgba(10,10,12,0.92)");
+  g.addColorStop(0.38, "rgba(10,10,12,0.3)");
+  g.addColorStop(0.62, "rgba(10,10,12,0.3)");
+  g.addColorStop(1, "rgba(10,10,12,0.95)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, topo, w, alturaCartao);
 }
 
 /** Slide SÓ TEXTO — o gancho que abre o carrossel. */
@@ -391,11 +470,13 @@ export async function composeHook({
   formato,
   titulo,
   chapeu: linha,
+  fundoUrl,
   estilo = "referencia",
 }: TextoParams): Promise<string> {
   estiloAtual = estilo;
   await fontesProntas();
   const { canvas, ctx, w, topo, alturaCartao } = novoCanvas(formato);
+  if (fundoUrl) await pintaFundo(ctx, fundoUrl, w, topo, alturaCartao);
   const centroY = topo + alturaCartao / 2;
   const larguraMax = w - MARGEM * 2;
 
@@ -457,11 +538,15 @@ export async function composeCta({
   titulo,
   botao,
   rodape,
+  fundoUrl,
   estilo = "referencia",
 }: CtaParams): Promise<string> {
   estiloAtual = estilo;
   await fontesProntas();
   const { canvas, ctx, w, topo, alturaCartao } = novoCanvas(formato);
+  // Fundo é opcional aqui de propósito: no último slide o que precisa ganhar
+  // é o botão, e uma cena atrás dele disputa com a única coisa clicável.
+  if (fundoUrl) await pintaFundo(ctx, fundoUrl, w, topo, alturaCartao);
   const centroY = topo + alturaCartao / 2;
   const larguraMax = w - MARGEM * 2;
 
