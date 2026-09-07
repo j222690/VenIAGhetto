@@ -26,6 +26,18 @@
 
 export type PostFormat = "story" | "feed" | "carrossel";
 
+/**
+ * Duas linguagens visuais, e a escolha é de quem posta.
+ *
+ * "referencia" — o molde do @metakosmoslab: texto branco com UMA palavra em
+ * magenta itálica. A hierarquia vem do contraste, então o olho tem onde cair.
+ *
+ * "neon" — o jeito do Victor: tudo em rosa com brilho de luminoso, fonte
+ * arredondada, caixa alta. Chama mais atenção de longe; em compensação, sem
+ * palavra destacada não existe foco dentro da frase.
+ */
+export type PostStyle = "referencia" | "neon";
+
 const DIMENSOES: Record<PostFormat, { w: number; h: number }> = {
   story: { w: 1080, h: 1920 },
   feed: { w: 1080, h: 1350 },
@@ -46,6 +58,9 @@ const COR = {
   acento: "#ff2fb4",
   chapeu: "rgba(255,255,255,0.72)",
   sub: "rgba(255,255,255,0.55)",
+  // Luminoso: núcleo quase branco-rosado e halo magenta em volta.
+  neonTexto: "#ffb3ec",
+  neon: "#ff2fb4",
 };
 
 // Anton: caixa alta pesada e condensada, o desenho da manchete da referência.
@@ -54,17 +69,20 @@ const COR = {
 const TITULO_FONT = '"Anton", "Arial Narrow", Impact, sans-serif';
 const SANS = '"Inter", system-ui, -apple-system, sans-serif';
 const ANTON_CSS = "https://fonts.googleapis.com/css2?family=Anton&display=swap";
+// Fredoka: arredondada e cheia, o desenho do luminoso.
+const NEON_FONT = '"Fredoka", "Trebuchet MS", sans-serif';
+const FREDOKA_CSS = "https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&display=swap";
 
 // Devolve só quando a folha de estilo terminou de carregar. Pedir a fonte
 // antes disso falha calado e a manchete sai na fonte de reserva.
-function garanteAnton(): Promise<void> {
-  const existente = document.querySelector<HTMLLinkElement>(`link[href="${ANTON_CSS}"]`);
+function garanteFonte(href: string): Promise<void> {
+  const existente = document.querySelector<HTMLLinkElement>(`link[href="${href}"]`);
   if (existente?.dataset.pronto === "1") return Promise.resolve();
 
   const link = existente ?? document.createElement("link");
   if (!existente) {
     link.rel = "stylesheet";
-    link.href = ANTON_CSS;
+    link.href = href;
     document.head.appendChild(link);
   }
   return new Promise((resolve) => {
@@ -81,12 +99,13 @@ function garanteAnton(): Promise<void> {
 }
 
 async function fontesProntas(): Promise<void> {
-  await garanteAnton();
+  await Promise.all([garanteFonte(ANTON_CSS), garanteFonte(FREDOKA_CSS)]);
   try {
     // Nome da família SOZINHO: com a pilha de reserva o navegador se contenta
     // com a primeira fonte que já tem e nunca busca a Anton.
     await Promise.all([
       document.fonts.load('400 96px "Anton"'),
+      document.fonts.load('700 96px "Fredoka"'),
       document.fonts.load('400 34px "Inter"'),
       document.fonts.load('600 40px "Inter"'),
     ]);
@@ -156,6 +175,9 @@ interface Pedaco {
 
 function separaDestaque(frase: string): Pedaco[] {
   const partes: Pedaco[] = [];
+  // No neon a frase inteira é caixa alta, então o *destaque* deixa de existir:
+  // sem contraste de cor nem de caixa, marcar uma palavra não muda nada.
+  if (estiloAtual === "neon") frase = frase.replace(/\*/g, "").toUpperCase();
   for (const bruto of frase.split(/(\*[^*]+\*)/g)) {
     if (!bruto) continue;
     const acento = bruto.startsWith("*") && bruto.endsWith("*") && bruto.length > 2;
@@ -169,8 +191,13 @@ function separaDestaque(frase: string): Pedaco[] {
 
 const OBLIQUO = -0.18; // inclinação do destaque: a Anton não tem itálico real
 
+// Estilo em vigor no desenho atual. É module-level porque atravessa medição e
+// pintura, e passá-lo por seis funções encadeadas só para chegar ao fim
+// deixaria a assinatura de todas elas pior sem ganhar nada.
+let estiloAtual: PostStyle = "referencia";
+
 function fonteDe(tam: number): string {
-  return `400 ${tam}px ${TITULO_FONT}`;
+  return estiloAtual === "neon" ? `700 ${tam}px ${NEON_FONT}` : `400 ${tam}px ${TITULO_FONT}`;
 }
 
 function largura(ctx: CanvasRenderingContext2D, p: Pedaco, tam: number): number {
@@ -217,6 +244,23 @@ function desenhaLinha(
   for (const p of linha) {
     const l = largura(ctx, p, tam);
     ctx.font = fonteDe(tam);
+
+    if (estiloAtual === "neon") {
+      // Luminoso: o brilho é feito em passadas, do halo largo ao núcleo. Uma
+      // sombra só não dá o efeito — fica um borrão em volta da letra em vez de
+      // luz saindo dela.
+      ctx.save();
+      ctx.fillStyle = COR.neonTexto;
+      ctx.shadowColor = COR.neon;
+      for (const blur of [46, 30, 16, 8]) {
+        ctx.shadowBlur = blur;
+        ctx.fillText(p.texto, x, y);
+      }
+      ctx.restore();
+      x += l;
+      continue;
+    }
+
     if (p.acento) {
       // Inclina só o pedaço destacado, girando em torno da própria base.
       ctx.save();
@@ -334,6 +378,8 @@ function mediaManchete(frase: string, larguraMax: number, tamMax: number) {
 
 export interface TextoParams {
   formato: PostFormat;
+  /** Linguagem visual. Padrão: o molde da referência. */
+  estilo?: PostStyle;
   /** Manchete. Marque a palavra do destaque com *asteriscos*. */
   titulo: string;
   /** Linha pequena acima da manchete. */
@@ -345,7 +391,9 @@ export async function composeHook({
   formato,
   titulo,
   chapeu: linha,
+  estilo = "referencia",
 }: TextoParams): Promise<string> {
+  estiloAtual = estilo;
   await fontesProntas();
   const { canvas, ctx, w, topo, alturaCartao } = novoCanvas(formato);
   const centroY = topo + alturaCartao / 2;
@@ -374,7 +422,9 @@ export async function composeFoto({
   titulo,
   chapeu: linha,
   ancora = 0,
+  estilo = "referencia",
 }: FotoParams): Promise<string> {
+  estiloAtual = estilo;
   await fontesProntas();
   const img = await loadImage(url);
   const { canvas, ctx, w, topo, alturaCartao } = novoCanvas(formato);
@@ -402,7 +452,14 @@ export interface CtaParams extends TextoParams {
 }
 
 /** Slide final: chamada + botão em pílula branca. */
-export async function composeCta({ formato, titulo, botao, rodape }: CtaParams): Promise<string> {
+export async function composeCta({
+  formato,
+  titulo,
+  botao,
+  rodape,
+  estilo = "referencia",
+}: CtaParams): Promise<string> {
+  estiloAtual = estilo;
   await fontesProntas();
   const { canvas, ctx, w, topo, alturaCartao } = novoCanvas(formato);
   const centroY = topo + alturaCartao / 2;
@@ -473,7 +530,9 @@ export async function composePair({
   formato,
   titulo,
   chapeu: linha,
+  estilo = "referencia",
 }: ParParams): Promise<string> {
+  estiloAtual = estilo;
   await fontesProntas();
   const [antes, depois] = await Promise.all([loadImage(antesUrl), loadImage(depoisUrl)]);
   const { canvas, ctx, w, topo, alturaCartao } = novoCanvas(formato);

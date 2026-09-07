@@ -28,6 +28,7 @@ import {
   composeHook,
   composePair,
   type PostFormat,
+  type PostStyle,
 } from "@/lib/composePost";
 import { isAppAdmin } from "@/constants/admins";
 import { describeApiError } from "@/lib/apiErrors";
@@ -80,6 +81,7 @@ function DivulgarPage() {
   // foto do catálogo e pensa:"). Opcional: só entra quando a frase precisa de
   // contexto para fazer sentido sozinha.
   const [chapeu, setChapeu] = useState("");
+  const [estilo, setEstilo] = useState<PostStyle>("referencia");
 
   const [tema, setTema] = useState("");
 
@@ -135,6 +137,7 @@ function DivulgarPage() {
       if (formato !== "carrossel") {
         imagens = [
           await composePair({
+            estilo,
             antesUrl: principal.clientPhotoUrl,
             depoisUrl: principal.resultUrl,
             formato,
@@ -146,17 +149,21 @@ function DivulgarPage() {
         // O carrossel segue a estrutura da referência: ABRE com um slide só
         // texto (o gancho, que é o que faz parar o dedo), mostra a prova no
         // meio e FECHA com a chamada. Slide de foto sem texto não entra.
-        const slides = [await composeHook({ formato, titulo, chapeu: chapeu.trim() || undefined })];
+        const slides = [
+          await composeHook({ estilo, formato, titulo, chapeu: chapeu.trim() || undefined }),
+        ];
 
         if (carrossel === "revela") {
           slides.push(
             await composeFoto({
+              estilo,
               url: principal.clientPhotoUrl,
               formato,
               chapeu: "A foto que a cliente mandou",
               titulo: "É só isso que você *precisa*.",
             }),
             await composeFoto({
+              estilo,
               url: principal.resultUrl,
               formato,
               chapeu: "A mesma pessoa, a peça da sua loja",
@@ -166,6 +173,7 @@ function DivulgarPage() {
         } else {
           slides.push(
             await composePair({
+              estilo,
               antesUrl: principal.clientPhotoUrl,
               depoisUrl: principal.resultUrl,
               formato,
@@ -182,6 +190,7 @@ function DivulgarPage() {
           for (const [i, m] of escolhidos.slice(1).entries()) {
             slides.push(
               await composeFoto({
+                estilo,
                 url: m.resultUrl,
                 formato,
                 titulo: falas[i % falas.length],
@@ -191,7 +200,13 @@ function DivulgarPage() {
         }
 
         slides.push(
-          await composeCta({ formato, titulo: CTA_TITULO, botao: CTA_BOTAO, rodape: CTA_RODAPE }),
+          await composeCta({
+            estilo,
+            formato,
+            titulo: CTA_TITULO,
+            botao: CTA_BOTAO,
+            rodape: CTA_RODAPE,
+          }),
         );
         imagens = slides;
       }
@@ -217,14 +232,16 @@ function DivulgarPage() {
       const imagens =
         formato === "carrossel"
           ? [
-              await composeHook({ formato, titulo, chapeu: chapeu.trim() || undefined }),
+              await composeHook({ estilo, formato, titulo, chapeu: chapeu.trim() || undefined }),
               await composeFoto({
+                estilo,
                 url,
                 formato,
                 titulo: "É assim que a sua loja *vende* hoje.",
                 ancora: 0.5,
               }),
               await composeCta({
+                estilo,
                 formato,
                 titulo: CTA_TITULO,
                 botao: CTA_BOTAO,
@@ -233,6 +250,7 @@ function DivulgarPage() {
             ]
           : [
               await composeFoto({
+                estilo,
                 url,
                 formato,
                 titulo,
@@ -305,6 +323,15 @@ function DivulgarPage() {
             </button>
           ))}
         </div>
+
+        <Segmentado
+          valor={estilo}
+          onChange={setEstilo}
+          opcoes={[
+            { id: "referencia" as PostStyle, label: "Branco + destaque" },
+            { id: "neon" as PostStyle, label: "Neon rosa" },
+          ]}
+        />
 
         {/* Fora das abas de propósito: a manchete é a maior peça da arte nos
             dois caminhos. Ficando só na aba de antes/depois, o post "do zero"
