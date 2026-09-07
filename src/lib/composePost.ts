@@ -314,6 +314,47 @@ function larguraTracked(ctx: CanvasRenderingContext2D, texto: string, tracking: 
   return total - tracking;
 }
 
+/** Quebra do chapéu em linhas. Mesma conta usada para medir e para pintar. */
+function linhasChapeu(
+  ctx: CanvasRenderingContext2D,
+  texto: string,
+  larguraMax: number,
+  tracking: number,
+): string[] {
+  const linhas: string[] = [];
+  let atual = "";
+  for (const palavra of texto.trim().toUpperCase().split(" ")) {
+    const teste = atual ? `${atual} ${palavra}` : palavra;
+    if (larguraTracked(ctx, teste, tracking) > larguraMax && atual) {
+      linhas.push(atual);
+      atual = palavra;
+    } else atual = teste;
+  }
+  if (atual) linhas.push(atual);
+  return linhas;
+}
+
+const CHAPEU_ENTRELINHA = Math.round(CHAPEU_TAM * 1.5);
+
+/**
+ * Altura que o chapéu vai ocupar, medida antes de pintar.
+ *
+ * Era um 62 fixo, de quando a linha era menor e sem espaçamento. Em caixa
+ * alta e espaçada ela passa a caber menos por linha, e uma frase de duas
+ * linhas invadia a manchete — foi o que aconteceu com "Ela escolhe no celular
+ * e pede só o que quer", que empurrou um "QUER" órfão para cima do título.
+ */
+function mediaChapeu(texto: string | undefined, larguraMax: number): number {
+  if (!texto?.trim()) return 0;
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  const tracking = CHAPEU_TAM * CHAPEU_TRACKING;
+  ctx.font =
+    estiloAtual === "neon"
+      ? `600 ${CHAPEU_TAM}px ${NEON_FONT}`
+      : `400 ${CHAPEU_TAM}px ${TITULO_FONT}`;
+  return linhasChapeu(ctx, texto, larguraMax, tracking).length * CHAPEU_ENTRELINHA + 20;
+}
+
 function desenhaTracked(
   ctx: CanvasRenderingContext2D,
   texto: string,
@@ -352,22 +393,18 @@ function chapeu(
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
 
-  const linhas: string[] = [];
-  let atual = "";
-  for (const palavra of texto.trim().toUpperCase().split(" ")) {
-    const teste = atual ? `${atual} ${palavra}` : palavra;
-    if (larguraTracked(ctx, teste, tracking) > larguraMax && atual) {
-      linhas.push(atual);
-      atual = palavra;
-    } else atual = teste;
-  }
-  if (atual) linhas.push(atual);
-  const entrelinha = Math.round(tam * 1.5);
+  const linhas = linhasChapeu(ctx, texto, larguraMax, tracking);
   linhas.forEach((l, i) =>
-    desenhaTracked(ctx, l, centroX, baseY - (linhas.length - 1 - i) * entrelinha, tracking),
+    desenhaTracked(
+      ctx,
+      l,
+      centroX,
+      baseY - (linhas.length - 1 - i) * CHAPEU_ENTRELINHA,
+      tracking,
+    ),
   );
   ctx.textAlign = "center";
-  return linhas.length * entrelinha;
+  return linhas.length * CHAPEU_ENTRELINHA;
 }
 
 // Véu por baixo do texto: escuro na base, transparente no meio da foto.
@@ -481,7 +518,7 @@ export async function composeHook({
   const larguraMax = w - MARGEM * 2;
 
   const { tam, altura } = mediaManchete(titulo, larguraMax, 104);
-  const alturaChapeu = linha?.trim() ? 62 : 0;
+  const alturaChapeu = mediaChapeu(linha, larguraMax);
   const topoBloco = centroY - (altura + alturaChapeu) / 2;
 
   if (linha?.trim()) chapeu(ctx, linha, w / 2, topoBloco - 18, larguraMax);
@@ -515,7 +552,7 @@ export async function composeFoto({
   const base = topo + alturaCartao - MARGEM_BASE;
   const larguraMax = w - MARGEM * 2;
   const { tam, altura: alturaTitulo } = mediaManchete(titulo, larguraMax, 84);
-  const alturaChapeu = linha?.trim() ? 62 : 0;
+  const alturaChapeu = mediaChapeu(linha, larguraMax);
   veuInferior(ctx, 0, topo + alturaCartao, w, alturaTitulo + alturaChapeu + MARGEM_BASE * 2.4);
 
   const topoTitulo = base - alturaTitulo;
