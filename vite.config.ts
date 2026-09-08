@@ -42,7 +42,13 @@ export default defineConfig(({ command, mode }) => {
       include: ["react", "react-dom", "react-dom/client", "react/jsx-runtime", "react/jsx-dev-runtime"],
       ignoreOutdatedRequests: true,
     },
-    server: { host: "::", port: 8080 },
+    // 3000 e não 8080: o CORS das Edge Functions só reflete a origem quando
+    // ela está na lista de `supabase/functions/_shared/cors.ts`, e lá só há
+    // localhost 3000 e 5173. Rodando na 8080 o navegador barra a resposta e
+    // toda geração morre em "Failed to send a request to the Edge Function" —
+    // que parece erro da IA e é bloqueio de origem. Mudar a porta aqui evita
+    // reimplantar todas as funções só para acrescentar mais um localhost.
+    server: { host: "::", port: 3000 },
     plugins: [
       tailwindcss(),
       tsconfigPaths({ projects: ["./tsconfig.json"] }),
