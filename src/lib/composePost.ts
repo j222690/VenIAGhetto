@@ -34,11 +34,29 @@ export type PostFormat = "story" | "feed" | "carrossel";
  * "referencia" — o molde do @metakosmoslab: texto branco com UMA palavra em
  * magenta itálica. A hierarquia vem do contraste, então o olho tem onde cair.
  *
- * "neon" — o jeito do Victor: tudo em rosa com brilho de luminoso, fonte
- * arredondada, caixa alta. Chama mais atenção de longe; em compensação, sem
- * palavra destacada não existe foco dentro da frase.
+ * "neon" e "neon-azul" — o jeito do Victor: tudo aceso com brilho de
+ * luminoso, fonte arredondada, caixa alta. Chama mais atenção de longe; em
+ * compensação, sem palavra destacada não existe foco dentro da frase. O azul
+ * existe para separar a linha masculina da feminina sem mudar o desenho.
  */
-export type PostStyle = "referencia" | "neon";
+export type PostStyle = "referencia" | "neon" | "neon-azul";
+
+/**
+ * Cores de cada luminoso. O rosa é o do post que o Victor já publica; o azul
+ * é a outra cor da marca, e serve para separar a linha masculina da feminina
+ * sem trocar o desenho inteiro.
+ *
+ * Cada um tem NÚCLEO claro e HALO saturado: é a diferença entre parecer tubo
+ * de neon aceso e parecer texto colorido com sombra.
+ */
+const LUMINOSO: Record<"neon" | "neon-azul", { nucleo: string; halo: string }> = {
+  neon: { nucleo: "#ffb3ec", halo: "#ff2fb4" },
+  "neon-azul": { nucleo: "#b8dcff", halo: "#2f8bff" },
+};
+
+function ehNeon(estilo: PostStyle = estiloAtual): estilo is "neon" | "neon-azul" {
+  return estilo === "neon" || estilo === "neon-azul";
+}
 
 const DIMENSOES: Record<PostFormat, { w: number; h: number }> = {
   story: { w: 1080, h: 1920 },
@@ -59,9 +77,6 @@ const COR = {
   // Magenta da referência, que é praticamente o --neon-pink do app.
   acento: "#ff2fb4",
   sub: "rgba(255,255,255,0.55)",
-  // Luminoso: núcleo quase branco-rosado e halo magenta em volta.
-  neonTexto: "#ffb3ec",
-  neon: "#ff2fb4",
 };
 
 // Anton: caixa alta pesada e condensada, o desenho da manchete da referência.
@@ -178,7 +193,7 @@ function separaDestaque(frase: string): Pedaco[] {
   const partes: Pedaco[] = [];
   // No neon a frase inteira é caixa alta, então o *destaque* deixa de existir:
   // sem contraste de cor nem de caixa, marcar uma palavra não muda nada.
-  if (estiloAtual === "neon") frase = frase.replace(/\*/g, "").toUpperCase();
+  if (ehNeon()) frase = frase.replace(/\*/g, "").toUpperCase();
   for (const bruto of frase.split(/(\*[^*]+\*)/g)) {
     if (!bruto) continue;
     const acento = bruto.startsWith("*") && bruto.endsWith("*") && bruto.length > 2;
@@ -198,7 +213,7 @@ const OBLIQUO = -0.18; // inclinação do destaque: a Anton não tem itálico re
 let estiloAtual: PostStyle = "referencia";
 
 function fonteDe(tam: number): string {
-  return estiloAtual === "neon" ? `700 ${tam}px ${NEON_FONT}` : `400 ${tam}px ${TITULO_FONT}`;
+  return ehNeon() ? `700 ${tam}px ${NEON_FONT}` : `400 ${tam}px ${TITULO_FONT}`;
 }
 
 function largura(ctx: CanvasRenderingContext2D, p: Pedaco, tam: number): number {
@@ -246,13 +261,16 @@ function desenhaLinha(
     const l = largura(ctx, p, tam);
     ctx.font = fonteDe(tam);
 
-    if (estiloAtual === "neon") {
+    // Numa cópia local: o TypeScript não estreita `estiloAtual` por ser uma
+    // variável de módulo mutável, então indexar LUMINOSO com ela não compila.
+    const estilo = estiloAtual;
+    if (ehNeon(estilo)) {
       // Luminoso: o brilho é feito em passadas, do halo largo ao núcleo. Uma
       // sombra só não dá o efeito — fica um borrão em volta da letra em vez de
       // luz saindo dela.
       ctx.save();
-      ctx.fillStyle = COR.neonTexto;
-      ctx.shadowColor = COR.neon;
+      ctx.fillStyle = LUMINOSO[estilo].nucleo;
+      ctx.shadowColor = LUMINOSO[estilo].halo;
       for (const blur of [46, 30, 16, 8]) {
         ctx.shadowBlur = blur;
         ctx.fillText(p.texto, x, y);
@@ -349,7 +367,7 @@ function mediaChapeu(texto: string | undefined, larguraMax: number): number {
   const ctx = document.createElement("canvas").getContext("2d")!;
   const tracking = CHAPEU_TAM * CHAPEU_TRACKING;
   ctx.font =
-    estiloAtual === "neon"
+    ehNeon()
       ? `600 ${CHAPEU_TAM}px ${NEON_FONT}`
       : `400 ${CHAPEU_TAM}px ${TITULO_FONT}`;
   return linhasChapeu(ctx, texto, larguraMax, tracking).length * CHAPEU_ENTRELINHA + 20;
@@ -388,8 +406,8 @@ function chapeu(
   const tam = CHAPEU_TAM;
   const tracking = tam * CHAPEU_TRACKING;
   ctx.font =
-    estiloAtual === "neon" ? `600 ${tam}px ${NEON_FONT}` : `400 ${tam}px ${TITULO_FONT}`;
-  ctx.fillStyle = estiloAtual === "neon" ? "rgba(255,255,255,0.9)" : COR.acento;
+    ehNeon() ? `600 ${tam}px ${NEON_FONT}` : `400 ${tam}px ${TITULO_FONT}`;
+  ctx.fillStyle = ehNeon() ? "rgba(255,255,255,0.9)" : COR.acento;
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
 

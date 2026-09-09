@@ -344,6 +344,7 @@ function DivulgarPage() {
           opcoes={[
             { id: "referencia" as PostStyle, label: "Branco + destaque" },
             { id: "neon" as PostStyle, label: "Neon rosa" },
+            { id: "neon-azul" as PostStyle, label: "Neon azul" },
           ]}
         />
 
