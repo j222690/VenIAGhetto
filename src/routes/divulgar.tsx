@@ -11,6 +11,11 @@
 //   • Do zero — a IA cria uma imagem de anúncio a partir de um tema. Custa 1
 //     crédito e serve para o post conceitual, quando não se quer expor foto
 //     de cliente nenhuma.
+//   • Do meu jeito — você PEDE o carrossel em português ("um sobre o cliente
+//     que some depois do vou pensar, público masculino") e o app escreve o
+//     roteiro, gera as cenas e monta os cinco slides. Os outros dois caminhos
+//     pedem manchete, chapéu e descrição de cena um campo por vez; este
+//     começa onde a ideia começa.
 //
 // Os posts vão para o Instagram, quase sempre como story ou carrossel — por
 // isso o story é o padrão e o carrossel tem as duas montagens que a conta usa:
@@ -43,7 +48,7 @@ export const Route = createFileRoute("/divulgar")({
   component: DivulgarPage,
 });
 
-type Aba = "par" | "zero";
+type Aba = "par" | "zero" | "pedido";
 type Canal = "instagram" | "whatsapp" | "facebook";
 /** Montagem do carrossel: revelação no deslize, ou vitrine de vários looks. */
 type Carrossel = "revela" | "looks";
@@ -84,6 +89,7 @@ function DivulgarPage() {
   const [estilo, setEstilo] = useState<PostStyle>("referencia");
 
   const [tema, setTema] = useState("");
+  const [pedido, setPedido] = useState("");
 
   const [busy, setBusy] = useState(false);
   const [busyLabel, setBusyLabel] = useState("");
@@ -283,6 +289,86 @@ function DivulgarPage() {
     }
   };
 
+  // "Do meu jeito": o pedido em português vira roteiro, o roteiro vira cenas
+  // e as cenas viram os cinco slides.
+  //
+  // A PROVA continua sendo o antes/depois escolhido na tela — a IA escreve a
+  // história e desenha o ambiente, mas o resultado do produto não se inventa.
+  const montarPedido = async () => {
+    if (!pedido.trim() || !principal?.clientPhotoUrl) return;
+    setBusy(true);
+    setBusyLabel("Escrevendo o roteiro…");
+    try {
+      const roteiro = await ShowcaseService.roteiro(pedido);
+      // O público decide a cor, e o seletor acompanha: quem pediu "masculino"
+      // vê por que o post saiu azul.
+      const estiloRoteiro: PostStyle =
+        roteiro.publico === "masculino" ? "neon-azul" : "neon";
+      setEstilo(estiloRoteiro);
+
+      const urls: string[] = [];
+      for (const [i, descricao] of roteiro.cenas.entries()) {
+        setBusyLabel(`Criando a cena ${i + 1} de ${roteiro.cenas.length}…`);
+        // A primeira cena inventa a pessoa; as seguintes recebem a anterior
+        // como referência. Sem isso cada slide traz outro rosto e o carrossel
+        // deixa de ser uma história.
+        urls.push(
+          await ShowcaseService.imagemTema(
+            `${roteiro.personagem}, ${descricao}`,
+            "carrossel",
+            urls[i - 1],
+          ),
+        );
+      }
+      const cena = (i: number) => urls[Math.min(i, urls.length - 1)];
+
+      setBusyLabel("Montando as imagens…");
+      const [s1, s2, s3, s4] = roteiro.slides;
+      const imagens = [
+        await composeHook({
+          estilo: estiloRoteiro,
+          formato: "carrossel",
+          fundoUrl: cena(0),
+          chapeu: s1.chapeu || undefined,
+          titulo: s1.titulo,
+        }),
+        await composeFoto({
+          estilo: estiloRoteiro,
+          formato: "carrossel",
+          url: cena(0),
+          ancora: 0.4,
+          chapeu: s2.chapeu || undefined,
+          titulo: s2.titulo,
+        }),
+        await composePair({
+          estilo: estiloRoteiro,
+          formato: "carrossel",
+          antesUrl: principal.clientPhotoUrl,
+          depoisUrl: principal.resultUrl,
+          chapeu: s3.chapeu || undefined,
+          titulo: s3.titulo,
+        }),
+        await composeFoto({
+          estilo: estiloRoteiro,
+          formato: "carrossel",
+          url: cena(1),
+          ancora: 0.4,
+          chapeu: s4.chapeu || undefined,
+          titulo: s4.titulo,
+        }),
+        await composeCta({ estilo: estiloRoteiro, formato: "carrossel", ...roteiro.cta }),
+      ];
+
+      setBusyLabel("Escrevendo a legenda…");
+      const copies = await ShowcaseService.copyTema(pedido);
+      setResultado({ imagens, copies });
+    } catch (e) {
+      toast.error(describeApiError(e, "Não foi possível montar o carrossel."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (resultado) {
     return (
       <ResultadoView
@@ -314,9 +400,11 @@ function DivulgarPage() {
           opcoes={[
             { id: "par", label: "Antes/depois" },
             { id: "zero", label: "Do zero" },
+            { id: "pedido", label: "Do meu jeito" },
           ]}
         />
 
+        {aba !== "pedido" ? (
         <div className="flex gap-2">
           {[
             { id: "story" as PostFormat, label: "Story" },
@@ -337,6 +425,7 @@ function DivulgarPage() {
             </button>
           ))}
         </div>
+        ) : null}
 
         <Segmentado
           valor={estilo}
@@ -350,7 +439,10 @@ function DivulgarPage() {
 
         {/* Fora das abas de propósito: a manchete é a maior peça da arte nos
             dois caminhos. Ficando só na aba de antes/depois, o post "do zero"
-            herdava calado o título do post anterior. */}
+            herdava calado o título do post anterior. Em "Do meu jeito" ela
+            some — quem escreve as frases ali é o roteiro. */}
+        {aba !== "pedido" ? (
+        <>
         <div className="space-y-1.5">
           <input
             value={titulo}
@@ -370,6 +462,8 @@ function DivulgarPage() {
           placeholder="Linha de cima (opcional): ex. Sua cliente olha a foto e pensa:"
           className="w-full rounded-2xl border border-input bg-card px-4 py-3 text-sm outline-none focus:border-clay"
         />
+        </>
+        ) : null}
 
         {formato === "carrossel" && aba === "par" ? (
           <Segmentado
@@ -387,10 +481,12 @@ function DivulgarPage() {
           />
         ) : null}
 
-        {aba === "par" ? (
+        {aba !== "zero" ? (
           <>
             <p className="text-sm text-muted-foreground">
-              {varios
+              {aba === "pedido"
+                ? "Escolha o antes/depois que vai servir de prova no meio do carrossel. O resto (história, frases e cenas) sai do que você pedir abaixo."
+                : varios
                 ? `Escolha até ${MAX_LOOKS} resultados. O primeiro abre o carrossel como antes/depois; os outros entram como um look por slide.`
                 : "Escolha um resultado real. O antes é a foto que entrou; o depois é o que o app devolveu. Montar não gasta crédito."}
             </p>
@@ -469,20 +565,46 @@ function DivulgarPage() {
               </p>
             ) : null}
 
-            <input
-              value={angulo}
-              onChange={(e) => setAngulo(e.target.value)}
-              placeholder="Ângulo da legenda (opcional): ex. atender pelo WhatsApp"
-              className="w-full rounded-2xl border border-input bg-card px-4 py-3 text-sm outline-none focus:border-clay"
-            />
+            {aba === "par" ? (
+              <>
+                <input
+                  value={angulo}
+                  onChange={(e) => setAngulo(e.target.value)}
+                  placeholder="Ângulo da legenda (opcional): ex. atender pelo WhatsApp"
+                  className="w-full rounded-2xl border border-input bg-card px-4 py-3 text-sm outline-none focus:border-clay"
+                />
 
-            <button
-              onClick={montarPar}
-              disabled={!principal || busy}
-              className="w-full rounded-full bg-clay px-6 py-4 text-base font-semibold text-clay-foreground shadow-soft disabled:opacity-50"
-            >
-              {formato === "carrossel" ? "Montar carrossel" : "Montar post"}
-            </button>
+                <button
+                  onClick={montarPar}
+                  disabled={!principal || busy}
+                  className="w-full rounded-full bg-clay px-6 py-4 text-base font-semibold text-clay-foreground shadow-soft disabled:opacity-50"
+                >
+                  {formato === "carrossel" ? "Montar carrossel" : "Montar post"}
+                </button>
+              </>
+            ) : (
+              <>
+                <textarea
+                  value={pedido}
+                  onChange={(e) => setPedido(e.target.value)}
+                  rows={4}
+                  placeholder="Peça como você falaria. Ex.: um carrossel sobre o cliente que diz que vai pensar e some, para público masculino"
+                  className="w-full rounded-2xl border border-input bg-card p-4 text-sm outline-none focus:border-clay"
+                />
+                <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
+                  Saem 5 slides: gancho, a perda, a prova que você escolheu acima, a virada e a
+                  chamada. Diga o público (masculino ou feminino) e a cor acompanha. Custa 2
+                  créditos — uma geração por cena.
+                </p>
+                <button
+                  onClick={montarPedido}
+                  disabled={!pedido.trim() || !principal || busy}
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-clay px-6 py-4 text-base font-semibold text-clay-foreground shadow-soft disabled:opacity-50"
+                >
+                  <Sparkles className="h-5 w-5" /> Montar carrossel · 2 créditos
+                </button>
+              </>
+            )}
           </>
         ) : (
           <>

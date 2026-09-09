@@ -48,6 +48,103 @@ const BRIEF_PRODUTO =
   "peças da loja, em segundos, pelo celular. Serve para vender pelo WhatsApp e pelo Instagram sem " +
   "a cliente ir até a loja provar, e para montar looks do catálogo sem ensaio fotográfico.";
 
+/**
+ * Roteiro de um carrossel, escrito a partir de um pedido em português.
+ *
+ * Existe para o post começar onde a ideia começa — "um carrossel sobre o
+ * cliente que some depois do vou pensar, público masculino" — em vez de o
+ * dono ter que traduzir isso em manchete, chapéu e prompt de cena, um campo
+ * de cada vez. É a diferença entre pedir e preencher formulário.
+ */
+export interface Roteiro {
+  publico: "feminino" | "masculino";
+  /** Quem aparece nas cenas. Repetido em todas para o rosto não trocar. */
+  personagem: string;
+  /** Cenas geradas por IA, na ordem. Uma ou duas. */
+  cenas: string[];
+  slides: { chapeu: string; titulo: string }[];
+  cta: { titulo: string; botao: string; rodape: string };
+}
+
+const ROTEIRO_REGRAS = `
+Escreva o ROTEIRO de um carrossel de Instagram de 5 slides para vender o app a
+DONOS DE LOJA DE MODA. A estrutura é sempre a mesma e não muda:
+
+  slide 1 — o gancho: o atrito que o lojista reconhece na hora
+  slide 2 — a perda: por que isso custa venda
+  slide 3 — a prova: um antes/depois REAL, que a tela já tem (não descreva foto
+            aqui, só escreva o texto)
+  slide 4 — a virada: como fica depois
+  slide 5 — a chamada (vem pronta, você não escreve)
+
+COMO ESCREVER AS FRASES
+- Português do Brasil, falado, curto. Manchete de no máximo 8 palavras.
+- Marque UMA palavra da manchete com *asteriscos*: é o destaque da arte.
+- O chapéu é a linha pequena acima: no máximo 6 palavras, sem ponto final.
+- NÃO invente número, porcentagem, prazo ou pesquisa. Nenhum. Se a frase pede
+  um dado que você não tem, reescreva a frase.
+- NÃO prometa resultado de venda ("aumente 60%"). Fale do atrito e do alívio.
+- Nada de emoji, hashtag ou nome de marca de terceiros.
+
+AS CENAS (o que a IA vai desenhar)
+- Uma ou duas, no máximo. A primeira é a dor, a segunda é o alívio.
+- Descreva LUGAR, POSTURA e EXPRESSÃO, não roupa de marca. Ex.: "sentada na
+  poltrona da sala à noite, olhando o celular com o cenho franzido, luz baixa".
+- A cena 2 é a MESMA pessoa da cena 1, em outro momento.
+- Nunca peça texto, letreiro, logotipo ou tela de aplicativo na imagem.
+
+O PERSONAGEM
+- Uma frase descrevendo a pessoa das cenas (idade aproximada, cabelo, tipo),
+  para ela não mudar de rosto entre um slide e outro.
+- Se o pedido fala do público masculino, é um homem; senão, uma mulher.
+`.trim();
+
+const ROTEIRO_FORMATO = `
+
+Responda SÓ com JSON, sem cercas de código:
+{
+  "publico": "feminino" | "masculino",
+  "personagem": "...",
+  "cenas": ["...", "..."],
+  "slides": [
+    {"chapeu": "...", "titulo": "..."},
+    {"chapeu": "...", "titulo": "..."},
+    {"chapeu": "...", "titulo": "..."},
+    {"chapeu": "...", "titulo": "..."}
+  ]
+}
+São exatamente 4 slides: gancho, perda, prova e virada.`;
+
+function parseRoteiro(raw: string): Roteiro {
+  const limpo = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+  const ini = limpo.indexOf("{");
+  const fim = limpo.lastIndexOf("}");
+  if (ini < 0 || fim < 0) throw new Error("O roteiro não voltou em JSON. Tente pedir de novo.");
+  const p = JSON.parse(limpo.slice(ini, fim + 1)) as Partial<Roteiro>;
+
+  const slides = (p.slides ?? [])
+    .map((s) => ({ chapeu: (s?.chapeu ?? "").trim(), titulo: (s?.titulo ?? "").trim() }))
+    .filter((s) => s.titulo);
+  if (slides.length < 4) throw new Error("O roteiro voltou incompleto. Tente pedir de novo.");
+
+  const cenas = (p.cenas ?? []).map((c) => (c ?? "").trim()).filter(Boolean).slice(0, 2);
+  if (cenas.length === 0) throw new Error("O roteiro não descreveu nenhuma cena.");
+
+  return {
+    publico: p.publico === "masculino" ? "masculino" : "feminino",
+    personagem: (p.personagem ?? "").trim() || "uma pessoa brasileira de uns 30 anos",
+    cenas,
+    slides: slides.slice(0, 4),
+    // A chamada é fixa: repetir treina quem acompanha a conta a saber o que
+    // fazer, e é o único slide que não depende da história.
+    cta: {
+      titulo: "Quer testar na *sua* peça?",
+      botao: "Comente TESTAR",
+      rodape: "que eu te mando o link",
+    },
+  };
+}
+
 function parseCopy(raw: string): SocialCopySet {
   const limpo = raw
     .replace(/```json/gi, "")
@@ -203,5 +300,17 @@ export const ShowcaseService = {
       imageUrls: referenciaUrl ? [referenciaUrl] : undefined,
     });
     return url;
+  },
+
+  // Transforma um pedido em português no ROTEIRO do carrossel. Não gera
+  // imagem: só decide a história, as cenas e as frases. Custa uma chamada de
+  // texto.
+  async roteiro(pedido: string): Promise<Roteiro> {
+    const prompt =
+      BRIEF_PRODUTO +
+      `\n\nO dono do app pediu este post, com as palavras dele: "${pedido.trim()}".\n\n` +
+      ROTEIRO_REGRAS +
+      ROTEIRO_FORMATO;
+    return parseRoteiro(await AIService.complete(prompt));
   },
 };
