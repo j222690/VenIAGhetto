@@ -36,6 +36,7 @@ import {
   type PostStyle,
 } from "@/lib/composePost";
 import { isAppAdmin } from "@/constants/admins";
+import { MODELOS, MODELO_PADRAO, type ModeloCarrossel } from "@/constants/postModels";
 import { describeApiError } from "@/lib/apiErrors";
 import { useAuth } from "@/hooks/useAuth";
 import { thumbUrl } from "@/lib/imageUrl";
@@ -90,6 +91,7 @@ function DivulgarPage() {
 
   const [tema, setTema] = useState("");
   const [pedido, setPedido] = useState("");
+  const [modelo, setModelo] = useState<ModeloCarrossel>(MODELO_PADRAO);
 
   const [busy, setBusy] = useState(false);
   const [busyLabel, setBusyLabel] = useState("");
@@ -97,8 +99,12 @@ function DivulgarPage() {
   const [canal, setCanal] = useState<Canal>("instagram");
 
   const podeVer = isAppAdmin(session);
-  // Só a vitrine de looks usa vários; o resto trabalha em cima de um resultado.
-  const varios = formato === "carrossel" && carrossel === "looks";
+  // Quantos resultados dá para marcar. Na aba do pedido é o modelo que diz
+  // (a vitrine quer três provas, a história quer uma); fora dela, só a
+  // vitrine de looks usa vários.
+  const limiteEscolhas =
+    aba === "pedido" ? modelo.pares : formato === "carrossel" && carrossel === "looks" ? MAX_LOOKS : 1;
+  const varios = limiteEscolhas > 1;
   const principal = escolhidos[0] ?? null;
 
   useEffect(() => {
@@ -126,8 +132,8 @@ function DivulgarPage() {
       const dentro = atual.some((x) => x.id === m.id);
       if (!varios) return dentro ? [] : [m];
       if (dentro) return atual.filter((x) => x.id !== m.id);
-      if (atual.length >= MAX_LOOKS) {
-        toast.info(`No máximo ${MAX_LOOKS} looks por carrossel.`);
+      if (atual.length >= limiteEscolhas) {
+        toast.info(`No máximo ${limiteEscolhas} por carrossel.`);
         return atual;
       }
       return [...atual, m];
@@ -292,14 +298,19 @@ function DivulgarPage() {
   // "Do meu jeito": o pedido em português vira roteiro, o roteiro vira cenas
   // e as cenas viram os cinco slides.
   //
+  // A ESTRUTURA vem do modelo escolhido (@/constants/postModels): o laço aqui
+  // não sabe se está montando uma história ou uma lista de erros, só percorre
+  // os passos. É o que faz um formato novo ser uma entrada numa lista em vez
+  // de outro caminho dentro desta função.
+  //
   // A PROVA continua sendo o antes/depois escolhido na tela — a IA escreve a
   // história e desenha o ambiente, mas o resultado do produto não se inventa.
   const montarPedido = async () => {
-    if (!pedido.trim() || !principal?.clientPhotoUrl) return;
+    if (!pedido.trim() || escolhidos.length < modelo.pares) return;
     setBusy(true);
     setBusyLabel("Escrevendo o roteiro…");
     try {
-      const roteiro = await ShowcaseService.roteiro(pedido);
+      const roteiro = await ShowcaseService.roteiro(pedido, modelo);
       // O público decide a cor, e o seletor acompanha: quem pediu "masculino"
       // vê por que o post saiu azul.
       const estiloRoteiro: PostStyle =
@@ -320,44 +331,40 @@ function DivulgarPage() {
           ),
         );
       }
-      const cena = (i: number) => urls[Math.min(i, urls.length - 1)];
 
       setBusyLabel("Montando as imagens…");
-      const [s1, s2, s3, s4] = roteiro.slides;
-      const imagens = [
-        await composeHook({
-          estilo: estiloRoteiro,
-          formato: "carrossel",
-          fundoUrl: cena(0),
-          chapeu: s1.chapeu || undefined,
-          titulo: s1.titulo,
-        }),
-        await composeFoto({
-          estilo: estiloRoteiro,
-          formato: "carrossel",
-          url: cena(0),
-          ancora: 0.4,
-          chapeu: s2.chapeu || undefined,
-          titulo: s2.titulo,
-        }),
-        await composePair({
-          estilo: estiloRoteiro,
-          formato: "carrossel",
-          antesUrl: principal.clientPhotoUrl,
-          depoisUrl: principal.resultUrl,
-          chapeu: s3.chapeu || undefined,
-          titulo: s3.titulo,
-        }),
-        await composeFoto({
-          estilo: estiloRoteiro,
-          formato: "carrossel",
-          url: cena(1),
-          ancora: 0.4,
-          chapeu: s4.chapeu || undefined,
-          titulo: s4.titulo,
-        }),
-        await composeCta({ estilo: estiloRoteiro, formato: "carrossel", ...roteiro.cta }),
-      ];
+      const base = { estilo: estiloRoteiro, formato: "carrossel" as PostFormat };
+      const par = (i = 0) => escolhidos[Math.min(i, escolhidos.length - 1)];
+      // Fundo do gancho: a primeira cena quando o modelo tem cena; senão o
+      // resultado da primeira prova, que é a imagem que o modelo tem à mão.
+      const fundoGancho = urls[0] ?? escolhidos[0]?.resultUrl;
+
+      const imagens: string[] = [];
+      for (const [i, passo] of modelo.passos.entries()) {
+        const texto = roteiro.slides[i];
+        const comum = { ...base, chapeu: texto.chapeu || undefined, titulo: texto.titulo };
+        const idx = passo.indice ?? 0;
+        if (passo.tipo === "hook") {
+          imagens.push(await composeHook({ ...comum, fundoUrl: fundoGancho || undefined }));
+        } else if (passo.tipo === "cena") {
+          imagens.push(await composeFoto({ ...comum, url: urls[idx], ancora: 0.4 }));
+        } else if (passo.tipo === "par") {
+          const p = par(idx);
+          imagens.push(
+            await composePair({
+              ...comum,
+              antesUrl: p.clientPhotoUrl!,
+              depoisUrl: p.resultUrl,
+            }),
+          );
+        } else {
+          // "antes" e "depois": uma das metades do par, em tela cheia.
+          const p = par(idx);
+          const url = passo.tipo === "antes" ? p.clientPhotoUrl! : p.resultUrl;
+          imagens.push(await composeFoto({ ...comum, url }));
+        }
+      }
+      imagens.push(await composeCta({ ...base, ...roteiro.cta }));
 
       setBusyLabel("Escrevendo a legenda…");
       const copies = await ShowcaseService.copyTema(pedido);
@@ -485,13 +492,15 @@ function DivulgarPage() {
           <>
             <p className="text-sm text-muted-foreground">
               {aba === "pedido"
-                ? "Escolha o antes/depois que vai servir de prova no meio do carrossel. O resto (história, frases e cenas) sai do que você pedir abaixo."
+                ? modelo.pares === 0
+                  ? "Este modelo não usa antes/depois: são só as cenas criadas a partir do seu pedido."
+                  : `Escolha ${modelo.pares === 1 ? "o antes/depois" : `${modelo.pares} antes/depois`} que ${modelo.pares === 1 ? "vai servir" : "vão servir"} de prova. O resto (história, frases e cenas) sai do que você pedir abaixo.`
                 : varios
                 ? `Escolha até ${MAX_LOOKS} resultados. O primeiro abre o carrossel como antes/depois; os outros entram como um look por slide.`
                 : "Escolha um resultado real. O antes é a foto que entrou; o depois é o que o app devolveu. Montar não gasta crédito."}
             </p>
 
-            {favoritos.length > 0 ? (
+            {favoritos.length > 0 && !(aba === "pedido" && modelo.pares === 0) ? (
               <label className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3 text-sm">
                 <input
                   type="checkbox"
@@ -513,7 +522,7 @@ function DivulgarPage() {
               </p>
             )}
 
-            {carregando && !material ? (
+            {aba === "pedido" && modelo.pares === 0 ? null : carregando && !material ? (
               <p className="text-sm text-muted-foreground">Carregando resultados…</p>
             ) : pares.length === 0 ? (
               <p className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground">
@@ -584,6 +593,37 @@ function DivulgarPage() {
               </>
             ) : (
               <>
+                <div className="space-y-2">
+                  {MODELOS.map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => {
+                        setModelo(m);
+                        // Cada modelo quer um número diferente de provas;
+                        // manter a seleção antiga deixaria escolha a mais
+                        // (ou a menos) sem o dono perceber.
+                        setEscolhidos([]);
+                      }}
+                      className={cn(
+                        "w-full rounded-2xl border p-3 text-left transition-colors",
+                        modelo.id === m.id
+                          ? "border-clay bg-clay/10"
+                          : "border-border bg-card",
+                      )}
+                    >
+                      <span className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-medium text-foreground">{m.label}</span>
+                        <span className="shrink-0 text-[11px] text-muted-foreground">
+                          {m.cenas === 0 ? "sem crédito" : `${m.cenas} crédito${m.cenas > 1 ? "s" : ""}`}
+                        </span>
+                      </span>
+                      <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
+                        {m.resumo}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
                 <textarea
                   value={pedido}
                   onChange={(e) => setPedido(e.target.value)}
@@ -592,16 +632,16 @@ function DivulgarPage() {
                   className="w-full rounded-2xl border border-input bg-card p-4 text-sm outline-none focus:border-clay"
                 />
                 <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
-                  Saem 5 slides: gancho, a perda, a prova que você escolheu acima, a virada e a
-                  chamada. Diga o público (masculino ou feminino) e a cor acompanha. Custa 2
-                  créditos — uma geração por cena.
+                  Saem 5 slides, sempre terminando na chamada. Diga o público (masculino ou
+                  feminino) e a cor acompanha.
                 </p>
                 <button
                   onClick={montarPedido}
-                  disabled={!pedido.trim() || !principal || busy}
+                  disabled={!pedido.trim() || escolhidos.length < modelo.pares || busy}
                   className="flex w-full items-center justify-center gap-2 rounded-full bg-clay px-6 py-4 text-base font-semibold text-clay-foreground shadow-soft disabled:opacity-50"
                 >
-                  <Sparkles className="h-5 w-5" /> Montar carrossel · 2 créditos
+                  <Sparkles className="h-5 w-5" /> Montar carrossel
+                  {modelo.cenas > 0 ? ` · ${modelo.cenas} crédito${modelo.cenas > 1 ? "s" : ""}` : ""}
                 </button>
               </>
             )}

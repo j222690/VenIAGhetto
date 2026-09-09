@@ -10,6 +10,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { AIService } from "@/services/AIService";
+import type { ModeloCarrossel } from "@/constants/postModels";
 import type { SocialCopySet } from "@/types";
 
 export interface ShowcaseItem {
@@ -68,14 +69,8 @@ export interface Roteiro {
 
 const ROTEIRO_REGRAS = `
 Escreva o ROTEIRO de um carrossel de Instagram de 5 slides para vender o app a
-DONOS DE LOJA DE MODA. A estrutura é sempre a mesma e não muda:
-
-  slide 1 — o gancho: o atrito que o lojista reconhece na hora
-  slide 2 — a perda: por que isso custa venda
-  slide 3 — a prova: um antes/depois REAL, que a tela já tem (não descreva foto
-            aqui, só escreva o texto)
-  slide 4 — a virada: como fica depois
-  slide 5 — a chamada (vem pronta, você não escreve)
+DONOS DE LOJA DE MODA. O slide 5 é sempre a chamada, e vem pronta: você não a
+escreve. Os quatro primeiros seguem a estrutura pedida abaixo.
 
 COMO ESCREVER AS FRASES
 - Português do Brasil, falado, curto. Manchete de no máximo 8 palavras.
@@ -87,10 +82,10 @@ COMO ESCREVER AS FRASES
 - Nada de emoji, hashtag ou nome de marca de terceiros.
 
 AS CENAS (o que a IA vai desenhar)
-- Uma ou duas, no máximo. A primeira é a dor, a segunda é o alívio.
+- Quantas e para que servem, está na estrutura abaixo. Não invente uma a mais.
 - Descreva LUGAR, POSTURA e EXPRESSÃO, não roupa de marca. Ex.: "sentada na
   poltrona da sala à noite, olhando o celular com o cenho franzido, luz baixa".
-- A cena 2 é a MESMA pessoa da cena 1, em outro momento.
+- É sempre a MESMA pessoa em todas as cenas, em momentos diferentes.
 - Nunca peça texto, letreiro, logotipo ou tela de aplicativo na imagem.
 
 O PERSONAGEM
@@ -99,13 +94,13 @@ O PERSONAGEM
 - Se o pedido fala do público masculino, é um homem; senão, uma mulher.
 `.trim();
 
-const ROTEIRO_FORMATO = `
+const ROTEIRO_FORMATO = (cenas: number) => `
 
 Responda SÓ com JSON, sem cercas de código:
 {
   "publico": "feminino" | "masculino",
   "personagem": "...",
-  "cenas": ["...", "..."],
+  "cenas": [${Array.from({ length: cenas }, () => '"..."').join(", ")}],
   "slides": [
     {"chapeu": "...", "titulo": "..."},
     {"chapeu": "...", "titulo": "..."},
@@ -113,9 +108,9 @@ Responda SÓ com JSON, sem cercas de código:
     {"chapeu": "...", "titulo": "..."}
   ]
 }
-São exatamente 4 slides: gancho, perda, prova e virada.`;
+São exatamente 4 slides e ${cenas === 0 ? "NENHUMA cena" : `${cenas} cena(s)`}.`;
 
-function parseRoteiro(raw: string): Roteiro {
+function parseRoteiro(raw: string, cenasEsperadas: number): Roteiro {
   const limpo = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
   const ini = limpo.indexOf("{");
   const fim = limpo.lastIndexOf("}");
@@ -127,8 +122,15 @@ function parseRoteiro(raw: string): Roteiro {
     .filter((s) => s.titulo);
   if (slides.length < 4) throw new Error("O roteiro voltou incompleto. Tente pedir de novo.");
 
-  const cenas = (p.cenas ?? []).map((c) => (c ?? "").trim()).filter(Boolean).slice(0, 2);
-  if (cenas.length === 0) throw new Error("O roteiro não descreveu nenhuma cena.");
+  const cenas = (p.cenas ?? [])
+    .map((c) => (c ?? "").trim())
+    .filter(Boolean)
+    .slice(0, cenasEsperadas);
+  if (cenas.length < cenasEsperadas) {
+    throw new Error(
+      `O roteiro devolveu ${cenas.length} cena(s) em vez de ${cenasEsperadas}. Tente pedir de novo.`,
+    );
+  }
 
   return {
     publico: p.publico === "masculino" ? "masculino" : "feminino",
@@ -305,12 +307,13 @@ export const ShowcaseService = {
   // Transforma um pedido em português no ROTEIRO do carrossel. Não gera
   // imagem: só decide a história, as cenas e as frases. Custa uma chamada de
   // texto.
-  async roteiro(pedido: string): Promise<Roteiro> {
+  async roteiro(pedido: string, modelo: ModeloCarrossel): Promise<Roteiro> {
     const prompt =
       BRIEF_PRODUTO +
       `\n\nO dono do app pediu este post, com as palavras dele: "${pedido.trim()}".\n\n` +
       ROTEIRO_REGRAS +
-      ROTEIRO_FORMATO;
-    return parseRoteiro(await AIService.complete(prompt));
+      `\n\nA ESTRUTURA DESTE CARROSSEL:\n${modelo.instrucao}\n` +
+      ROTEIRO_FORMATO(modelo.cenas);
+    return parseRoteiro(await AIService.complete(prompt), modelo.cenas);
   },
 };
