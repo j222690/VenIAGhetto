@@ -25,6 +25,7 @@
 // -----------------------------------------------------------------------------
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeadersFor } from "../_shared/cors.ts";
+import { PACOTES, PLANOS, leRef, refDe } from "../_shared/precos.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -34,29 +35,6 @@ const APP_URL = Deno.env.get("APP_URL") ?? "";
 const MP_API = "https://api.mercadopago.com";
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
-
-// Espelha src/constants/plans.ts e src/constants/tokens.ts. Duplicado de
-// propósito: o servidor não importa código do cliente, e é ele quem decide
-// quanto cobrar e quanto creditar.
-const PLANOS: Record<string, { titulo: string; preco: number; tokens: number }> = {
-  starter: { titulo: "Vest Ai — Starter", preco: 97, tokens: 149 },
-  pro: { titulo: "Vest Ai — Pro", preco: 197, tokens: 303 },
-  business: { titulo: "Vest Ai — Business", preco: 397, tokens: 610 },
-};
-const PACOTES: Record<string, { titulo: string; preco: number; tokens: number }> = {
-  pack_100: { titulo: "Vest Ai — 75 gerações", preco: 49, tokens: 75 },
-  pack_300: { titulo: "Vest Ai — 198 gerações", preco: 129, tokens: 198 },
-  pack_1000: { titulo: "Vest Ai — 660 gerações", preco: 429, tokens: 660 },
-};
-
-// A referência externa é o único campo que volta em TUDO — pagamento avulso,
-// assinatura e cobrança mensal. Por isso ela carrega o que o webhook precisa
-// saber, em vez de depender de metadata (que a assinatura não transporta).
-export const refDe = (storeId: string, kind: string, id: string) => `${storeId}|${kind}|${id}`;
-const leRef = (ref: string) => {
-  const [storeId = "", kind = "", id = ""] = String(ref ?? "").split("|");
-  return { storeId, kind, id };
-};
 
 async function mp(caminho: string, init?: RequestInit): Promise<Record<string, unknown>> {
   const res = await fetch(`${MP_API}${caminho}`, {
@@ -77,15 +55,26 @@ async function mp(caminho: string, init?: RequestInit): Promise<Record<string, u
   return corpo as Record<string, unknown>;
 }
 
-// Credita tokens com service_role (bypassa RLS) e registra a transação.
-async function credita(storeId: string, amount: number): Promise<number> {
-  const { data } = await admin.from("stores").select("tokens_balance").eq("id", storeId).single();
-  const atual = data?.tokens_balance ?? 0;
-  if (!storeId || amount <= 0) return atual;
-  const next = atual + amount;
-  await admin.from("stores").update({ tokens_balance: next }).eq("id", storeId);
-  await admin.from("token_transactions").insert({ store_id: storeId, type: "credit", amount });
-  return next;
+/**
+ * Credita uma vez só, em uma transação (migration 0030): grava a trava de
+ * idempotência, soma o saldo e registra o extrato juntos. Devolve null quando
+ * o pagamento JÁ tinha sido creditado — resposta normal, não erro.
+ *
+ * Ler o saldo e escrever de volta em JavaScript, como era antes, perde crédito
+ * quando duas notificações do mesmo lojista chegam ao mesmo tempo.
+ */
+async function creditaUmaVez(
+  storeId: string,
+  amount: number,
+  chave: string,
+): Promise<number | null> {
+  const { data, error } = await admin.rpc("credit_payment_once", {
+    p_store_id: storeId,
+    p_amount: amount,
+    p_key: chave,
+  });
+  if (error) throw new Error(error.message);
+  return (data as number | null) ?? null;
 }
 
 Deno.serve(async (req) => {
@@ -122,18 +111,21 @@ Deno.serve(async (req) => {
     // "pending" — a aprovação chega depois, e quem credita é o webhook.
     if (body.action === "confirm" && body.payment_id) {
       const pagamento = await mp(`/v1/payments/${String(body.payment_id)}`);
-      const { storeId, kind, id } = leRef(String(pagamento.external_reference ?? ""));
+      const { storeId, kind, id } = leRef(pagamento.external_reference);
       if (storeId !== store.id) {
         return json({ error: "Pagamento não pertence a esta loja." }, 403);
       }
+      // SÓ PACOTE. A cobrança de uma assinatura também é um "payment", mas
+      // quem a credita é o aviso subscription_authorized_payment, com outra
+      // trava (mpsub_…). Aceitar aqui deixaria o assinante creditar o mesmo
+      // mês duas vezes, mandando o id da própria cobrança para esta rota.
+      if (kind !== "tokens") return json({ credited: false, skipped: kind || "sem referência" });
       if (pagamento.status !== "approved") {
         return json({ credited: false, status: pagamento.status });
       }
 
-      const { error: dupErr } = await admin
-        .from("processed_payments")
-        .insert({ session_id: `mp_${pagamento.id}`, store_id: store.id });
-      if (dupErr) {
+      const saldo = await creditaUmaVez(store.id, PACOTES[id]?.tokens ?? 0, `mp_${pagamento.id}`);
+      if (saldo === null) {
         const { data } = await admin
           .from("stores")
           .select("tokens_balance")
@@ -141,14 +133,7 @@ Deno.serve(async (req) => {
           .single();
         return json({ credited: false, already: true, balance: data?.tokens_balance ?? 0 });
       }
-
-      const tabela = kind === "plan" ? PLANOS : PACOTES;
-      const item = tabela[id];
-      if (kind === "plan" && item) {
-        await admin.from("stores").update({ plan: id }).eq("id", store.id);
-      }
-      const balance = await credita(store.id, item?.tokens ?? 0);
-      return json({ credited: true, balance });
+      return json({ credited: true, balance: saldo });
     }
 
     const { kind, id } = body;

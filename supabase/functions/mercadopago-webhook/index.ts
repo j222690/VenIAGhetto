@@ -29,6 +29,7 @@
 // Secrets: MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET
 // -----------------------------------------------------------------------------
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { PACOTES, PLANOS, leRef } from "../_shared/precos.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -36,16 +37,6 @@ const MP_TOKEN = Deno.env.get("MP_ACCESS_TOKEN") ?? "";
 const MP_WEBHOOK_SECRET = Deno.env.get("MP_WEBHOOK_SECRET") ?? "";
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
-
-// Mesma tabela da função de checkout, pela mesma razão: o servidor é quem
-// decide quanto creditar.
-const PLANO_TOKENS: Record<string, number> = { starter: 149, pro: 303, business: 610 };
-const PACOTE_TOKENS: Record<string, number> = { pack_100: 75, pack_300: 198, pack_1000: 660 };
-
-const leRef = (ref: unknown) => {
-  const [storeId = "", kind = "", id = ""] = String(ref ?? "").split("|");
-  return { storeId, kind, id };
-};
 
 async function mpGet(caminho: string): Promise<Record<string, unknown> | null> {
   const res = await fetch(`https://api.mercadopago.com${caminho}`, {
@@ -89,20 +80,29 @@ async function assinaturaConfere(req: Request, dataId: string): Promise<boolean>
   return diff === 0;
 }
 
-async function creditaTokens(storeId: string, amount: number) {
-  if (!storeId || amount <= 0) return;
-  const { data } = await admin.from("stores").select("tokens_balance").eq("id", storeId).single();
-  const next = (data?.tokens_balance ?? 0) + amount;
-  await admin.from("stores").update({ tokens_balance: next }).eq("id", storeId);
-  await admin.from("token_transactions").insert({ store_id: storeId, type: "credit", amount });
-}
-
-/** Trava de idempotência: devolve true só para quem chegou primeiro. */
-async function primeiraVez(chave: string, storeId: string): Promise<boolean> {
-  const { error } = await admin
-    .from("processed_payments")
-    .insert({ session_id: chave, store_id: storeId });
-  return !error;
+/**
+ * Credita uma vez só, em uma transação (migration 0030): grava a trava de
+ * idempotência, soma o saldo e registra o extrato juntos. Devolve null quando
+ * este pagamento JÁ tinha sido creditado — resposta normal, porque o Mercado
+ * Pago reentrega de propósito.
+ *
+ * Antes eram três instruções separadas. Duas notificações do mesmo lojista
+ * chegando juntas liam o mesmo saldo e uma escrevia por cima da outra; e se o
+ * processo morresse entre marcar a chave e creditar, o lojista pagava e não
+ * recebia — com a reentrega já bloqueada pela chave.
+ */
+async function creditaUmaVez(
+  storeId: string,
+  amount: number,
+  chave: string,
+): Promise<number | null> {
+  const { data, error } = await admin.rpc("credit_payment_once", {
+    p_store_id: storeId,
+    p_amount: amount,
+    p_key: chave,
+  });
+  if (error) throw new Error(error.message);
+  return (data as number | null) ?? null;
 }
 
 Deno.serve(async (req) => {
@@ -142,10 +142,8 @@ Deno.serve(async (req) => {
       // mês está sendo pago. Creditar aqui também daria em dobro.
       if (!storeId || kind !== "tokens") return ok({ skipped: kind || "sem referência" });
 
-      if (await primeiraVez(`mp_${pagamento.id}`, storeId)) {
-        await creditaTokens(storeId, PACOTE_TOKENS[id] ?? 0);
-      }
-      return ok({ status: "approved" });
+      const saldo = await creditaUmaVez(storeId, PACOTES[id]?.tokens ?? 0, `mp_${pagamento.id}`);
+      return ok({ status: "approved", already: saldo === null });
     }
 
     // --- A assinatura mudou de estado ---------------------------------------
@@ -188,15 +186,15 @@ Deno.serve(async (req) => {
 
     // Trava pelo id da COBRANÇA: o MP reenvia quando não recebe 2xx, e sem
     // isso a segunda entrega creditaria o mês de novo.
-    if (await primeiraVez(`mpsub_${dataId}`, storeId)) {
+    const saldo = await creditaUmaVez(storeId, PLANOS[id]?.tokens ?? 0, `mpsub_${dataId}`);
+    if (saldo !== null) {
       await admin.from("stores").update({ plan: id }).eq("id", storeId);
-      await creditaTokens(storeId, PLANO_TOKENS[id] ?? 0);
       await admin
         .from("subscriptions")
         .update({ status: "active", next_billing: cobranca.next_payment_date ?? null })
         .eq("payment_ref", String(cobranca.preapproval_id ?? ""));
     }
-    return ok({ status: "processed" });
+    return ok({ status: "processed", already: saldo === null });
   } catch (e) {
     return new Response(`Erro ao processar: ${(e as Error).message}`, { status: 500 });
   }
