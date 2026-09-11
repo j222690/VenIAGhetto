@@ -37,21 +37,36 @@ function SettingsPage() {
   const navigate = useNavigate();
   const [showTokens, setShowTokens] = useState(false);
 
-  // Ao voltar do Stripe (?checkout=success&session_id=...), confirma o pagamento
-  // e credita na hora — não depende só do webhook. Depois limpa a URL.
+  // Ao voltar do Mercado Pago, confirma o pagamento e credita na hora — não
+  // depende só do webhook. Depois limpa a URL.
+  //
+  // Dois retornos possíveis, e a diferença é o PIX: no cartão volta
+  // ?checkout=success com o pagamento já aprovado; no PIX volta
+  // ?checkout=pending e a aprovação chega depois, pelo webhook. Prometer
+  // "saldo atualizado" no pendente seria mentira na tela.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("checkout") !== "success") return;
-    const sid = params.get("session_id");
+    const estado = params.get("checkout");
+    if (estado !== "success" && estado !== "pending" && estado !== "assinatura") return;
+    const pid = params.get("payment_id");
     (async () => {
       try {
-        if (sid) await PaymentService.confirmCheckout(sid);
+        if (estado === "pending") {
+          toast.info("Pagamento em análise. Assim que cair, o saldo entra sozinho.");
+          return;
+        }
+        if (estado === "assinatura") {
+          toast.success("Assinatura criada! As gerações do mês entram assim que a cobrança sair.");
+          return;
+        }
+        if (pid) await PaymentService.confirmCheckout(pid);
         refresh();
         toast.success("Pagamento confirmado! Seu saldo já foi atualizado.");
       } catch {
         refresh();
         toast.success("Pagamento recebido. Se o saldo não atualizar, recarregue em instantes.");
       } finally {
+        refresh();
         window.history.replaceState({}, "", "/settings");
       }
     })();
@@ -214,7 +229,7 @@ function SettingsPage() {
   );
 }
 
-// Folha de compra de tokens avulsos (redireciona ao checkout do Stripe).
+// Folha de compra de tokens avulsos (redireciona ao Checkout Pro do Mercado Pago).
 function TokenPacksSheet({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -240,7 +255,7 @@ function TokenPacksSheet({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Pagamento seguro via Stripe. As gerações entram na hora após o pagamento.
+          Pagamento via Mercado Pago — PIX ou cartão. No cartão as gerações entram na hora; no PIX, assim que o pagamento cair.
         </p>
         <div className="mt-4 space-y-2">
           {TOKEN_PACKS.map((p) => (

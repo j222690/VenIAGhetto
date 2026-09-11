@@ -39,11 +39,11 @@ function PlansPage() {
     setBusy(true);
     try {
       const { url } = await PaymentService.startPlanCheckout(selected);
-      // Redireciona para o checkout do Stripe (assinatura, cobrada na hora —
-      // o teste grátis é o de cima, sem cartão).
+      // Redireciona para o Checkout Pro do Mercado Pago (PIX ou cartão,
+      // cobrado na hora — o teste grátis é o de cima, sem cartão).
       window.location.href = url;
     } catch (e) {
-      // Stripe ainda não configurado: segue o onboarding para não travar o fluxo.
+      // Pagamento ainda não configurado: segue o onboarding para não travar o fluxo.
       toast.error(describeApiError(e, "Pagamento indisponível no momento."));
       navigate({ to: "/onboarding" });
     } finally {
@@ -142,7 +142,7 @@ function PlansPage() {
         {busy ? "Redirecionando…" : "Assinar plano"}
       </button>
       <p className="mt-3 text-center text-xs text-muted-foreground">
-        Pagamento seguro via Stripe · cancele quando quiser.
+        Assinatura pelo Mercado Pago · cancele quando quiser.
       </p>
     </div>
   );

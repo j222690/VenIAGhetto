@@ -1,7 +1,7 @@
-// Pacotes de tokens avulsos (compra única via Stripe). Os IDs precisam bater
-// com o mapeamento de preços na Edge Function `stripe-checkout`
-// (STRIPE_PRICE_TOKENS_100 / _300 / _1000) e a quantidade é creditada pelo
-// webhook após o pagamento.
+// Pacotes de tokens avulsos (compra única via Mercado Pago). Os IDs precisam
+// bater com a tabela PACOTES da Edge Function `mercadopago-checkout`, que é
+// quem manda no preço e na quantidade — aqui é só o que a tela mostra. O
+// crédito entra pelo webhook (ou na volta, no caso do cartão).
 
 export interface TokenPack {
   id: string;

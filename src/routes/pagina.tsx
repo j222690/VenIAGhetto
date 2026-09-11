@@ -87,7 +87,7 @@ function SalesPage() {
               </span>
               <span className="trust-badge">
                 <CheckIcon />
-                Pagamento seguro via Stripe
+                Pagamento pelo Mercado Pago
               </span>
             </div>
           </div>
@@ -484,7 +484,7 @@ function SalesPage() {
               </div>
             </div>
             <p className="guarantee">
-              Comece com 7 dias grátis · cancele quando quiser · pagamento seguro via Stripe
+              Comece com 7 dias grátis · sem cartão · cancele quando quiser
             </p>
           </div>
         </section>
