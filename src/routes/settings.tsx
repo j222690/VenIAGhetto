@@ -18,6 +18,7 @@ import { SectionTitle } from "@/components/SectionTitle";
 import { SUPPORT_PHONE_LABEL, SUPPORT_WHATSAPP } from "@/constants/contact";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
+import { MercadoPagoService } from "@/services/MercadoPagoService";
 import { StoreService } from "@/services/StoreService";
 import { PaymentService } from "@/services/PaymentService";
 import { describeApiError } from "@/lib/apiErrors";
@@ -36,6 +37,25 @@ function SettingsPage() {
   const { can } = usePermissions();
   const navigate = useNavigate();
   const [showTokens, setShowTokens] = useState(false);
+
+  // Retorno da CONEXÃO da conta da loja (OAuth), que é outro fluxo: aqui não
+  // houve pagamento nenhum, só autorização.
+  useEffect(() => {
+    const mp = new URLSearchParams(window.location.search).get("mp");
+    if (!mp) return;
+    const recados: Record<string, ["success" | "error" | "info", string]> = {
+      conectado: ["success", "Mercado Pago conectado. As vendas caem na conta da sua loja."],
+      teste: ["info", "Você conectou uma conta de TESTE. Cobranças reais não vão funcionar — reconecte com a conta da loja."],
+      negado: ["info", "Conexão cancelada. Nada foi alterado."],
+      invalido: ["error", "O link de conexão expirou. Tente conectar de novo."],
+      falhou: ["error", "Não deu para conectar agora. Tente de novo em instantes."],
+    };
+    const [tipo, texto] = recados[mp] ?? ["info", ""];
+    if (texto) toast[tipo](texto);
+    refresh();
+    window.history.replaceState({}, "", "/settings");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Ao voltar do Mercado Pago, confirma o pagamento e credita na hora — não
   // depende só do webhook. Depois limpa a URL.
@@ -154,6 +174,11 @@ function SettingsPage() {
 
         {showTokens ? <TokenPacksSheet onClose={() => setShowTokens(false)} /> : null}
 
+        {/* Receber das clientes é outra coisa que pagar a assinatura, e por
+            isso é uma seção própria — juntar as duas na mesma caixa faria a
+            lojista achar que conectar o Mercado Pago substitui o plano. */}
+        {can("store:manage") ? <ContaDeRecebimento /> : null}
+
         <section className="space-y-2">
           <SectionTitle eyebrow="Ajuda" title="Suporte" />
           <Link
@@ -230,6 +255,77 @@ function SettingsPage() {
 }
 
 // Folha de compra de tokens avulsos (redireciona ao Checkout Pro do Mercado Pago).
+/**
+ * Conta do Mercado Pago DA LOJA — para ela receber das próprias clientes.
+ *
+ * O ponto todo é não pedir token. A alternativa seria mandar a lojista criar
+ * conta de desenvolvedor, achar "credenciais de produção" e colar a chave
+ * certa entre quatro parecidas. Quem não é técnico desiste no segundo passo,
+ * e quem insiste cola a de teste — que aceita tudo e não transfere nada.
+ */
+function ContaDeRecebimento() {
+  const { session, refresh } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const conectada = Boolean(session?.store.mpConnectedAt);
+
+  const conectar = async () => {
+    setBusy(true);
+    try {
+      window.location.href = await MercadoPagoService.urlDeConexao();
+    } catch (e) {
+      toast.error(describeApiError(e, "Não foi possível abrir o Mercado Pago."));
+      setBusy(false);
+    }
+  };
+
+  const desconectar = async () => {
+    setBusy(true);
+    try {
+      await MercadoPagoService.desconectar();
+      await refresh();
+      toast.success("Conta desconectada.");
+    } catch (e) {
+      toast.error(describeApiError(e, "Não foi possível desconectar."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="space-y-2">
+      <SectionTitle eyebrow="Receber" title="Conta para receber" />
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          {conectada
+            ? "Sua conta do Mercado Pago está conectada. As cobranças que você gerar caem direto nela."
+            : "Conecte o Mercado Pago da sua loja para cobrar suas clientes pelo app. O dinheiro cai na sua conta, não na nossa."}
+        </p>
+        {conectada ? (
+          <button
+            onClick={desconectar}
+            disabled={busy}
+            className="mt-4 inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-medium disabled:opacity-50"
+          >
+            <CreditCard className="h-4 w-4" /> Desconectar
+          </button>
+        ) : (
+          <button
+            onClick={conectar}
+            disabled={busy}
+            className="mt-4 inline-flex items-center gap-2 rounded-full bg-clay px-5 py-2.5 text-sm font-semibold text-clay-foreground disabled:opacity-50"
+          >
+            <CreditCard className="h-4 w-4" /> Conectar Mercado Pago
+          </button>
+        )}
+        <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+          Você entra na sua conta do Mercado Pago e autoriza — não precisa copiar nenhuma chave.
+          Sobre cada venda feita pelo app fica uma comissão de 10% para a plataforma.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function TokenPacksSheet({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState<string | null>(null);
 

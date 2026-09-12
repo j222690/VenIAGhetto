@@ -85,6 +85,9 @@ export interface Store {
   /** Fim do teste grátis de 7 dias. undefined = loja sem teste (assinante
    *  ou criada antes da migration 0027). */
   trialEndsAt?: string;
+  /** Quando a loja conectou a conta Mercado Pago dela (OAuth) para receber das
+   *  próprias clientes. undefined = não conectada. O token fica no servidor. */
+  mpConnectedAt?: string;
   tokensUsedThisMonth: number;
 }
 
