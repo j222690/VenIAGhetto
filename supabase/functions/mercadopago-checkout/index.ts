@@ -21,26 +21,45 @@
 // valor sai da tabela abaixo. Confiar no preço enviado deixaria qualquer um
 // comprar o Business por um real.
 //
-// Secrets: MP_ACCESS_TOKEN, APP_URL
+// Secrets: MP_CLIENT_ID, MP_CLIENT_SECRET, APP_URL, MP_ACCESS_TOKEN (reserva)
 // -----------------------------------------------------------------------------
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeadersFor } from "../_shared/cors.ts";
 import { PACOTES, PLANOS, leRef, refDe } from "../_shared/precos.ts";
+import { contaDaPlataforma } from "../_shared/mpConta.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const MP_TOKEN = Deno.env.get("MP_ACCESS_TOKEN") ?? "";
+// Reserva. O token que vale é o da conta conectada por OAuth; este só existe
+// para o checkout não morrer no intervalo entre o deploy e o dono do app
+// clicar em Conectar.
+const MP_TOKEN_RESERVA = Deno.env.get("MP_ACCESS_TOKEN") ?? "";
+const CLIENT_ID = Deno.env.get("MP_CLIENT_ID") ?? "";
+const CLIENT_SECRET = Deno.env.get("MP_CLIENT_SECRET") ?? "";
 const APP_URL = Deno.env.get("APP_URL") ?? "";
 const MP_API = "https://api.mercadopago.com";
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+/**
+ * Token de quem RECEBE. Vem da conta que o dono do app conectou; cai no secret
+ * fixo só enquanto ninguém conectou.
+ *
+ * É o motivo de o OAuth existir: sem ele, quem for dono do app precisaria
+ * criar conta de desenvolvedor, achar as credenciais de produção e colar a
+ * chave certa — e trocar essa chave na mão sempre que ela mudasse.
+ */
+async function tokenDeRecebimento(): Promise<string> {
+  const conta = await contaDaPlataforma(admin, CLIENT_ID, CLIENT_SECRET);
+  return conta?.accessToken || MP_TOKEN_RESERVA;
+}
+
 async function mp(caminho: string, init?: RequestInit): Promise<Record<string, unknown>> {
   const res = await fetch(`${MP_API}${caminho}`, {
     ...init,
     headers: {
-      Authorization: `Bearer ${MP_TOKEN}`,
+      Authorization: `Bearer ${await tokenDeRecebimento()}`,
       "Content-Type": "application/json",
       ...(init?.headers ?? {}),
     },
@@ -87,7 +106,9 @@ Deno.serve(async (req) => {
 
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Método não permitido" }, 405);
-  if (!MP_TOKEN) return json({ error: "Pagamentos ainda não configurados." }, 503);
+  if (!(await tokenDeRecebimento())) {
+    return json({ error: "Pagamentos ainda não configurados." }, 503);
+  }
 
   try {
     const authHeader = req.headers.get("Authorization") ?? "";

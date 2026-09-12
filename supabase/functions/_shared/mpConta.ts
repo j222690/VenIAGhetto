@@ -1,4 +1,11 @@
-// Acesso à conta Mercado Pago conectada por uma loja.
+// Acesso à conta Mercado Pago que RECEBE o dinheiro do Vest Ai.
+//
+// É uma só: a conta do dono do app, conectada por OAuth. Não é uma conta por
+// loja — lojista nenhum conecta nada, ele só paga a assinatura.
+//
+// Existe para o dono do app não precisar criar conta de desenvolvedor e colar
+// um access token. Ele clica em conectar, entra na conta que já tem, e as
+// cobranças passam a sair em nome dela.
 //
 // Fica separado porque quem cobra não deveria se preocupar com validade de
 // token: pede a conta, recebe um token que funciona.
@@ -73,19 +80,22 @@ async function renova(
 }
 
 /**
- * Conta conectada pela loja, com token válido. Devolve null quando a loja
- * ainda não conectou — que é situação normal, não erro.
+ * A conta que recebe, com token válido. Devolve null quando o dono do app
+ * ainda não conectou — situação normal enquanto a migração acontece, e por
+ * isso quem chama cai no token fixo em vez de falhar.
  */
-export async function contaDaLoja(
+export async function contaDaPlataforma(
   admin: SupabaseClient,
-  storeId: string,
   clientId: string,
   clientSecret: string,
 ): Promise<ContaMP | null> {
+  // Uma linha só, sempre: quem conecta é o dono do app. Ordenar pela conexão
+  // mais recente evita ficar com uma linha velha se alguma vez houver duas.
   const { data } = await admin
     .from("mp_accounts")
     .select("store_id, mp_user_id, access_token, refresh_token, live_mode, expires_at")
-    .eq("store_id", storeId)
+    .order("connected_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
   if (!data) return null;
 

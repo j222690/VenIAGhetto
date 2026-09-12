@@ -26,21 +26,27 @@
 // IMPORTANTE: deploy com verify_jwt DESLIGADO (o MP não manda JWT):
 //   supabase functions deploy mercadopago-webhook --no-verify-jwt --project-ref <ref>
 //
-// Secrets: MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET
+// Secrets: MP_WEBHOOK_SECRET, MP_CLIENT_ID, MP_CLIENT_SECRET, MP_ACCESS_TOKEN (reserva)
 // -----------------------------------------------------------------------------
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { PACOTES, PLANOS, leRef } from "../_shared/precos.ts";
+import { contaDaPlataforma } from "../_shared/mpConta.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const MP_TOKEN = Deno.env.get("MP_ACCESS_TOKEN") ?? "";
+const MP_TOKEN_RESERVA = Deno.env.get("MP_ACCESS_TOKEN") ?? "";
+const CLIENT_ID = Deno.env.get("MP_CLIENT_ID") ?? "";
+const CLIENT_SECRET = Deno.env.get("MP_CLIENT_SECRET") ?? "";
 const MP_WEBHOOK_SECRET = Deno.env.get("MP_WEBHOOK_SECRET") ?? "";
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+// O pagamento pertence à conta conectada, então é o token dela que consegue
+// lê-lo. Com o token errado a busca volta 404 e o crédito nunca entra.
 async function mpGet(caminho: string): Promise<Record<string, unknown> | null> {
+  const conta = await contaDaPlataforma(admin, CLIENT_ID, CLIENT_SECRET);
   const res = await fetch(`https://api.mercadopago.com${caminho}`, {
-    headers: { Authorization: `Bearer ${MP_TOKEN}` },
+    headers: { Authorization: `Bearer ${conta?.accessToken || MP_TOKEN_RESERVA}` },
   });
   if (!res.ok) return null;
   return (await res.json()) as Record<string, unknown>;
@@ -107,7 +113,7 @@ async function creditaUmaVez(
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("Método não permitido", { status: 405 });
-  if (!MP_TOKEN || !MP_WEBHOOK_SECRET) {
+  if (!MP_WEBHOOK_SECRET) {
     return new Response("Mercado Pago não configurado", { status: 503 });
   }
 

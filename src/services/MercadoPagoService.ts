@@ -1,11 +1,14 @@
-// MercadoPagoService — a conta de recebimento DA LOJA.
+// MercadoPagoService — a conta que RECEBE o dinheiro do Vest Ai.
 //
-// Não confundir com PaymentService, que é a loja pagando a assinatura do Vest
-// Ai. Aqui é o contrário: a loja recebe das clientes dela, e a plataforma
-// retém uma comissão.
+// Só o dono do app usa isto. É a conta para onde vão as assinaturas e os
+// pacotes que os lojistas pagam — antes ela era um access token colado num
+// secret, e agora é uma conta conectada por OAuth.
 //
-// O token da loja nunca passa por aqui. O app só sabe se está conectada — o
-// que vem de stores.mp_connected_at — e pede uma URL quando precisa.
+// Não confundir com PaymentService, que é o lado de quem PAGA: a lojista
+// assinando o plano. Lojista nenhum conecta conta aqui.
+//
+// O token nunca passa por aqui. O app só sabe se está conectada, o que vem de
+// stores.mp_connected_at, e pede uma URL quando precisa.
 
 import { supabase } from "@/integrations/supabase/client";
 
@@ -37,10 +40,5 @@ export const MercadoPagoService = {
 
   async desconectar(): Promise<void> {
     await chama("mercadopago-oauth", { action: "disconnect" });
-  },
-
-  /** Link de pagamento para a loja mandar à cliente. */
-  async cobrar(valor: number, descricao: string): Promise<{ url: string; comissao: number }> {
-    return chama<{ url: string; comissao: number }>("mercadopago-cobranca", { valor, descricao });
   },
 };

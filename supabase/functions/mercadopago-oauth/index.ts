@@ -1,7 +1,10 @@
 // Edge Function: mercadopago-oauth
 // -----------------------------------------------------------------------------
-// Conecta a conta Mercado Pago DA LOJA ao Vest Ai, para ela receber das
-// próprias clientes com uma comissão ficando para a plataforma.
+// Conecta a conta Mercado Pago DO DONO DO APP, que é para onde vai o dinheiro
+// das assinaturas e dos pacotes que os lojistas pagam.
+//
+// NÃO é por loja: lojista nenhum conecta nada aqui, ele só paga. Quem conecta
+// é quem recebe, e isso é uma conta só.
 //
 // POR QUE OAUTH E NÃO "COLE SEU TOKEN AQUI"
 // Pedir token significa pedir para a lojista criar conta de desenvolvedor,
@@ -26,7 +29,8 @@
 // GET de navegador, sem JWT. As ações POST conferem o usuário na mão:
 //   supabase functions deploy mercadopago-oauth --no-verify-jwt --project-ref <ref>
 //
-// Secrets: MP_CLIENT_ID, MP_CLIENT_SECRET, MP_OAUTH_REDIRECT, APP_URL
+// Secrets: MP_CLIENT_ID, MP_CLIENT_SECRET, MP_OAUTH_REDIRECT, APP_URL,
+//          ADMIN_STORE_ID
 // -----------------------------------------------------------------------------
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeadersFor } from "../_shared/cors.ts";
@@ -38,6 +42,7 @@ const CLIENT_ID = Deno.env.get("MP_CLIENT_ID") ?? "";
 const CLIENT_SECRET = Deno.env.get("MP_CLIENT_SECRET") ?? "";
 const REDIRECT = Deno.env.get("MP_OAUTH_REDIRECT") ?? "";
 const APP_URL = Deno.env.get("APP_URL") ?? "";
+const ADMIN_STORE_ID = (Deno.env.get("ADMIN_STORE_ID") ?? "").trim();
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
@@ -101,7 +106,9 @@ Deno.serve(async (req) => {
     if (erro) return paraOApp(`/settings?mp=negado`);
 
     const storeId = code ? await leEstado(state) : null;
-    if (!storeId) return paraOApp(`/settings?mp=invalido`);
+    // Confere de novo no retorno: um state assinado no passado para outra loja
+    // não deve conseguir plantar conta de recebimento agora.
+    if (!storeId || storeId !== ADMIN_STORE_ID) return paraOApp(`/settings?mp=invalido`);
 
     try {
       const res = await fetch("https://api.mercadopago.com/oauth/token", {
@@ -164,16 +171,18 @@ Deno.serve(async (req) => {
     } = await authed.auth.getUser();
     if (!user) return json({ error: "Não autenticado." }, 401);
 
-    // Conectar conta de recebimento é decisão do DONO. Sem esta conferência,
-    // um vendedor convidado apontaria o faturamento da loja para a conta dele.
+    // Esta é a conta que recebe o faturamento do app inteiro, então quem
+    // conecta é o dono do APP — não o dono de uma loja qualquer. Sem esta
+    // conferência, qualquer lojista apontaria a receita das assinaturas para a
+    // conta dele. O gate do frontend é só UX; este é o que vale.
     const { data: perfil } = await authed
       .from("users")
       .select("store_id, role")
       .eq("id", user.id)
       .maybeSingle();
     if (!perfil?.store_id) return json({ error: "Loja não encontrada." }, 400);
-    if (perfil.role !== "owner") {
-      return json({ error: "Só o dono da loja pode conectar o Mercado Pago." }, 403);
+    if (!ADMIN_STORE_ID || perfil.store_id !== ADMIN_STORE_ID || perfil.role !== "owner") {
+      return json({ error: "Só o dono do app pode conectar o Mercado Pago." }, 403);
     }
 
     const body = await req.json().catch(() => ({}));

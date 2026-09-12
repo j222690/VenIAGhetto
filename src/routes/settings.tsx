@@ -19,6 +19,7 @@ import { SUPPORT_PHONE_LABEL, SUPPORT_WHATSAPP } from "@/constants/contact";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { MercadoPagoService } from "@/services/MercadoPagoService";
+import { isAppAdmin } from "@/constants/admins";
 import { StoreService } from "@/services/StoreService";
 import { PaymentService } from "@/services/PaymentService";
 import { describeApiError } from "@/lib/apiErrors";
@@ -174,10 +175,11 @@ function SettingsPage() {
 
         {showTokens ? <TokenPacksSheet onClose={() => setShowTokens(false)} /> : null}
 
-        {/* Receber das clientes é outra coisa que pagar a assinatura, e por
-            isso é uma seção própria — juntar as duas na mesma caixa faria a
-            lojista achar que conectar o Mercado Pago substitui o plano. */}
-        {can("store:manage") ? <ContaDeRecebimento /> : null}
+        {/* Só para o dono do APP: é a conta que recebe o faturamento inteiro,
+            não algo que cada loja configura. Mostrar para lojista comum faria
+            parecer que ele precisa conectar alguma coisa para usar o app. O
+            gate de verdade é no servidor (ADMIN_STORE_ID). */}
+        {isAppAdmin(session) ? <ContaDeRecebimento /> : null}
 
         <section className="space-y-2">
           <SectionTitle eyebrow="Ajuda" title="Suporte" />
@@ -293,12 +295,12 @@ function ContaDeRecebimento() {
 
   return (
     <section className="space-y-2">
-      <SectionTitle eyebrow="Receber" title="Conta para receber" />
+      <SectionTitle eyebrow="Dono do app" title="Conta que recebe" />
       <div className="rounded-2xl border border-border bg-card p-4">
         <p className="text-sm leading-relaxed text-muted-foreground">
           {conectada
-            ? "Sua conta do Mercado Pago está conectada. As cobranças que você gerar caem direto nela."
-            : "Conecte o Mercado Pago da sua loja para cobrar suas clientes pelo app. O dinheiro cai na sua conta, não na nossa."}
+            ? "Mercado Pago conectado. As assinaturas e os pacotes que os lojistas pagam caem nesta conta."
+            : "Conecte o Mercado Pago que vai receber as assinaturas e os pacotes pagos pelos lojistas."}
         </p>
         {conectada ? (
           <button
@@ -318,8 +320,8 @@ function ContaDeRecebimento() {
           </button>
         )}
         <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-          Você entra na sua conta do Mercado Pago e autoriza — não precisa copiar nenhuma chave.
-          Sobre cada venda feita pelo app fica uma comissão de 10% para a plataforma.
+          Você entra na sua conta do Mercado Pago e autoriza — não precisa criar conta de
+          desenvolvedor nem copiar chave nenhuma.
         </p>
       </div>
     </section>

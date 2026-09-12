@@ -1,25 +1,29 @@
--- 0031 — contas do Mercado Pago conectadas pelas lojas (OAuth)
+-- 0031 — conta do Mercado Pago que recebe o faturamento (OAuth)
 --
 -- PARA QUE SERVE
--- Até aqui o Vest Ai cobrava a assinatura na conta do Vest Ai. Isto é outra
--- coisa: a LOJA conecta a conta dela e passa a receber das próprias clientes
--- pelo app, com uma comissão ficando para a plataforma.
+-- Guardar a conta do DONO DO APP, para onde vão as assinaturas e os pacotes
+-- que os lojistas pagam. Antes isso era um access token colado num secret, o
+-- que obrigava quem é dono a criar conta de desenvolvedor, achar "credenciais
+-- de produção", escolher a chave certa entre quatro parecidas e trocá-la na
+-- mão quando mudasse. Com OAuth ele clica em Conectar e autoriza na conta que
+-- já usa.
 --
--- O ponto da tela é não pedir token: hoje conectar um gateway significa a
--- lojista criar conta de desenvolvedor, achar "credenciais de produção" e
--- copiar uma chave. Isso não acontece — ela desiste ou cola a chave errada.
--- Com OAuth ela clica em "Conectar", entra na conta do Mercado Pago que já
--- tem, e autoriza.
+-- NÃO É UMA CONTA POR LOJA. Lojista nenhum conecta nada: ele só paga. Na
+-- prática esta tabela tem uma linha só — a chave por store_id existe porque a
+-- conexão é feita de dentro de uma loja (a do app) e isso amarra as duas
+-- pontas sem inventar tabela de configuração global.
 --
 -- O QUE FICA GUARDADO AQUI É DINHEIRO DE OUTRA PESSOA
--- O access_token desta tabela cria cobranças em nome da loja. Vazou, o
--- atacante fatura no lugar dela. Por isso:
+-- O access_token desta tabela cria cobranças em nome de quem conectou. Vazou,
+-- o atacante fatura no lugar dele. Por isso:
 --   • RLS ligado e NENHUMA policy — nem o dono da loja lê a própria linha
 --     pela API. Só service_role (Edge Functions) enxerga. Mesmo tratamento de
 --     processed_payments.
 --   • O cliente nunca precisa do token: o que a tela mostra é "conectado ou
 --     não", e isso vive em stores.mp_connected_at, que já é legível por quem é
 --     da loja.
+--   • Quem pode conectar é conferido no servidor pelo secret ADMIN_STORE_ID
+--     (Edge Function mercadopago-oauth), não pelo frontend.
 -- Ao mexer nesta tabela, a pergunta é sempre: isso abre caminho para o token
 -- sair daqui?
 
@@ -48,4 +52,4 @@ alter table public.stores
   add column if not exists mp_connected_at timestamptz;
 
 comment on column public.stores.mp_connected_at is
-  'Quando a loja conectou o Mercado Pago (OAuth). Null = não conectada. O token fica em mp_accounts, fora do alcance do cliente.';
+  'Quando o dono do app conectou o Mercado Pago (OAuth). Null = não conectada. Só a loja do app usa esta coluna; o token fica em mp_accounts, fora do alcance do cliente.';
