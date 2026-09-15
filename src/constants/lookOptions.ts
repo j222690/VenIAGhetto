@@ -72,7 +72,9 @@ export const FITS: { id: string; label: string; desc: string }[] = [
 // manga. O texto deixa isso explícito para a IA não confundir os dois.
 export const LENGTHS: { id: string; label: string; desc: string }[] = [
   { id: "cropped", label: "Cropped", desc: "barra cropped, bem curta, acima da cintura" },
-  { id: "curto", label: "Curto", desc: "barra curta" },
+  // "Moderna" e não "Curto": é como o lojista chama essa barra na loja. O id
+  // e a descrição seguem falando de comprimento, que é o que a IA entende.
+  { id: "curto", label: "Moderna", desc: "barra curta" },
   { id: "medio", label: "Médio", desc: "barra média" },
   { id: "longo", label: "Longo", desc: "barra longa" },
   { id: "maxi", label: "Maxi", desc: "barra maxi, até os pés" },

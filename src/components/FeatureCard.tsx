@@ -3,7 +3,7 @@ import type { LucideIcon } from "@/lib/icons";
 import { ArrowUpRight } from "@/lib/icons";
 
 interface Props {
-  to: "/tryon" | "/scanner" | "/posts";
+  to: "/tryon" | "/scanner" | "/posts" | "/corpo";
   title: string;
   description: string;
   icon: LucideIcon;

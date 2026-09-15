@@ -145,13 +145,19 @@ export const ClientService = {
   // síncrono, uma geração que passasse de 150s morria no teto da plataforma —
   // e o Google cobra a imagem mesmo assim, então era foto paga e token perdido.
   // A linha em `generations` existe só para acompanhar; o álbum a filtra.
-  async createFullBodyPhoto(
-    clientId: string,
+  /**
+   * Gera a versão de corpo inteiro e devolve a URL, sem anexar a ninguém.
+   *
+   * Separado de createFullBodyPhoto porque a tela dedicada (/corpo) aceita uma
+   * foto solta, sem cliente cadastrado — quem chegou com a foto no WhatsApp
+   * não deveria ter de abrir ficha antes de poder usar o recurso.
+   */
+  async generateFullBody(
     sourcePhotoUrl: string,
     storeId: string,
     userId: string,
     onTick?: (segundos: number) => void,
-  ): Promise<ClientPhoto> {
+  ): Promise<string> {
     const { url } = await GenerationService.runAsync({
       feature: "criar_corpo",
       prompt: CREATE_BODY_CLAUSE,
@@ -169,6 +175,17 @@ export const ClientService = {
       aspectRatio: "2:3",
       onTick,
     });
+    return url;
+  },
+
+  async createFullBodyPhoto(
+    clientId: string,
+    sourcePhotoUrl: string,
+    storeId: string,
+    userId: string,
+    onTick?: (segundos: number) => void,
+  ): Promise<ClientPhoto> {
+    const url = await this.generateFullBody(sourcePhotoUrl, storeId, userId, onTick);
     return this.addPhoto(clientId, url);
   },
 

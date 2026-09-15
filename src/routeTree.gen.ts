@@ -27,6 +27,7 @@ import { Route as LibraryRouteImport } from './routes/library'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as DivulgarRouteImport } from './routes/divulgar'
+import { Route as CorpoRouteImport } from './routes/corpo'
 import { Route as ClientsRouteImport } from './routes/clients'
 import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as AlbumRouteImport } from './routes/album'
@@ -123,6 +124,11 @@ const DivulgarRoute = DivulgarRouteImport.update({
   path: '/divulgar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CorpoRoute = CorpoRouteImport.update({
+  id: '/corpo',
+  path: '/corpo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientsRoute = ClientsRouteImport.update({
   id: '/clients',
   path: '/clients',
@@ -155,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/album': typeof AlbumRoute
   '/catalog': typeof CatalogRoute
   '/clients': typeof ClientsRoute
+  '/corpo': typeof CorpoRoute
   '/divulgar': typeof DivulgarRoute
   '/history': typeof HistoryRoute
   '/home': typeof HomeRoute
@@ -180,6 +187,7 @@ export interface FileRoutesByTo {
   '/album': typeof AlbumRoute
   '/catalog': typeof CatalogRoute
   '/clients': typeof ClientsRoute
+  '/corpo': typeof CorpoRoute
   '/divulgar': typeof DivulgarRoute
   '/history': typeof HistoryRoute
   '/home': typeof HomeRoute
@@ -206,6 +214,7 @@ export interface FileRoutesById {
   '/album': typeof AlbumRoute
   '/catalog': typeof CatalogRoute
   '/clients': typeof ClientsRoute
+  '/corpo': typeof CorpoRoute
   '/divulgar': typeof DivulgarRoute
   '/history': typeof HistoryRoute
   '/home': typeof HomeRoute
@@ -233,6 +242,7 @@ export interface FileRouteTypes {
     | '/album'
     | '/catalog'
     | '/clients'
+    | '/corpo'
     | '/divulgar'
     | '/history'
     | '/home'
@@ -258,6 +268,7 @@ export interface FileRouteTypes {
     | '/album'
     | '/catalog'
     | '/clients'
+    | '/corpo'
     | '/divulgar'
     | '/history'
     | '/home'
@@ -283,6 +294,7 @@ export interface FileRouteTypes {
     | '/album'
     | '/catalog'
     | '/clients'
+    | '/corpo'
     | '/divulgar'
     | '/history'
     | '/home'
@@ -309,6 +321,7 @@ export interface RootRouteChildren {
   AlbumRoute: typeof AlbumRoute
   CatalogRoute: typeof CatalogRoute
   ClientsRoute: typeof ClientsRoute
+  CorpoRoute: typeof CorpoRoute
   DivulgarRoute: typeof DivulgarRoute
   HistoryRoute: typeof HistoryRoute
   HomeRoute: typeof HomeRoute
@@ -457,6 +470,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DivulgarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/corpo': {
+      id: '/corpo'
+      path: '/corpo'
+      fullPath: '/corpo'
+      preLoaderRoute: typeof CorpoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/clients': {
       id: '/clients'
       path: '/clients'
@@ -501,6 +521,7 @@ const rootRouteChildren: RootRouteChildren = {
   AlbumRoute: AlbumRoute,
   CatalogRoute: CatalogRoute,
   ClientsRoute: ClientsRoute,
+  CorpoRoute: CorpoRoute,
   DivulgarRoute: DivulgarRoute,
   HistoryRoute: HistoryRoute,
   HomeRoute: HomeRoute,

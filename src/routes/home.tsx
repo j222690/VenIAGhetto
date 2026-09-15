@@ -74,6 +74,15 @@ function HomePage() {
             icon={Shirt}
             accent
           />
+          {/* Criar corpo fica junto do Provador porque é pré-requisito dele:
+              a foto que o cliente manda quase sempre vem cortada, e antes esse
+              recurso só existia escondido dentro da ficha do cliente. */}
+          <FeatureCard
+            to="/corpo"
+            title="Criar corpo inteiro"
+            description="A foto do cliente veio cortada? A IA completa as pernas."
+            icon={Users}
+          />
           <div className="grid grid-cols-2 gap-3">
             <FeatureCard
               to="/scanner"

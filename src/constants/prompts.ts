@@ -452,12 +452,19 @@ export const COLOR_LIGHT_INDEPENDENCE_CLAUSE =
   "up, cool down, wash out or desaturate the garment to match the ambient light color. Only the " +
   "light/dark shading may change with the scene, never the underlying color itself.";
 
-// Resolve uma contradição real: REF_APP_NO_INVENT_CLAUSE
-// manda manter o "shape" da peça EXATAMENTE igual à referência, o que cancela
-// qualquer pedido de caimento/comprimento (ex.: "mais justo"). Esta cláusula
-// abre uma exceção EXPLÍCITA, deixando claro que ajustar caimento não é
-// "inventar" a peça — só entra no prompt quando o usuário realmente pediu
-// tamanho/caimento/comprimento.
+// Resolve uma contradição real: REF_APP_NO_INVENT_CLAUSE manda manter o
+// "shape" da peça EXATAMENTE igual à referência, o que cancela qualquer pedido
+// de caimento/comprimento (ex.: "mais justo"). Esta cláusula abre a exceção —
+// só entra no prompt quando o lojista pediu tamanho/caimento/comprimento.
+//
+// A PRIMEIRA VERSÃO ABRIA DEMAIS. Ela dizia "overrides shape-fidelity" e
+// mandava ajustar o "CUT/FIT", e cut é justamente o que define a peça: pedindo
+// barra curta numa calça TRANSPASSADA, o modelo entendia que podia redesenhar
+// o corte e devolvia uma calça comum. O lojista escolheu um comprimento e
+// recebeu outro produto.
+//
+// Agora a exceção é cirúrgica: muda só a dimensão pedida, e a construção
+// (transpasse, fecho, pregas, bolsos, cós) fica explicitamente de fora.
 // Troca de cenário/fundo — antes só descrevia o cenário em TEXTO, e a IA
 // "inventava" o ambiente do zero (saía genérico/plástico). Agora manda uma
 // FOTO real de referência do cenário (ver BACKGROUNDS em lookOptions.ts)
@@ -488,9 +495,13 @@ export function buildBackgroundClause(desc: string, hasRef: boolean): string {
 
 export function fitExceptionClause(specText: string): string {
   return (
-    `FIT EXCEPTION (allowed and required, overrides shape-fidelity above): keep the garment's color, ` +
-    `pattern and fabric identical to the reference, but adjust its CUT/FIT as requested: ${specText}. ` +
-    `This is an intentional silhouette change, not "inventing" the garment.`
+    `FIT EXCEPTION — NARROW, and it does NOT override garment fidelity: adjust ONLY this: ${specText}. ` +
+    `Everything else stays exactly as photographed — colour, pattern, fabric, and above all the ` +
+    `CONSTRUCTION of the garment: a wrap/crossover front stays wrapped and crossed over, closures ` +
+    `(fly, buttons, zip, ties, belt, drawstring) keep their type, side and position, and pleats, darts, ` +
+    `pockets, slits, collar, neckline, lapels and waistband stay exactly as they are. This is a hem ` +
+    `length or tightness adjustment on the SAME garment model. Turning a wrap trouser into a plain ` +
+    `trouser, or any garment into a simpler version of itself, is NOT allowed.`
   );
 }
 
