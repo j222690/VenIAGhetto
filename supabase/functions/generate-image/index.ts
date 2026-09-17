@@ -218,7 +218,10 @@ async function callImageModel(
   const parts = j.candidates?.[0]?.content?.parts ?? [];
   const imgPart = parts.find((p: any) => p.inlineData ?? p.inline_data);
   const d = imgPart?.inlineData ?? imgPart?.inline_data;
-  if (!d?.data) throw new Error(`${model} não retornou uma imagem.`);
+  // Resposta sem imagem = o modelo RECUSOU (filtro de conteúdo), não caiu.
+  // Ele responde rápido e sem `error`, então sem esta marca o caso vira
+  // "sobrecarregado" lá na frente e o lojista fica repetindo à toa.
+  if (!d?.data) throw new Error(`RECUSA:${model} não retornou uma imagem.`);
   console.log(`[generate-image] ${model} OK em ${Date.now() - startedAt}ms — ${shape}`);
   return { mimeType: d.mimeType ?? d.mime_type ?? "image/png", data: d.data as string };
 }
@@ -266,9 +269,23 @@ async function geminiImage(
   // margem pro download das imagens de entrada e o upload do resultado.
   // ERRO REAL que essa folga corrige: com 360s de tetos somados, a função foi
   // morta no meio e a linha ficou presa em "processando" (medido: 356s).
+  // No assíncrono existe uma SEGUNDA tentativa, e só uma: o modelo de
+  // fallback. Ela não contradiz o parágrafo acima porque não é repetir a
+  // mesma coisa — o primeiro não devolveu imagem nenhuma, então não há
+  // imagem paga para jogar fora. O laço abaixo corta essa tentativa quando a
+  // falha foi TIMEOUT, que é o caso em que a imagem pode estar sendo gerada
+  // e cobrada mesmo assim.
+  //
+  // ERRO REAL que isto corrige: a foto de uma cliente (vestido justo) foi
+  // recusada pelo modelo principal duas vezes seguidas e o lojista ficou sem
+  // resposta, vendo "serviço sobrecarregado". O modelo de fallback é outro
+  // modelo, com outro filtro.
   const tentativas: { modelo: string; timeoutMs: number; comConfig: boolean }[] =
     orcamento === "assincrono"
-      ? [{ modelo: IMAGE_MODEL, timeoutMs: 300_000, comConfig: true }]
+      ? [
+          { modelo: IMAGE_MODEL, timeoutMs: 300_000, comConfig: true },
+          { modelo: IMAGE_MODEL_FALLBACK, timeoutMs: 90_000, comConfig: false },
+        ]
       : [
           { modelo: IMAGE_MODEL, timeoutMs: 70_000, comConfig: true },
           { modelo: IMAGE_MODEL, timeoutMs: 50_000, comConfig: true },
@@ -289,15 +306,30 @@ async function geminiImage(
       );
     } catch (err) {
       ultimoErro = err;
+      const msg = (err as Error)?.message ?? "";
       console.warn(
         `[generate-image] tentativa ${i + 1}/${tentativas.length} (${t.modelo}) falhou:`,
-        (err as Error)?.message,
+        msg,
       );
+      // Timeout no assíncrono: pára aqui. A imagem pode estar sendo gerada (e
+      // cobrada) do outro lado, e tentar de novo compraria uma segunda.
+      if (orcamento === "assincrono" && /não respondeu a tempo/.test(msg)) break;
     }
   }
-  // Mensagem única e amigável quando TODAS as tentativas falham — não expõe
-  // nome de modelo nem erro técnico pro lojista.
-  console.warn("[generate-image] todas as tentativas falharam:", (ultimoErro as Error)?.message);
+
+  // A mensagem final não expõe nome de modelo, mas PRECISA separar os dois
+  // casos: "tente de novo" só ajuda quando repetir pode dar certo. Numa
+  // recusa de conteúdo, repetir a mesma foto dá o mesmo resultado sempre — e
+  // mandar o lojista insistir é pior que não dizer nada.
+  const ultimaMsg = (ultimoErro as Error)?.message ?? "";
+  console.warn("[generate-image] todas as tentativas falharam:", ultimaMsg);
+  if (ultimaMsg.startsWith("RECUSA:")) {
+    throw new Error(
+      "A IA recusou esta foto — o filtro de conteúdo dela bloqueou a imagem. " +
+        "Não é a peça nem o seu cadastro: tente outra foto da mesma pessoa, de preferência " +
+        "em pé, de corpo inteiro e com enquadramento mais aberto.",
+    );
+  }
   throw new Error("O serviço de IA está sobrecarregado no momento. Tente novamente em alguns instantes.");
 }
 

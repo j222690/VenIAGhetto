@@ -26,6 +26,10 @@ const KNOWN_SAFE_MESSAGES: RegExp[] = [
   /^este endereço não é permitido/i,
   /^limite de usuários do plano atingido/i,
   /^o serviço de ia está sobrecarregado/i,
+  // Recusa do filtro de conteúdo do modelo. Precisa passar inteira: é a única
+  // mensagem que diz ao lojista o que FAZER (trocar a foto) em vez de mandar
+  // tentar de novo — e repetir a mesma foto recusada dá sempre no mesmo.
+  /^a ia recusou esta foto/i,
 ];
 
 // Padrões técnicos conhecidos (SDK, rede, provedor) → mensagem amigável.
