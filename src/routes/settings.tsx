@@ -404,33 +404,30 @@ function StoreStyleSection({
     id: StoreSegment;
     label: string;
     hint: string;
-    dots: string[];
   }[] = [
     {
       id: "feminina",
       label: "Feminina",
-      hint: "Rosa & roxo",
-      dots: ["var(--neon-pink)", "var(--neon-purple)"],
+      hint: "Vestido, saia, blusa…",
     },
     {
       id: "masculina",
       label: "Masculina",
-      hint: "Azul & verde",
-      dots: ["var(--neon-blue)", "var(--neon-green)"],
+      hint: "Camisa, terno, bermuda…",
     },
     {
       id: "unissex",
       label: "Os dois",
-      hint: "Roxo & azul",
-      dots: ["var(--neon-purple)", "var(--neon-blue)"],
+      hint: "As duas listas juntas",
     },
   ];
 
   return (
     <section className="space-y-3">
-      <SectionTitle eyebrow="Aparência" title="Estilo da loja" />
+      <SectionTitle eyebrow="Loja" title="Público da loja" />
       <p className="-mt-1 text-sm text-muted-foreground">
-        Define as cores neon do app conforme o público da sua loja.
+        Define as categorias que aparecem no Catálogo. Não muda as cores do app — a
+        identidade é a mesma para todas as lojas.
       </p>
       <div className="grid grid-cols-3 gap-2">
         {options.map((opt) => {
@@ -447,16 +444,7 @@ function StoreStyleSection({
                   : "rounded-3xl border border-border bg-card p-3 text-center transition hover:border-accent/50"
               }
             >
-              <span className="flex justify-center gap-1">
-                {opt.dots.map((c) => (
-                  <span
-                    key={c}
-                    className="h-3 w-3 rounded-full"
-                    style={{ background: c, boxShadow: `0 0 10px ${c}` }}
-                  />
-                ))}
-              </span>
-              <p className="mt-2 font-display text-base font-semibold text-foreground">
+              <p className="font-display text-base font-semibold text-foreground">
                 {opt.label}
               </p>
               <p className="text-[10px] text-muted-foreground">{opt.hint}</p>

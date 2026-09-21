@@ -61,7 +61,9 @@ Deno.serve(async (req) => {
           // Só define o plano. Os tokens vêm de invoice.paid — sem trial no
           // Stripe, a primeira fatura é cobrada agora, então creditar aqui
           // também daria o dobro.
-          await admin.from("stores").update({ plan: md.plan }).eq("id", storeId);
+          // Assinou: sai do teste grátis, senão o aviso de teste fica na tela
+          // de quem já paga.
+          await admin.from("stores").update({ plan: md.plan, trial_ends_at: null }).eq("id", storeId);
         } else if (md.kind === "tokens") {
           await creditTokens(storeId, Number(md.tokens ?? 0));
         }

@@ -100,7 +100,9 @@ Deno.serve(async (req) => {
         // que é o evento do dinheiro de verdade — o mesmo das renovações.
         // Creditar aqui TAMBÉM somaria duas vezes, já que sem trial a primeira
         // fatura é cobrada no mesmo instante do checkout.
-        await admin.from("stores").update({ plan: md.plan }).eq("id", store.id);
+        // Assinou: sai do teste grátis, senão o aviso de teste fica na tela
+        // de quem já paga.
+        await admin.from("stores").update({ plan: md.plan, trial_ends_at: null }).eq("id", store.id);
         const { data } = await admin
           .from("stores")
           .select("tokens_balance")
@@ -123,7 +125,7 @@ Deno.serve(async (req) => {
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
         line_items: [{ price: priceId, quantity: 1 }],
-        // SEM trial no Stripe: o teste grátis do produto são os 35 créditos da
+        // SEM trial no Stripe: o teste grátis do produto são as 10 gerações da
         // migration 0028, que não pedem cartão. Ter os dois daria 14 dias de
         // graça a quem assinasse durante o teste.
         subscription_data: {

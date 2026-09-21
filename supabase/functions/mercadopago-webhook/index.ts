@@ -175,7 +175,9 @@ Deno.serve(async (req) => {
       // cancelamento ele NÃO sai na hora: o mês já foi pago, e cortar o acesso
       // no mesmo instante tiraria algo que a pessoa comprou.
       if (estado === "authorized") {
-        await admin.from("stores").update({ plan: id }).eq("id", storeId);
+        // Assinou: sai do teste grátis, senão o aviso de teste fica na tela
+      // de quem já paga.
+      await admin.from("stores").update({ plan: id, trial_ends_at: null }).eq("id", storeId);
       }
       return ok({ estado });
     }
@@ -194,7 +196,9 @@ Deno.serve(async (req) => {
     // isso a segunda entrega creditaria o mês de novo.
     const saldo = await creditaUmaVez(storeId, PLANOS[id]?.tokens ?? 0, `mpsub_${dataId}`);
     if (saldo !== null) {
-      await admin.from("stores").update({ plan: id }).eq("id", storeId);
+      // Assinou: sai do teste grátis, senão o aviso de teste fica na tela
+      // de quem já paga.
+      await admin.from("stores").update({ plan: id, trial_ends_at: null }).eq("id", storeId);
       await admin
         .from("subscriptions")
         .update({ status: "active", next_billing: cobranca.next_payment_date ?? null })

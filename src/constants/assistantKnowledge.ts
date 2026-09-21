@@ -61,8 +61,8 @@ Importar catálogo por link cobra por item importado.
 - Pro: R$ 197/mês, 303 gerações
 - Business: R$ 397/mês, 610 gerações
 
-Quem cria a loja ganha **7 dias de teste com 35 créditos**, sem cartão. Os
-créditos entram de uma vez e podem ser usados quando quiser dentro do período.
+Quem cria a loja ganha **10 gerações grátis**, sem cartão e sem prazo. Elas
+entram de uma vez, na primeira vez que a loja abre o app, e não vencem.
 
 # Como a geração funciona
 

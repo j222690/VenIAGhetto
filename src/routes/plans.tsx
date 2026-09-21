@@ -22,7 +22,7 @@ function PlansPage() {
   const [busy, setBusy] = useState(false);
 
   // Quem acabou de se cadastrar cai aqui, e até agora a única saída era o
-  // checkout — que pede cartão. Os 35 créditos do teste existiam no banco sem
+  // checkout — que pede cartão. As 10 gerações do teste existem no banco sem
   // nenhuma porta na tela: o lojista via "pague" e desistia. Enquanto o prazo
   // vale, o teste lidera a tela e os planos ficam para quem já decidiu.
   const fimTeste = session?.store.trialEndsAt;
@@ -77,10 +77,10 @@ function PlansPage() {
             </span>
             <div className="min-w-0 flex-1">
               <h2 className="font-display text-xl font-semibold text-foreground">
-                Teste grátis · 7 dias
+                Teste grátis · 10 gerações
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Você ganhou 35 gerações para experimentar. Sem cartão, sem cobrança.
+                Você ganhou 10 gerações para experimentar. Sem cartão, sem prazo.
               </p>
             </div>
           </div>

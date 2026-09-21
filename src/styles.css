@@ -65,73 +65,90 @@
 :root {
   --radius: 1.1rem;
 
-  /* Base grafite-noturno */
-  --background: oklch(0.16 0.02 275);
-  --foreground: oklch(0.97 0.006 285);
+  /* Base PRETO E BRANCO — sem matiz nenhuma (croma 0), para o dourado ser a
+     única cor da tela. Um cinza levemente azulado, como era antes, brigava
+     com o ouro e o deixava esverdeado. */
+  --background: oklch(0.13 0 0);
+  --foreground: oklch(0.98 0 0);
 
-  --cream: oklch(0.97 0.006 285);
-  --charcoal: oklch(0.16 0.02 275);
+  --cream: oklch(0.98 0 0);
+  --charcoal: oklch(0.13 0 0);
 
-  --card: oklch(0.205 0.024 278);
-  --card-foreground: oklch(0.97 0.006 285);
-  --popover: oklch(0.205 0.024 278);
-  --popover-foreground: oklch(0.97 0.006 285);
+  /* O cartão não é preto puro: sobre fundo preto ele sumiria, e a interface
+     inteira viraria uma chapa sem hierarquia. */
+  --card: oklch(0.18 0 0);
+  --card-foreground: oklch(0.98 0 0);
+  --popover: oklch(0.18 0 0);
+  --popover-foreground: oklch(0.98 0 0);
 
-  --secondary: oklch(0.27 0.03 278);
-  --secondary-foreground: oklch(0.97 0.006 285);
+  --secondary: oklch(0.24 0 0);
+  --secondary-foreground: oklch(0.98 0 0);
 
-  --muted: oklch(0.25 0.025 278);
-  --muted-foreground: oklch(0.73 0.03 282);
+  --muted: oklch(0.22 0 0);
+  --muted-foreground: oklch(0.72 0 0);
 
   --destructive: oklch(0.62 0.24 18);
   --destructive-foreground: oklch(0.99 0.005 285);
 
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 16%);
+  --border: oklch(1 0 0 / 14%);
+  --input: oklch(1 0 0 / 18%);
 
-  /* --- Paleta neon (fixa) --- */
-  --neon-green: oklch(0.87 0.25 150);
-  --neon-blue: oklch(0.78 0.17 232);
-  --neon-purple: oklch(0.63 0.27 305);
-  --neon-pink: oklch(0.72 0.27 352);
+  /* --- Dourado: a única cor da interface ---
+     `--gold` é o ouro cheio (botões, ícones, destaque) e `--gold-soft` a
+     versão mais clara, para texto pequeno sobre preto — o ouro cheio em
+     corpo de texto fica difícil de ler.
+     Os nomes --neon-* continuam porque telas e o gerador de posts os citam;
+     todos apontam para o mesmo ouro agora, então trocar de segmento não muda
+     mais a cor. */
+  --gold: oklch(0.79 0.13 88);
+  --gold-soft: oklch(0.88 0.09 90);
+  --neon-green: var(--gold);
+  --neon-blue: var(--gold);
+  --neon-purple: var(--gold);
+  --neon-pink: var(--gold);
 
-  /* --- Acento por segmento: FEMININA (padrão) = rosa + roxo --- */
-  --accent: var(--neon-pink);
-  --accent-foreground: oklch(0.15 0.02 275);
-  --accent-2: var(--neon-purple);
-  --clay: var(--neon-pink);
-  --clay-foreground: oklch(0.15 0.02 275);
-  --primary: var(--neon-pink);
-  --primary-foreground: oklch(0.15 0.02 275);
-  --ring: var(--neon-pink);
+  /* Texto sobre o dourado é PRETO: ouro é claro, e letra branca em cima
+     dele não tem contraste suficiente para ler. */
+  --accent: var(--gold);
+  --accent-foreground: oklch(0.13 0 0);
+  --accent-2: var(--gold-soft);
+  --clay: var(--gold);
+  --clay-foreground: oklch(0.13 0 0);
+  --primary: var(--gold);
+  --primary-foreground: oklch(0.13 0 0);
+  --ring: var(--gold);
 
   --glow:
     0 0 18px color-mix(in oklch, var(--accent) 55%, transparent),
     0 0 40px color-mix(in oklch, var(--accent) 28%, transparent);
 }
 
-/* MASCULINA = azul + verde */
+/* A identidade passou a ser uma só — preto, branco e dourado — então o
+   segmento da loja não muda mais a cor. Os blocos continuam existindo (o
+   atributo data-segment segue sendo escrito) para o dia em que voltar a
+   haver variação; hoje eles repetem o mesmo ouro de propósito, em vez de
+   sumirem e deixarem um seletor que aparenta fazer algo. */
 [data-segment="masculina"] {
-  --accent: var(--neon-blue);
-  --accent-foreground: oklch(0.15 0.02 275);
-  --accent-2: var(--neon-green);
-  --clay: var(--neon-blue);
-  --clay-foreground: oklch(0.15 0.02 275);
-  --primary: var(--neon-blue);
-  --primary-foreground: oklch(0.15 0.02 275);
-  --ring: var(--neon-blue);
+  --accent: var(--gold);
+  --accent-foreground: oklch(0.13 0 0);
+  --accent-2: var(--gold-soft);
+  --clay: var(--gold);
+  --clay-foreground: oklch(0.13 0 0);
+  --primary: var(--gold);
+  --primary-foreground: oklch(0.13 0 0);
+  --ring: var(--gold);
 }
 
 /* UNISSEX (os dois) = roxo + azul — identidade neutra entre os dois públicos */
 [data-segment="unissex"] {
-  --accent: var(--neon-purple);
-  --accent-foreground: oklch(0.99 0.005 285);
-  --accent-2: var(--neon-blue);
-  --clay: var(--neon-purple);
-  --clay-foreground: oklch(0.99 0.005 285);
-  --primary: var(--neon-purple);
-  --primary-foreground: oklch(0.99 0.005 285);
-  --ring: var(--neon-purple);
+  --accent: var(--gold);
+  --accent-foreground: oklch(0.13 0 0);
+  --accent-2: var(--gold-soft);
+  --clay: var(--gold);
+  --clay-foreground: oklch(0.13 0 0);
+  --primary: var(--gold);
+  --primary-foreground: oklch(0.13 0 0);
+  --ring: var(--gold);
 }
 
 /* Mantém `.dark` coerente com o tema (o app já nasce dark). */

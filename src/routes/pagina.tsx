@@ -79,7 +79,7 @@ function SalesPage() {
             </div>
             <div className="trust-row">
               <span className="trust-badge">
-                <CheckIcon />7 dias grátis
+                <CheckIcon />10 gerações grátis
               </span>
               <span className="trust-badge">
                 <CheckIcon />
@@ -484,7 +484,7 @@ function SalesPage() {
               </div>
             </div>
             <p className="guarantee">
-              Comece com 7 dias grátis · sem cartão · cancele quando quiser
+              Comece com 10 gerações grátis · sem cartão · cancele quando quiser
             </p>
           </div>
         </section>

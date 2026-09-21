@@ -12,25 +12,21 @@ const SEGMENT_OPTIONS: {
   id: StoreSegment;
   label: string;
   hint: string;
-  dots: string[];
 }[] = [
   {
     id: "feminina",
     label: "Feminino",
-    hint: "Rosa & roxo",
-    dots: ["var(--neon-pink)", "var(--neon-purple)"],
+    hint: "Vestido, saia, blusa…",
   },
   {
     id: "masculina",
     label: "Masculino",
-    hint: "Azul & verde",
-    dots: ["var(--neon-blue)", "var(--neon-green)"],
+    hint: "Camisa, terno, bermuda…",
   },
   {
     id: "unissex",
     label: "Os dois",
-    hint: "Roxo & azul",
-    dots: ["var(--neon-purple)", "var(--neon-blue)"],
+    hint: "As duas listas juntas",
   },
 ];
 
@@ -114,7 +110,7 @@ function RegisterPage() {
         </p>
       ) : (
         <p className="mt-2 text-sm text-muted-foreground">
-          Comece com 7 dias de teste em qualquer plano.
+          Comece com 10 gerações grátis, sem cartão.
         </p>
       )}
 
@@ -179,16 +175,7 @@ function RegisterPage() {
                           : "border-border hover:border-accent/50",
                       )}
                     >
-                      <span className="flex justify-center gap-1">
-                        {opt.dots.map((c) => (
-                          <span
-                            key={c}
-                            className="h-2.5 w-2.5 rounded-full"
-                            style={{ background: c, boxShadow: `0 0 8px ${c}` }}
-                          />
-                        ))}
-                      </span>
-                      <span className="mt-2 block text-sm font-semibold text-foreground">
+                      <span className="block text-sm font-semibold text-foreground">
                         {opt.label}
                       </span>
                       <span className="block text-[10px] text-muted-foreground">{opt.hint}</span>

@@ -82,8 +82,9 @@ export interface Store {
   planId: PlanId;
   segment: StoreSegment;
   tokensBalance: number;
-  /** Fim do teste grátis de 7 dias. undefined = loja sem teste (assinante
-   *  ou criada antes da migration 0027). */
+  /** Quando a loja entrou no teste grátis. undefined = loja sem teste
+   *  (assinante ou criada antes da migration 0027). Desde a 0032 o teste é
+   *  medido em GERAÇÕES (10), não em dias — esta data já não limita nada. */
   trialEndsAt?: string;
   /** Quando a loja conectou a conta Mercado Pago dela (OAuth) para receber das
    *  próprias clientes. undefined = não conectada. O token fica no servidor. */

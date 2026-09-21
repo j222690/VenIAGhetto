@@ -1,4 +1,7 @@
-// Aviso do teste grátis de 7 dias, na tela inicial.
+// Aviso do teste grátis, na tela inicial.
+//
+// O teste passou a ser medido em GERAÇÕES, não em dias (migration 0032), então
+// o que o aviso mostra é quanto sobrou — não uma contagem regressiva.
 //
 // Existe porque o teste é silencioso por natureza: o lojista recebe a cota
 // diária e gasta, sem nunca saber que está num período limitado. Quando ela
@@ -17,14 +20,13 @@ export function TrialBanner() {
   const { session } = useAuth();
   const { balance } = useTokens();
 
-  const fim = session?.store.trialEndsAt;
-  if (!fim) return null;
-
-  const restanteMs = new Date(fim).getTime() - Date.now();
-  if (restanteMs <= 0) return null;
-
-  // Arredonda pra cima: faltando 6h ainda é "1 dia", não "0 dias".
-  const dias = Math.ceil(restanteMs / (24 * 60 * 60 * 1000));
+  // `trialEndsAt` preenchido = loja ainda no teste. Quem assina tem o campo
+  // limpo pelo webhook de pagamento, e é assim que o aviso some sozinho.
+  //
+  // Antes isto comparava a data com agora e escondia o aviso depois de 7 dias.
+  // Com o teste medido em gerações, aquilo escondia o aviso de quem ainda
+  // tinha gerações para usar.
+  if (!session?.store.trialEndsAt) return null;
 
   return (
     <section className="rounded-3xl border border-clay/40 bg-clay/5 p-5">
@@ -34,11 +36,11 @@ export function TrialBanner() {
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-foreground">
-            Teste grátis · {dias === 1 ? "último dia" : `${dias} dias restantes`}
+            Teste grátis · 10 gerações
           </p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             {balance > 0
-              ? `Você ganhou 35 créditos para testar e ainda tem ${balance} ${balance === 1 ? "geração" : "gerações"}. Use como quiser durante o teste.`
+              ? `Você ganhou 10 gerações para testar e ainda tem ${balance}. Use quando quiser — não vencem.`
               : "Seus créditos de teste acabaram. Assine um plano para continuar gerando."}
           </p>
           <Link
