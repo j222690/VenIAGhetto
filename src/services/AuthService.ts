@@ -97,7 +97,15 @@ export const AuthService = {
     });
     if (error) throw error;
     const session = await buildSession();
-    if (!session) throw new Error("Sessão indisponível após login.");
+    if (!session) {
+      // O login DEU CERTO — o que falta é a linha em public.users (o trigger
+      // handle_new_user não rodou, ou a loja foi removida). Sem um código
+      // próprio isto virava "Não foi possível entrar", igual a senha errada,
+      // e o lojista passava a tarde tentando senhas.
+      const erro = new Error("Conta sem loja vinculada.") as Error & { code?: string };
+      erro.code = "perfil_ausente";
+      throw erro;
+    }
     return session;
   },
 

@@ -783,22 +783,33 @@ function PlanFeature({ text }: { text: string }) {
 
 const CSS = `
 .pv {
-  --bg: #17151d;
-  --card: #1f1c28;
-  --card-2: #27222f;
-  --fg: #f5f3f8;
-  --fg-soft: #b7b0c2;
-  --fg-faint: #857e91;
-  --line: rgba(255, 255, 255, 0.12);
-  --line-strong: rgba(255, 255, 255, 0.22);
+  /* Preto, branco e dourado — a mesma identidade do app (src/styles.css).
+     Esta página tem CSS próprio, então mudar o tema do app não a alcança:
+     são dois lugares, e esquecer um deixa a propaganda com uma cara e o
+     produto com outra.
 
-  --accent: #a855f7;
-  --accent-rgb: 168, 85, 247;
-  --accent-2: #3fc1f0;
-  --accent-2-rgb: 63, 193, 240;
-  --accent-3: #f4419a;
-  --accent-3-rgb: 244, 65, 154;
-  --accent-ink: #fbfaff;
+     Os cinzas não têm matiz nenhuma. O roxo-acinzentado de antes empurrava o
+     ouro para o esverdeado. */
+  --bg: #0d0d0d;
+  --card: #161616;
+  --card-2: #1e1e1e;
+  --fg: #fafafa;
+  --fg-soft: #b5b5b5;
+  --fg-faint: #8a8a8a;
+  --line: rgba(255, 255, 255, 0.14);
+  --line-strong: rgba(255, 255, 255, 0.24);
+
+  /* Um ouro só. Os três acentos existiam para variar a cor entre seções;
+     agora apontam para o mesmo tom, com --accent-2 um pouco mais claro para
+     os degradês não virarem uma chapa. */
+  --accent: #d4af37;
+  --accent-rgb: 212, 175, 55;
+  --accent-2: #e8c96a;
+  --accent-2-rgb: 232, 201, 106;
+  --accent-3: #b8912a;
+  --accent-3-rgb: 184, 145, 42;
+  /* Texto SOBRE o dourado é preto: ouro é claro, e branco em cima não lê. */
+  --accent-ink: #0d0d0d;
 
   --font-display: "Fraunces", ui-serif, Georgia, serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -971,10 +982,11 @@ const CSS = `
 .pv .feature-card h3 { font-size: 1.1rem; font-weight: 620; font-family: var(--font-display); }
 .pv .feature-card p { color: var(--fg-soft); font-size: 0.94rem; }
 
-.pv .cta-band { background: linear-gradient(120deg, var(--accent), #d1479f); border-radius: 2rem; box-shadow: var(--glow); }
+.pv .cta-band { background: linear-gradient(120deg, var(--accent), var(--accent-3)); border-radius: 2rem; box-shadow: var(--glow); }
 .pv .cta-band-inner { padding: 2.8rem 2rem; display: flex; flex-direction: column; gap: 1.3rem; align-items: flex-start; }
 @media (min-width: 720px) { .pv .cta-band-inner { flex-direction: row; align-items: center; justify-content: space-between; padding: 2.8rem 3.2rem; } }
-.pv .cta-band h3 { font-size: 1.55rem; max-width: 27rem; color: #fff; }
+/* Preto, não branco: a faixa é dourada. */
+.pv .cta-band h3 { font-size: 1.55rem; max-width: 27rem; color: var(--accent-ink); }
 .pv .cta-band .btn { background: var(--bg); color: var(--fg); box-shadow: none; }
 .pv .cta-band .btn:hover { background: var(--card); }
 

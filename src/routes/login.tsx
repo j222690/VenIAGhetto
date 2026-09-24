@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthService } from "@/services/AuthService";
-import { describeAuthError } from "@/lib/authErrors";
+import { describeAuthError, detalheAuthError } from "@/lib/authErrors";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
@@ -24,7 +24,10 @@ function LoginPage() {
       await signIn(email, password);
       navigate({ to: "/home" });
     } catch (err) {
-      toast.error(describeAuthError(err, "Não foi possível entrar."));
+      toast.error(describeAuthError(err, "Não foi possível entrar."), {
+        duration: 9000,
+        description: detalheAuthError(err),
+      });
     } finally {
       setBusy(false);
     }

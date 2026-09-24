@@ -15,6 +15,18 @@ const CODE_MESSAGES: Record<string, string> = {
   email_exists: "Esse e-mail já tem uma conta. Tente entrar em vez de criar uma nova.",
   user_already_exists: "Esse e-mail já tem uma conta. Tente entrar em vez de criar uma nova.",
   invalid_credentials: "E-mail ou senha incorretos.",
+  // Faltava, e era o buraco mais caro: quem não confirmou o e-mail via só
+  // "Não foi possível entrar" e não tinha como adivinhar o que fazer.
+  email_not_confirmed:
+    "Confirme seu e-mail antes de entrar. Procure a mensagem do Vest Ai na caixa de entrada e no spam.",
+  phone_not_confirmed: "Confirme seu telefone antes de entrar.",
+  user_banned: "Esta conta está bloqueada. Fale com o suporte.",
+  session_expired: "Sua sessão expirou. Entre de novo.",
+  // Senha certa, login aceito — e mesmo assim não entra: o cadastro da loja
+  // não existe (ver AuthService.buildSession). Sem uma mensagem própria, isto
+  // era indistinguível de senha errada, e o lojista ficava tentando a senha.
+  perfil_ausente:
+    "Seu e-mail e senha estão certos, mas a conta não está ligada a nenhuma loja. Isso é um problema do nosso lado — chame o suporte.",
   weak_password: "Senha muito curta — use pelo menos 6 caracteres.",
   email_address_invalid: "Digite um e-mail válido.",
   email_address_not_authorized: "Esse e-mail não pode ser usado para cadastro.",
@@ -35,8 +47,26 @@ const MESSAGE_PATTERNS: [RegExp, string][] = [
   [/rate limit/i, CODE_MESSAGES.over_request_rate_limit],
   [/invalid email/i, CODE_MESSAGES.email_address_invalid],
   [/user not found/i, CODE_MESSAGES.user_not_found],
+  [/email not confirmed/i, CODE_MESSAGES.email_not_confirmed],
   [/network|fetch failed|failed to fetch/i, "Sem conexão. Confira sua internet e tente de novo."],
 ];
+
+/**
+ * Detalhe técnico para a segunda linha do aviso.
+ *
+ * Existe porque um lojista dizendo "deu não foi possível entrar" não dá para
+ * diagnosticar: o mesmo texto cobria senha errada, e-mail não confirmado e
+ * conta sem loja. Mostrar o código não ajuda o lojista, mas ele lê no
+ * WhatsApp para o suporte, e isso resolve em um minuto o que antes levava
+ * uma investigação no banco.
+ */
+export function detalheAuthError(err: unknown): string | undefined {
+  const e = err as AuthLikeError | undefined;
+  if (!e) return undefined;
+  const partes = [e.code, e.status ? `HTTP ${e.status}` : null].filter(Boolean);
+  if (partes.length === 0 && e.message) partes.push(e.message.slice(0, 80));
+  return partes.length ? `Código: ${partes.join(" · ")}` : undefined;
+}
 
 export function describeAuthError(err: unknown, fallback: string): string {
   const e = err as AuthLikeError | undefined;
