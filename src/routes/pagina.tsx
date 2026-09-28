@@ -35,11 +35,7 @@ function SalesPage() {
             <a href="#como-funciona">Como funciona</a>
             <a href="#planos">Planos</a>
           </nav>
-          <Link
-            to="/welcome"
-            className="btn btn-primary"
-            style={{ padding: "0.65rem 1.35rem", fontSize: "0.88rem" }}
-          >
+          <Link to="/welcome" className="btn btn-primary btn-nav">
             Começar agora
           </Link>
         </div>
@@ -91,11 +87,7 @@ function SalesPage() {
               </span>
             </div>
           </div>
-          <div className="phone reveal">
-            <div className="phone-bar">
-              <span className="app-name">Provador IA</span>
-              <span className="app-tag">Vest Ai</span>
-            </div>
+          <div className="hero-demo">
             <BeforeAfter
               antes="/marketing/antes.jpg"
               depois="/marketing/depois.jpg"
@@ -278,13 +270,7 @@ function SalesPage() {
           <div className="wrap problem">
             <div className="problem-copy reveal">
               <p className="eyebrow">O custo escondido do ensaio</p>
-              <h2
-                style={{
-                  marginTop: "0.7rem",
-                  fontSize: "clamp(1.75rem,3.4vw,2.4rem)",
-                  lineHeight: "1.16",
-                }}
-              >
+              <h2 className="problem-title">
                 Quantas vendas você perde para o “vou pensar”?
               </h2>
               <p>
@@ -877,6 +863,10 @@ const CSS = `
 .pv .btn-ghost { background: rgba(255, 255, 255, 0.04); color: var(--fg); border-color: var(--line-strong); }
 .pv .btn-ghost:hover { border-color: var(--accent-2); background: rgba(255, 255, 255, 0.07); }
 .pv .btn-block { width: 100%; }
+/* O botão do cabeçalho tinha esse tamanho escrito direto no JSX. Estilo
+   embutido vence qualquer media query, então ele ficava do tamanho de desktop
+   num celular — ocupava metade da barra, que é fixa e acompanha a rolagem. */
+.pv .btn-nav { padding: 0.65rem 1.35rem; font-size: 0.88rem; }
 
 .pv header.nav {
   position: sticky; top: 0; z-index: 40;
@@ -886,7 +876,7 @@ const CSS = `
   border-bottom: 1px solid var(--line);
 }
 .pv .nav-row { display: flex; align-items: center; justify-content: space-between; padding: 1.1rem 0; }
-.pv .wordmark { font-family: var(--font-display); font-size: 1.4rem; font-weight: 600; letter-spacing: -0.01em; color: var(--fg); text-decoration: none; }
+.pv .wordmark { font-family: var(--font-display); font-size: clamp(1.2rem, 4.6vw, 1.4rem); font-weight: 600; letter-spacing: -0.01em; color: var(--fg); text-decoration: none; }
 .pv .wordmark .ai { color: var(--accent); }
 .pv .nav-links { display: none; gap: 2.2rem; font-size: 0.9rem; font-weight: 500; }
 .pv .nav-links a { color: var(--fg-soft); text-decoration: none; }
@@ -895,8 +885,8 @@ const CSS = `
 
 .pv .hero { padding: 4rem 0 3rem; display: grid; gap: 3rem; align-items: center; }
 @media (min-width: 960px) { .pv .hero { grid-template-columns: 1.05fr 0.95fr; padding: 5.5rem 0 5rem; } }
-.pv .hero h1 { margin-top: 1rem; font-size: clamp(2.5rem, 5.6vw, 3.9rem); line-height: 1.04; }
-.pv .hero-sub { margin-top: 1.4rem; max-width: 33rem; font-size: 1.14rem; color: var(--fg-soft); }
+.pv .hero h1 { margin-top: 0.8rem; font-size: clamp(1.75rem, 7.6vw, 3.9rem); line-height: 1.08; }
+.pv .hero-sub { margin-top: 1.4rem; max-width: 33rem; font-size: clamp(0.98rem, 3.9vw, 1.14rem); color: var(--fg-soft); }
 .pv .hero-ctas { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-top: 2.2rem; }
 
 .pv .trust-row { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.6rem; }
@@ -953,9 +943,10 @@ const CSS = `
 @media (min-width: 860px) { .pv .benefit-grid { grid-template-columns: repeat(3, 1fr); gap: 1.2rem; } }
 .pv .benefit-card { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 1.2rem; padding: 1.6rem 1.4rem 1.4rem; box-shadow: var(--shadow-soft); }
 .pv .benefit-num { display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: 50%; font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--accent-ink); background-image: linear-gradient(120deg, var(--accent), var(--accent-3)); box-shadow: var(--glow); }
-.pv .benefit-card h3 { margin-top: 0.9rem; font-size: 1.15rem; }
+.pv .benefit-card h3 { margin-top: 0.9rem; font-size: clamp(1.05rem, 4vw, 1.15rem); }
 .pv .benefit-card p { margin-top: 0.5rem; color: var(--fg-soft); font-size: 0.95rem; line-height: 1.6; }
 
+.pv .hero-demo { width: 100%; }
 .pv .phone-nav { display: flex; justify-content: center; gap: 1.6rem; padding-top: 1rem; }
 .pv .phone-nav span { width: 0.4rem; height: 0.4rem; border-radius: 50%; background: var(--line-strong); }
 .pv .phone-nav span.active { background: var(--accent); box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.7); }
@@ -963,8 +954,8 @@ const CSS = `
 .pv section { padding: 4.5rem 0; }
 .pv .divider { border: none; border-top: 1px solid var(--line); margin: 0; }
 .pv .section-head { max-width: 40rem; margin-bottom: 3rem; }
-.pv .section-head h2 { margin-top: 0.7rem; font-size: clamp(1.75rem, 3.4vw, 2.5rem); line-height: 1.12; }
-.pv .section-head p { margin-top: 1rem; color: var(--fg-soft); font-size: 1.02rem; }
+.pv .section-head h2 { margin-top: 0.7rem; font-size: clamp(1.35rem, 5.6vw, 2.5rem); line-height: 1.14; }
+.pv .section-head p { margin-top: 0.9rem; color: var(--fg-soft); font-size: clamp(0.95rem, 3.4vw, 1.02rem); }
 
 .pv .feature-grid { display: grid; gap: 1.1rem; grid-template-columns: 1fr; }
 @media (min-width: 640px) { .pv .feature-grid { grid-template-columns: 1fr 1fr; } }
@@ -986,13 +977,14 @@ const CSS = `
 .pv .cta-band-inner { padding: 2.8rem 2rem; display: flex; flex-direction: column; gap: 1.3rem; align-items: flex-start; }
 @media (min-width: 720px) { .pv .cta-band-inner { flex-direction: row; align-items: center; justify-content: space-between; padding: 2.8rem 3.2rem; } }
 /* Preto, não branco: a faixa é dourada. */
-.pv .cta-band h3 { font-size: 1.55rem; max-width: 27rem; color: var(--accent-ink); }
+.pv .cta-band h3 { font-size: clamp(1.15rem, 4.6vw, 1.55rem); max-width: 27rem; color: var(--accent-ink); }
 .pv .cta-band .btn { background: var(--bg); color: var(--fg); box-shadow: none; }
 .pv .cta-band .btn:hover { background: var(--card); }
 
 .pv .problem { display: grid; gap: 2.5rem; }
 @media (min-width: 900px) { .pv .problem { grid-template-columns: 1fr 1fr; align-items: center; } }
 .pv .problem-copy p + p { margin-top: 1rem; color: var(--fg-soft); }
+.pv .problem-title { margin-top: 0.7rem; font-size: clamp(1.35rem, 5.6vw, 2.4rem); line-height: 1.16; }
 .pv .compare { background: var(--card); border: 1px solid var(--line); border-radius: 1.7rem; padding: 1.7rem; }
 .pv .compare-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 0.9rem 0; }
 .pv .compare-row + .compare-row { border-top: 1px solid var(--line); }
@@ -1033,19 +1025,19 @@ const CSS = `
 .pv .highlight { display: grid; gap: 3rem; align-items: center; }
 @media (min-width: 960px) { .pv .highlight { grid-template-columns: 1fr 1fr; } }
 .pv .highlight-copy .eyebrow { margin-bottom: 0.6rem; }
-.pv .highlight-copy h2 { font-size: clamp(1.75rem, 3.2vw, 2.4rem); line-height: 1.14; }
-.pv .highlight-copy p { margin-top: 1.1rem; color: var(--fg-soft); font-size: 1.02rem; }
+.pv .highlight-copy h2 { font-size: clamp(1.35rem, 5.6vw, 2.4rem); line-height: 1.16; }
+.pv .highlight-copy p { margin-top: 1rem; color: var(--fg-soft); font-size: clamp(0.95rem, 3.4vw, 1.02rem); }
 .pv .highlight-list { margin-top: 1.4rem; display: grid; gap: 0.7rem; padding: 0; }
 .pv .highlight-list li { list-style: none; display: flex; gap: 0.7rem; align-items: flex-start; color: var(--fg-soft); font-size: 0.95rem; }
 .pv .highlight-list svg { flex: none; margin-top: 0.2rem; color: var(--accent-2); }
 
-.pv .grid-photo { border-radius: 1.1rem; overflow: hidden; border: 1px solid var(--line); }
-.pv .grid-photo img { width: 100%; height: 100%; display: block; }
+.pv .grid-photo { border-radius: 1.1rem; overflow: hidden; border: 1px solid var(--line); aspect-ratio: 1 / 1; }
+.pv .grid-photo img { width: 100%; height: 100%; display: block; object-fit: cover; }
 
 .pv .ba-single { display: flex; align-items: center; gap: 1.2rem; max-width: 40rem; margin: 0 auto; }
-@media (max-width: 640px) { .pv .ba-single { flex-direction: column; } }
+@media (max-width: 640px) { .pv .ba-single { gap: 0.6rem; } }
 .pv .ba-photo-lg {
-  position: relative; flex: 1; aspect-ratio: 3/4; border-radius: 1.5rem; overflow: hidden;
+  position: relative; flex: 1 1 0; min-width: 0; aspect-ratio: 3/4; border-radius: 1.5rem; overflow: hidden;
   border: 1px solid var(--line); box-shadow: var(--shadow-soft); max-width: 20rem;
 }
 .pv .ba-photo-lg img { width: 100%; height: 100%; object-fit: cover; }
@@ -1057,7 +1049,7 @@ const CSS = `
 }
 .pv .ba-photo-lg.after .tag { background: var(--accent); color: var(--accent-ink); }
 .pv .ba-arrow-lg { flex: none; color: var(--accent-2); }
-@media (max-width: 640px) { .pv .ba-arrow-lg { transform: rotate(90deg); } }
+@media (max-width: 640px) { .pv .ba-arrow-lg { width: 20px; height: 20px; } }
 .pv .ba-caption-lg { margin-top: 1.4rem; text-align: center; font-size: 0.92rem; color: var(--fg-soft); }
 
 .pv .pricing-grid { display: grid; gap: 1.3rem; }
@@ -1072,9 +1064,9 @@ const CSS = `
   background: var(--accent); color: var(--accent-ink); font-size: 0.65rem; font-weight: 700;
   letter-spacing: 0.08em; text-transform: uppercase; padding: 0.32rem 0.75rem; border-radius: 999px;
 }
-.pv .plan-name { font-family: var(--font-display); font-size: 1.35rem; font-weight: 600; }
+.pv .plan-name { font-family: var(--font-display); font-size: clamp(1.15rem, 4.4vw, 1.35rem); font-weight: 600; }
 .pv .plan-price { display: flex; align-items: baseline; gap: 0.4rem; }
-.pv .plan-price .amount { font-family: var(--font-display); font-size: 2.3rem; font-weight: 620; }
+.pv .plan-price .amount { font-family: var(--font-display); font-size: clamp(1.8rem, 6.2vw, 2.3rem); font-weight: 620; }
 .pv .plan-price .period { color: var(--fg-faint); font-size: 0.85rem; }
 .pv .plan-tokens { font-size: 0.88rem; color: var(--accent-2); font-weight: 600; }
 .pv .plan hr { border: none; border-top: 1px solid var(--line); margin: 0; }
@@ -1086,7 +1078,7 @@ const CSS = `
 .pv .guarantee { margin-top: 2rem; display: flex; align-items: center; justify-content: center; gap: 0.6rem; text-align: center; color: var(--fg-soft); font-size: 0.92rem; }
 
 .pv .closing { text-align: center; padding: 5.5rem 0; }
-.pv .closing h2 { font-size: clamp(2.1rem, 4.8vw, 3.2rem); max-width: 42rem; margin: 0 auto; line-height: 1.12; }
+.pv .closing h2 { font-size: clamp(1.6rem, 6.8vw, 3.2rem); max-width: 42rem; margin: 0 auto; line-height: 1.14; }
 .pv .closing .hero-ctas { justify-content: center; margin-top: 2.2rem; }
 
 .pv .steps { display: grid; gap: 2.2rem; counter-reset: step; }
@@ -1124,4 +1116,56 @@ const CSS = `
 .pv .reveal { animation: pv-rise 0.7s ease both; }
 @keyframes pv-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .pv .reveal { animation: none; } }
+
+/* ── Celular ────────────────────────────────────────────
+   As letras ja encolhem sozinhas pelos clamp() acima. O que sobra aqui e o
+   RESPIRO: numa tela de 360px, 4,5rem de padding por seção e 1,7rem dentro de
+   cada cartão viram rolagem sem conteúdo nenhum.
+
+   Este bloco vem por último de propósito: tem a mesma especificidade das
+   regras de cima, então quem decide e a ordem. */
+@media (max-width: 640px) {
+  .pv .wrap { padding: 0 1.15rem; }
+  .pv section { padding: 3rem 0; }
+  .pv .hero { padding: 2.25rem 0 1.75rem; gap: 2rem; }
+  .pv .hero-sub { margin-top: 1rem; }
+  .pv .trust-row { margin-top: 1.1rem; gap: 0.45rem; }
+  .pv .trust-badge { font-size: 0.72rem; padding: 0.35rem 0.7rem; }
+  .pv .hero-ctas { margin-top: 1.5rem; gap: 0.65rem; }
+  /* flex: 1 com wrap = dividem a linha quando cabem, e cada um ocupa a largura
+     inteira quando não cabem. Sem media query extra para isso. */
+  .pv .hero-ctas .btn { flex: 1 1 auto; }
+  .pv .btn { padding: 0.8rem 1.25rem; font-size: 0.9rem; }
+  .pv .btn-nav { padding: 0.55rem 1rem; font-size: 0.82rem; }
+  .pv .section-head { margin-bottom: 1.8rem; }
+  .pv .closing { padding: 3.5rem 0; }
+  .pv .closing .hero-ctas { margin-top: 1.6rem; }
+  .pv .nav-row { padding: 0.8rem 0; }
+
+  /* A moldura de celular não precisa da largura inteira de um celular de
+     verdade: a foto é 3/4, então cada pixel de largura custa 1,33 de altura. */
+  /* width: 100% NÃO é redundante com o max-width. Dentro de um grid, uma
+     margem "auto" desliga o stretch e o item passa a encolher até o conteúdo —
+     medido: o quadro caiu para 192px, a largura do texto da barrinha. */
+  .pv .phone { width: 100%; max-width: 19.5rem; margin-inline: auto; padding: 0.6rem; border-radius: 1.5rem; }
+  .pv .phone-bar { padding: 0.2rem 0.35rem 0.7rem; }
+  .pv .phone-nav { padding-top: 0.7rem; }
+
+  .pv .benefit-grid { gap: 0.85rem; padding-top: 0.5rem; }
+  .pv .benefit-card { padding: 1.25rem 1.1rem 1.1rem; border-radius: 1rem; }
+  .pv .feature-grid, .pv .example-grid, .pv .change-grid { gap: 0.85rem; }
+  .pv .feature-card, .pv .example-card, .pv .change-item, .pv .compare { padding: 1.25rem; border-radius: 1.2rem; }
+  .pv .change-item { gap: 0.9rem; }
+  .pv .feature-card .icon, .pv .change-item .mark { width: 2.25rem; height: 2.25rem; border-radius: 0.75rem; }
+  .pv .plan { padding: 1.5rem 1.35rem; border-radius: 1.4rem; gap: 1.1rem; }
+  .pv .pricing-grid { gap: 1rem; }
+  .pv .cta-band { border-radius: 1.4rem; }
+  .pv .cta-band-inner { padding: 1.9rem 1.35rem; gap: 1.1rem; }
+  .pv .cta-band .btn { width: 100%; }
+  .pv .problem, .pv .highlight { gap: 1.8rem; }
+  .pv .steps { gap: 1.6rem; }
+  .pv .step { padding-top: 2.75rem; }
+  .pv .ba-caption-lg { margin-top: 1rem; font-size: 0.85rem; }
+  .pv .whatsapp-fab { width: 3rem; height: 3rem; right: 1rem; bottom: 1rem; }
+}
 `;
