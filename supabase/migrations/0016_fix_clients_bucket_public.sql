@@ -1,4 +1,4 @@
--- Vest Ai — corrige bucket `clients` para PÚBLICO
+-- ProveON — corrige bucket `clients` para PÚBLICO
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- Idempotente.

@@ -1,4 +1,4 @@
--- Vest Ai — Convites de equipe (staff) + Clientes (CRM sem login)
+-- ProveON — Convites de equipe (staff) + Clientes (CRM sem login)
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- NÃO edite 0001/0002 — esta migration é incremental e idempotente.

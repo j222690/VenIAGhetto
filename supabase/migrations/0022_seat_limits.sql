@@ -1,4 +1,4 @@
--- Vest Ai — Limite de usuários por plano (seats)
+-- ProveON — Limite de usuários por plano (seats)
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- NÃO edite migrations anteriores — esta é incremental e idempotente.

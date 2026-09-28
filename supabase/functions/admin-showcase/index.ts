@@ -2,13 +2,13 @@
 // -----------------------------------------------------------------------------
 // Material para os posts de DIVULGAÇÃO DO APP (tela /divulgar) — não é uma
 // função do produto que o lojista usa, e sim uma ferramenta interna dos donos
-// da Vest Ai.
+// da ProveON.
 //
 // Devolve gerações já prontas de QUALQUER loja para servirem de prova real num
 // antes/depois. Precisa de service_role porque o RLS isola por loja: uma conta
 // normal só enxerga o que a própria loja gerou.
 //
-// QUEM PODE: só a loja da Vest Ai (secret ADMIN_STORE_ID) e, dentro dela, só
+// QUEM PODE: só a loja da ProveON (secret ADMIN_STORE_ID) e, dentro dela, só
 // quem é owner ou manager. Vendedor da mesma loja é equipe da operação, não
 // dono do app, e não entra. O gate do frontend é só UX — a permissão de
 // verdade é esta, no servidor.

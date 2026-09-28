@@ -1,6 +1,6 @@
 // Quem é DONO DO APP (não confundir com dono de loja).
 //
-// A regra é a loja da Vest Ai + papel de dono ou gerente. Vendedor da mesma
+// A regra é a loja da ProveON + papel de dono ou gerente. Vendedor da mesma
 // loja é equipe da operação da loja, não sócio do app, e fica de fora.
 //
 // Isto aqui é só UX: serve para esconder o que a pessoa não pode usar. A

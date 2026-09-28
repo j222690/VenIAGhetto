@@ -1,4 +1,4 @@
--- Vest Ai — bucket para imagens GERADAS pela IA (Gemini)
+-- ProveON — bucket para imagens GERADAS pela IA (Gemini)
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- Idempotente.

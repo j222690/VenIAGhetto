@@ -17,15 +17,15 @@ export interface Oferta {
 }
 
 export const PLANOS: Record<string, Oferta> = {
-  starter: { titulo: "Vest Ai — Starter", preco: 97, tokens: 149 },
-  pro: { titulo: "Vest Ai — Pro", preco: 197, tokens: 303 },
-  business: { titulo: "Vest Ai — Business", preco: 397, tokens: 610 },
+  starter: { titulo: "ProveON — Starter", preco: 97, tokens: 149 },
+  pro: { titulo: "ProveON — Pro", preco: 197, tokens: 303 },
+  business: { titulo: "ProveON — Business", preco: 397, tokens: 610 },
 };
 
 export const PACOTES: Record<string, Oferta> = {
-  pack_100: { titulo: "Vest Ai — 75 gerações", preco: 49, tokens: 75 },
-  pack_300: { titulo: "Vest Ai — 198 gerações", preco: 129, tokens: 198 },
-  pack_1000: { titulo: "Vest Ai — 660 gerações", preco: 429, tokens: 660 },
+  pack_100: { titulo: "ProveON — 75 gerações", preco: 49, tokens: 75 },
+  pack_300: { titulo: "ProveON — 198 gerações", preco: 129, tokens: 198 },
+  pack_1000: { titulo: "ProveON — 660 gerações", preco: 429, tokens: 660 },
 };
 
 /**

@@ -1,4 +1,4 @@
--- Vest Ai — teste grátis de 7 dias
+-- ProveON — teste grátis de 7 dias
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- Idempotente.

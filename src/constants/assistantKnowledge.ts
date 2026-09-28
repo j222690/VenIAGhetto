@@ -1,4 +1,4 @@
-// O que o assistente sabe sobre o Vest Ai.
+// O que o assistente sabe sobre o ProveON.
 //
 // Fica no cliente e é enviado ao servidor a cada pergunta, em vez de morar na
 // Edge Function, por um motivo prático: quem muda uma tela mexe neste arquivo
@@ -13,7 +13,7 @@ import { SUPPORT_PHONE_LABEL } from "@/constants/contact";
 import { MAX_GARMENTS } from "@/constants/lookOptions";
 
 export const APP_KNOWLEDGE = `
-# O que é o Vest Ai
+# O que é o ProveON
 
 Um provador virtual por IA para lojas de moda. A lojista usa a foto de um
 cliente e o app mostra essa mesma pessoa vestindo as peças da loja. Serve para

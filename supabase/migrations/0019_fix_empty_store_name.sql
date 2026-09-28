@@ -1,4 +1,4 @@
--- Vest Ai — corrige nome de loja vazio no fallback do cadastro
+-- ProveON — corrige nome de loja vazio no fallback do cadastro
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- Idempotente.

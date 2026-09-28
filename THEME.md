@@ -1,4 +1,4 @@
-# THEME — Vest Ai
+# THEME — ProveON
 
 A identidade visual do app vive em **pouquíssimos arquivos**. Para rebrandear
 (trocar cores, fontes ou o conjunto de ícones), mexa apenas aqui.

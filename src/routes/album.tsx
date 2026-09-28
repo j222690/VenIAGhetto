@@ -10,7 +10,7 @@ import { thumbSrcSet, thumbUrl } from "@/lib/imageUrl";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/album")({
-  head: () => ({ meta: [{ title: "Álbum de Looks — Vest Ai" }] }),
+  head: () => ({ meta: [{ title: "Álbum de Looks — ProveON" }] }),
   component: AlbumPage,
 });
 

@@ -1,4 +1,4 @@
-// Tipos do banco Vest Ai.
+// Tipos do banco ProveON.
 // Espelham o schema de supabase/migrations/0001_init.sql.
 // Podem ser regenerados com a CLI:
 //   supabase gen types typescript --project-id <ref> --schema public > types.ts

@@ -21,10 +21,10 @@ export function AppHeader({ title, subtitle, showTokens = true }: Props) {
             // pra Home, sem duplicar o texto.
             <Link to="/home" className="block min-w-0">
               <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground lg:hidden">
-                Vest Ai
+                ProveON
               </p>
               <p className="truncate font-display text-lg font-semibold text-foreground">
-                {session?.store.name ?? "Vest Ai"}
+                {session?.store.name ?? "ProveON"}
               </p>
             </Link>
           )}

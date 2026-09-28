@@ -1,4 +1,4 @@
--- Vest Ai — geração em SEGUNDO PLANO (status da geração)
+-- ProveON — geração em SEGUNDO PLANO (status da geração)
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- Idempotente.

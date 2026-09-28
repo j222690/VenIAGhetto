@@ -1,8 +1,8 @@
-// /divulgar — gerador de posts para DIVULGAR A VEST AI.
+// /divulgar — gerador de posts para DIVULGAR A PROVEON.
 //
 // Ferramenta interna dos donos do app, não um recurso do produto: o cliente
 // aqui é a lojista e o produto é o app. Não aparece no menu; o atalho fica no
-// Perfil, só para quem é dono/gerente da loja da Vest Ai (ver
+// Perfil, só para quem é dono/gerente da loja da ProveON (ver
 // @/constants/admins). O gate que conta é o da Edge Function admin-showcase.
 //
 // Duas formas de montar o post:
@@ -45,7 +45,7 @@ import { toast } from "sonner";
 import type { SocialCopySet } from "@/types";
 
 export const Route = createFileRoute("/divulgar")({
-  head: () => ({ meta: [{ title: "Divulgar o app — Vest Ai" }] }),
+  head: () => ({ meta: [{ title: "Divulgar o app — ProveON" }] }),
   component: DivulgarPage,
 });
 
@@ -397,7 +397,7 @@ function DivulgarPage() {
   }
 
   return (
-    <AppLayout title="Divulgar o app" subtitle="Só para os donos da Vest Ai">
+    <AppLayout title="Divulgar o app" subtitle="Só para os donos da ProveON">
       {busy ? <LoadingOverlay label={busyLabel} /> : null}
 
       <div className="space-y-5">
@@ -742,8 +742,8 @@ function ResultadoView({
       const a = document.createElement("a");
       a.href = imagens[i];
       a.download = carrossel
-        ? `vestai-slide-${String(i + 1).padStart(2, "0")}.jpg`
-        : `vestai-divulgacao-${Date.now()}.jpg`;
+        ? `proveon-slide-${String(i + 1).padStart(2, "0")}.jpg`
+        : `proveon-divulgacao-${Date.now()}.jpg`;
       a.click();
     });
     toast.success(alvos.length > 1 ? `${alvos.length} imagens salvas.` : "Imagem salva.");

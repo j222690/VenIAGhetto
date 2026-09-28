@@ -1,4 +1,4 @@
--- Vest Ai — tipos de geração para Refino, Limpar imagem e Criar corpo
+-- ProveON — tipos de geração para Refino, Limpar imagem e Criar corpo
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- Idempotente (ADD VALUE IF NOT EXISTS).

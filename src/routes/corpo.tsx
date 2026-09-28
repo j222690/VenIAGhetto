@@ -29,7 +29,7 @@ import type { Client } from "@/types";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/corpo")({
-  head: () => ({ meta: [{ title: "Criar corpo inteiro — Vest Ai" }] }),
+  head: () => ({ meta: [{ title: "Criar corpo inteiro — ProveON" }] }),
   component: CorpoPage,
 });
 

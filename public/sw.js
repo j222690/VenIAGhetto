@@ -1,4 +1,4 @@
-// Service Worker do Vest Ai.
+// Service Worker do ProveON.
 //
 // Existe por UM motivo: entregar o aviso de "sua imagem está pronta" com o app
 // FECHADO. A geração passou a rodar em segundo plano no servidor (ver
@@ -14,7 +14,7 @@ self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
 
 self.addEventListener("push", (event) => {
-  let payload = { title: "Vest Ai", body: "Sua imagem está pronta!", url: "/album" };
+  let payload = { title: "ProveON", body: "Sua imagem está pronta!", url: "/album" };
   if (event.data) {
     try {
       payload = { ...payload, ...event.data.json() };

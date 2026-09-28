@@ -1,4 +1,4 @@
--- Vest Ai — Perfil da loja + nome de usuário + favoritos de looks
+-- ProveON — Perfil da loja + nome de usuário + favoritos de looks
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- NÃO edite o 0001_init.sql — esta migration é incremental e idempotente

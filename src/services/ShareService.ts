@@ -44,7 +44,7 @@ export const ShareService = {
   // e dispara o download via link com `download` — assim o navegador salva o
   // arquivo em vez de abrir. Funciona em Android (Downloads) e desktop; no iOS
   // o blob abre para o usuário salvar nas Fotos. Lança Error se a busca falhar.
-  async downloadImage(url: string, filename = "vest-ia-look.jpg"): Promise<void> {
+  async downloadImage(url: string, filename = "proveon-look.jpg"): Promise<void> {
     let blob: Blob;
     try {
       const response = await fetch(url);
@@ -83,7 +83,7 @@ export const ShareService = {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
-      file = new File([blob], opts.filename ?? "vest-ia-look.png", {
+      file = new File([blob], opts.filename ?? "proveon-look.png", {
         type: blob.type || "image/png",
       });
     } catch {
@@ -106,7 +106,7 @@ export const ShareService = {
   // enviar a imagem direto); se não houver, abre o WhatsApp com o texto e o link
   // público da imagem (mostra a prévia). Sempre resolve — nunca lança.
   async shareToWhatsApp(url: string, text: string, filename?: string): Promise<void> {
-    const r = await this.shareImageFile(url, { title: "Vest Ai", text, filename });
+    const r = await this.shareImageFile(url, { title: "ProveON", text, filename });
     if (r === "shared" || r === "canceled") return;
     const msg = encodeURIComponent(`${text ? text + "\n" : ""}${url}`);
     window.open(`https://wa.me/?text=${msg}`, "_blank", "noopener,noreferrer");
@@ -118,7 +118,7 @@ export const ShareService = {
   // suporte, baixamos a imagem e abrimos o Instagram para o usuário postar.
   // Retorna "shared" (foi pro app) ou "fallback" (baixou + abriu o site).
   async shareToInstagram(url: string, filename?: string): Promise<"shared" | "fallback"> {
-    const r = await this.shareImageFile(url, { title: "Vest Ai", filename });
+    const r = await this.shareImageFile(url, { title: "ProveON", filename });
     if (r === "shared" || r === "canceled") return "shared";
     try {
       await this.downloadImage(url, filename);

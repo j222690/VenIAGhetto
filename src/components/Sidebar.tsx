@@ -10,9 +10,9 @@ export function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-border bg-background lg:flex">
       <Link to="/home" className="block border-b border-border/60 px-6 py-5">
-        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Vest Ai</p>
+        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">ProveON</p>
         <p className="truncate font-display text-lg font-semibold text-foreground">
-          {session?.store.name ?? "Vest Ai"}
+          {session?.store.name ?? "ProveON"}
         </p>
       </Link>
 

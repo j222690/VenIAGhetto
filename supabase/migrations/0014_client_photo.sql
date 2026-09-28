@@ -1,4 +1,4 @@
--- Vest Ai — foto BASE do cliente (usada no Provador)
+-- ProveON — foto BASE do cliente (usada no Provador)
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- Idempotente.

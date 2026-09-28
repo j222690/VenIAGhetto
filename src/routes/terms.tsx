@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "@/lib/icons";
 
 export const Route = createFileRoute("/terms")({
-  head: () => ({ meta: [{ title: "Termos de Uso — Vest Ai" }] }),
+  head: () => ({ meta: [{ title: "Termos de Uso — ProveON" }] }),
   component: TermsPage,
 });
 
@@ -17,11 +17,11 @@ function TermsPage() {
 
       <div className="mt-8 space-y-7 text-sm leading-relaxed text-foreground">
         <Section title="1. Aceitação">
-          Ao usar o Vest Ai, você concorda com estes Termos. Se não concordar, não use o serviço.
+          Ao usar o ProveON, você concorda com estes Termos. Se não concordar, não use o serviço.
         </Section>
 
         <Section title="2. O serviço">
-          O Vest Ai oferece geração de conteúdo de moda com IA: provador virtual, criação de posts,
+          O ProveON oferece geração de conteúdo de moda com IA: provador virtual, criação de posts,
           análise de peças e catálogo. Os resultados são gerados automaticamente e podem conter
           imprecisões; revise antes de publicar ou vender.
         </Section>

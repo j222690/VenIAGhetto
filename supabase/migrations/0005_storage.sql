@@ -1,4 +1,4 @@
--- Vest Ai — Supabase Storage (fotos de catálogo e de clientes)
+-- ProveON — Supabase Storage (fotos de catálogo e de clientes)
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- NÃO edite as migrations anteriores. Idempotente.

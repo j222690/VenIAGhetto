@@ -40,7 +40,7 @@ import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { genUrl, thumbUrl } from "@/lib/imageUrl";
 
 export const Route = createFileRoute("/tryon")({
-  head: () => ({ meta: [{ title: "Provador — Vest Ai" }] }),
+  head: () => ({ meta: [{ title: "Provador — ProveON" }] }),
   // ?g=<id> abre direto no resultado daquela geração. É por aqui que entra
   // quem clicou no aviso de "sua imagem está pronta" (ver public/sw.js).
   validateSearch: (busca: Record<string, unknown>) => ({

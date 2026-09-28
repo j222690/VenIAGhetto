@@ -1,4 +1,4 @@
--- Vest Ai — adiciona o segmento "unissex" (os dois públicos)
+-- ProveON — adiciona o segmento "unissex" (os dois públicos)
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- Idempotente. Amplia stores.segment para aceitar 'unissex' além de

@@ -35,7 +35,7 @@ const IMPORT_URL_MIN_TOKENS = 5;
 const CLEAN_IMAGE_COST = 1;
 
 export const Route = createFileRoute("/catalog")({
-  head: () => ({ meta: [{ title: "Catálogo — Vest Ai" }] }),
+  head: () => ({ meta: [{ title: "Catálogo — ProveON" }] }),
   component: CatalogPage,
 });
 

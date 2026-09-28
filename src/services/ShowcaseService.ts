@@ -1,11 +1,11 @@
 // ShowcaseService — posts para DIVULGAR O APP (tela /divulgar).
 //
 // É o inverso do Criador de Posts: lá o cliente é a cliente da loja e o
-// produto é a roupa; aqui o cliente é o LOJISTA e o produto é a Vest Ai. Por
+// produto é a roupa; aqui o cliente é o LOJISTA e o produto é a ProveON. Por
 // isso a legenda tem outro tom e outro público, e não reaproveita
 // generatePostCopy (que fala de tecido e caimento).
 //
-// Só quem é dono/gerente da loja da Vest Ai chega aqui — o gate de verdade
+// Só quem é dono/gerente da loja da ProveON chega aqui — o gate de verdade
 // está na Edge Function admin-showcase.
 
 import { supabase } from "@/integrations/supabase/client";
@@ -20,7 +20,7 @@ export interface ShowcaseItem {
   type: string;
   createdAt: string;
   storeName: string;
-  /** true = gerada pela própria loja da Vest Ai (não precisa pedir autorização). */
+  /** true = gerada pela própria loja da ProveON (não precisa pedir autorização). */
   ownStore: boolean;
   /** Marcada com ♥ no Álbum. */
   favorito: boolean;
@@ -41,10 +41,10 @@ const HASHTAGS = [
   "#modabrasil",
 ];
 
-// O que a Vest Ai vende, em uma frase, para a IA não inventar recurso que não
+// O que a ProveON vende, em uma frase, para a IA não inventar recurso que não
 // existe nem prometer o que o produto não faz.
 const BRIEF_PRODUTO =
-  "A Vest Ai é um app brasileiro de provador virtual para LOJAS DE MODA. A lojista tira uma foto " +
+  "A ProveON é um app brasileiro de provador virtual para LOJAS DE MODA. A lojista tira uma foto " +
   "da cliente (ou usa uma foto que a cliente mandou) e o app mostra a mesma pessoa vestindo as " +
   "peças da loja, em segundos, pelo celular. Serve para vender pelo WhatsApp e pelo Instagram sem " +
   "a cliente ir até a loja provar, e para montar looks do catálogo sem ensaio fotográfico.";

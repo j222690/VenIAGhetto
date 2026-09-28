@@ -1,4 +1,4 @@
--- Vest Ai — teste grátis: 35 créditos de uma vez (substitui a cota diária)
+-- ProveON — teste grátis: 35 créditos de uma vez (substitui a cota diária)
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- Idempotente. Depende da 0027 (colunas trial_ends_at / trial_last_grant_on).

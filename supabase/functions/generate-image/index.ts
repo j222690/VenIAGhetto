@@ -629,7 +629,7 @@ Deno.serve(async (req) => {
           // a tela aberta, ele já viu o resultado — o service worker não
           // duplica porque a sondagem some com o overlay antes.
           await avisarUsuario(admin, user.id, {
-            title: "Vest Ai",
+            title: "ProveON",
             body: "Sua imagem está pronta!",
             // Leva ao RESULTADO daquela geração, não ao álbum: quem toca no
             // aviso quer ver a imagem que acabou de ficar pronta, e no álbum
@@ -645,7 +645,7 @@ Deno.serve(async (req) => {
             .update({ status: "falhou", error_message: msg, finished_at: new Date().toISOString() })
             .eq("id", generationId);
           await avisarUsuario(admin, user.id, {
-            title: "Vest Ai",
+            title: "ProveON",
             body: "Não foi possível gerar sua imagem. Seu token foi devolvido.",
             url: "/tryon",
           });

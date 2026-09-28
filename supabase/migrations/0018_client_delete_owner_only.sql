@@ -1,4 +1,4 @@
--- Vest Ai — excluir cliente é restrito ao DONO da loja
+-- ProveON — excluir cliente é restrito ao DONO da loja
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- Idempotente.

@@ -1,4 +1,4 @@
--- Vest Ai — bucket do BANCO DE IMAGENS inicial (modelos prontos)
+-- ProveON — bucket do BANCO DE IMAGENS inicial (modelos prontos)
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- Idempotente.

@@ -5,7 +5,7 @@ import { SALES_PHONE, SUPPORT_PHONE_LABEL, SUPPORT_WHATSAPP, waLink } from "@/co
 export const Route = createFileRoute("/pagina")({
   head: () => ({
     meta: [
-      { title: "Vest Ai para Lojas" },
+      { title: "ProveON para Lojas" },
       {
         name: "description",
         content:
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/pagina")({
 
 // Dois numeros, dois propositos: o botao flutuante e VENDAS (quem ainda nao
 // e cliente); o do rodape e SUPORTE (quem ja usa e precisa de ajuda).
-const WHATSAPP_URL = waLink(SALES_PHONE, "Olá! Quero saber mais sobre o Vest Ai.");
+const WHATSAPP_URL = waLink(SALES_PHONE, "Olá! Quero saber mais sobre o ProveON.");
 
 function SalesPage() {
   return (
@@ -28,7 +28,7 @@ function SalesPage() {
       <header className="nav">
         <div className="wrap nav-row">
           <a className="wordmark" href="#top">
-            Vest<span className="ai">Ai</span>
+            Prove<span className="ai">ON</span>
           </a>
           <nav className="nav-links">
             <a href="#recursos">Recursos</a>
@@ -56,12 +56,12 @@ function SalesPage() {
       <main id="top">
         <div className="wrap hero">
           <div>
-            <p className="eyebrow">Vest Ai · para lojas e vendedores de moda</p>
+            <p className="eyebrow">ProveON · para lojas e vendedores de moda</p>
             <h1>
               Seu cliente não compra o que <span className="grad-text">não se vê usando.</span>
             </h1>
             <p className="hero-sub">
-              O Vest Ai mostra a peça vestida no corpo do próprio cliente, na hora, dentro da
+              O ProveON mostra a peça vestida no corpo do próprio cliente, na hora, dentro da
               conversa do WhatsApp. Menos dúvida, menos condicional na rua, mais venda fechada no
               mesmo atendimento.
             </p>
@@ -134,12 +134,12 @@ function SalesPage() {
             <div className="section-head reveal">
               <p className="eyebrow">Resultado real</p>
               <h2>Duas peças, mesma pessoa, um clique de diferença.</h2>
-              <p>Fotos reais geradas pelo Vest Ai — sem novo ensaio entre uma peça e outra.</p>
+              <p>Fotos reais geradas pelo ProveON — sem novo ensaio entre uma peça e outra.</p>
             </div>
             <div className="ba-single reveal">
               <div className="ba-photo-lg">
                 <span className="tag">Look 1</span>
-                <img src="/marketing/antes.jpg" alt="Foto gerada pelo Vest Ai" loading="lazy" />
+                <img src="/marketing/antes.jpg" alt="Foto gerada pelo ProveON" loading="lazy" />
               </div>
               <svg
                 className="ba-arrow-lg"
@@ -156,7 +156,7 @@ function SalesPage() {
               </svg>
               <div className="ba-photo-lg after">
                 <span className="tag">Look 2</span>
-                <img src="/marketing/depois.jpg" alt="Foto gerada pelo Vest Ai" loading="lazy" />
+                <img src="/marketing/depois.jpg" alt="Foto gerada pelo ProveON" loading="lazy" />
               </div>
             </div>
             <p className="ba-caption-lg">
@@ -218,7 +218,7 @@ function SalesPage() {
           <div className="wrap">
             <div className="section-head reveal">
               <p className="eyebrow">Na prática</p>
-              <h2>O que dá pra fazer com o Vest Ai, no dia a dia da loja.</h2>
+              <h2>O que dá pra fazer com o ProveON, no dia a dia da loja.</h2>
             </div>
             <div className="example-grid">
               <ExampleCard
@@ -279,14 +279,14 @@ function SalesPage() {
                 cabide.
               </p>
               <p>
-                O Vest Ai troca esse processo inteiro por um clique: sobe a foto da peça, escolhe o
+                O ProveON troca esse processo inteiro por um clique: sobe a foto da peça, escolhe o
                 modelo e recebe a foto pronta em minutos.
               </p>
             </div>
             <div className="compare reveal">
               <div className="compare-row head">
                 <span className="compare-label">Do jeito antigo</span>
-                <span className="compare-label">Com o Vest Ai</span>
+                <span className="compare-label">Com o ProveON</span>
               </div>
               <CompareRow oldText="Fotógrafo + modelo por diária" newText="Um plano mensal" />
               <CompareRow oldText="Estúdio e edição à parte" newText="Gerado pronto, sem edição" />
@@ -385,7 +385,7 @@ function SalesPage() {
               <div className="grid-photo">
                 <img
                   src="/marketing/grade.jpg"
-                  alt="Grade de looks gerada pelo Vest Ai, mesmo modelo em quatro looks"
+                  alt="Grade de looks gerada pelo ProveON, mesmo modelo em quatro looks"
                   loading="lazy"
                 />
               </div>
@@ -525,7 +525,7 @@ function SalesPage() {
         <div className="wrap footer-row">
           <div className="footer-brand">
             <a className="wordmark" href="#top">
-              Vest<span className="ai">Ai</span>
+              Prove<span className="ai">ON</span>
             </a>
             <span className="footer-tag">Conteúdo de moda profissional, em segundos.</span>
           </div>
@@ -533,7 +533,7 @@ function SalesPage() {
             <a className="footer-support" href={SUPPORT_WHATSAPP} target="_blank" rel="noreferrer">
               Suporte: {SUPPORT_PHONE_LABEL}
             </a>
-            <span className="footer-sep">·</span>© 2026 Vest Ai
+            <span className="footer-sep">·</span>© 2026 ProveON
           </span>
         </div>
       </footer>
@@ -584,7 +584,7 @@ function BeforeAfter({
     <div className="phone reveal">
       <div className="phone-bar">
         <span className="app-name">Provador IA</span>
-        <span className="app-tag">Vest Ai</span>
+        <span className="app-tag">ProveON</span>
       </div>
 
       <div
@@ -603,7 +603,7 @@ function BeforeAfter({
         onPointerUp={(e) => e.currentTarget.releasePointerCapture(e.pointerId)}
       >
         {/* Base: a foto DEPOIS ocupa o quadro inteiro. */}
-        <img className="ba-img" src={depois} alt="A mesma pessoa com o look gerado pelo Vest Ai" />
+        <img className="ba-img" src={depois} alt="A mesma pessoa com o look gerado pelo ProveON" />
         {/* Por cima, a foto ANTES recortada até a divisória. */}
         <div className="ba-clip">
           <img className="ba-img" src={antes} alt="A mesma pessoa antes da troca de roupa" />

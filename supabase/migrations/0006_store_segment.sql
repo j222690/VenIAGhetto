@@ -1,4 +1,4 @@
--- Vest Ai — segmento da loja (feminina / masculina)
+-- ProveON — segmento da loja (feminina / masculina)
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- Idempotente.

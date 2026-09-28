@@ -29,7 +29,7 @@ import type { StoreSegment } from "@/types";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings")({
-  head: () => ({ meta: [{ title: "Configurações — Vest Ai" }] }),
+  head: () => ({ meta: [{ title: "Configurações — ProveON" }] }),
   component: SettingsPage,
 });
 

@@ -1,4 +1,4 @@
-// Acesso à conta Mercado Pago que RECEBE o dinheiro do Vest Ai.
+// Acesso à conta Mercado Pago que RECEBE o dinheiro do ProveON.
 //
 // É uma só: a conta do dono do app, conectada por OAuth. Não é uma conta por
 // loja — lojista nenhum conecta nada, ele só paga a assinatura.

@@ -1,4 +1,4 @@
--- Vest Ai — assinaturas de Web Push (aviso com o app FECHADO)
+-- ProveON — assinaturas de Web Push (aviso com o app FECHADO)
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- Idempotente.

@@ -1,4 +1,4 @@
--- Vest Ai — Bloqueia escalonamento de privilégio via alteração de cargo
+-- ProveON — Bloqueia escalonamento de privilégio via alteração de cargo
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 --

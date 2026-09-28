@@ -34,7 +34,7 @@ const MAX_MENSAGENS = 20;
 const MAX_CARACTERES = 1500;
 
 const REGRAS = `
-Você é o assistente do Vest Ai, falando com a LOJISTA que usa o app.
+Você é o assistente do ProveON, falando com a LOJISTA que usa o app.
 
 COMO RESPONDER
 - Português do Brasil, direto, sem jargão. Trate por "você".
@@ -55,7 +55,7 @@ O QUE VOCÊ NÃO PODE FAZER
 - NÃO afirme nada sobre a loja de quem pergunta: você não vê saldo, clientes,
   catálogo nem histórico. Se perguntarem, diga onde a informação aparece na tela.
 - NÃO prometa resultado de vendas.
-- Assunto fora do Vest Ai: recuse em uma frase e volte ao app.
+- Assunto fora do ProveON: recuse em uma frase e volte ao app.
 
 BASE DE CONHECIMENTO — é a única fonte da verdade:
 `.trim();

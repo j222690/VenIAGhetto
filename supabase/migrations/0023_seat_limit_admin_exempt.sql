@@ -1,4 +1,4 @@
--- Vest Ai — Isenta o admin da plataforma do limite de usuários por plano
+-- ProveON — Isenta o admin da plataforma do limite de usuários por plano
 -- ---------------------------------------------------------------------------
 -- Cole este arquivo inteiro no SQL Editor do Supabase e execute UMA vez.
 -- Depende de 0022_seat_limits.sql já ter sido aplicada.

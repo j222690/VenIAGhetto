@@ -1,4 +1,4 @@
--- Vest Ai — F4 + F5: endurecimento de segurança
+-- ProveON — F4 + F5: endurecimento de segurança
 -- ---------------------------------------------------------------------------
 -- F4: remove privilégios amplos e desnecessários de anon/authenticated
 -- (TRUNCATE/REFERENCES/TRIGGER não são expostos pela API, mas é defense-in-depth).

@@ -85,7 +85,7 @@ export function PushPrompt() {
           {precisaInstalar ? (
             <>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                No iPhone, os avisos só funcionam com o Vest Ai instalado na tela de início. Toque
+                No iPhone, os avisos só funcionam com o ProveON instalado na tela de início. Toque
                 em <Share2 className="inline h-3.5 w-3.5 align-text-bottom" /> Compartilhar e depois
                 em <strong className="text-foreground">Adicionar à Tela de Início</strong>. Abra o
                 app por lá e este aviso reaparece pra você ligar.

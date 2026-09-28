@@ -38,7 +38,7 @@ import { BACKGROUNDS, FITS, LENGTHS, MAX_GARMENTS, SIZES } from "@/constants/loo
 import type { Generation, StoreSegment } from "@/types";
 
 export const Route = createFileRoute("/posts")({
-  head: () => ({ meta: [{ title: "Criador de Posts — Vest Ai" }] }),
+  head: () => ({ meta: [{ title: "Criador de Posts — ProveON" }] }),
   component: PostsPage,
 });
 

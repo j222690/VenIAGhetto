@@ -1,4 +1,4 @@
--- Vest Ai — salva a legenda (copy) da geração junto no histórico/álbum
+-- ProveON — salva a legenda (copy) da geração junto no histórico/álbum
 -- ---------------------------------------------------------------------------
 -- Cole no SQL Editor e execute UMA vez. Idempotente.
 -- Guarda o conjunto de legendas (instagram/whatsapp/facebook + hashtags + cta)

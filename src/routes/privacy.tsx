@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "@/lib/icons";
 
 export const Route = createFileRoute("/privacy")({
-  head: () => ({ meta: [{ title: "Política de Privacidade — Vest Ai" }] }),
+  head: () => ({ meta: [{ title: "Política de Privacidade — ProveON" }] }),
   component: PrivacyPage,
 });
 
@@ -19,7 +19,7 @@ function PrivacyPage() {
 
       <div className="mt-8 space-y-7 text-sm leading-relaxed text-foreground">
         <Section title="1. Quem somos">
-          O Vest Ai é uma ferramenta que ajuda lojas de moda a criar conteúdo (provador virtual,
+          O ProveON é uma ferramenta que ajuda lojas de moda a criar conteúdo (provador virtual,
           imagens de posts, legendas e catálogo) usando inteligência artificial. Esta política
           explica quais dados tratamos e por quê.
         </Section>

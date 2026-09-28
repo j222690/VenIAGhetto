@@ -1,4 +1,4 @@
-// Cliente Supabase único do Vest Ai.
+// Cliente Supabase único do ProveON.
 // Importado APENAS pela camada de services (src/services/*). Nenhum componente
 // deve falar com o Supabase diretamente — os services são a única fronteira.
 //

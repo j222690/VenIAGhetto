@@ -1,4 +1,4 @@
-// MercadoPagoService — a conta que RECEBE o dinheiro do Vest Ai.
+// MercadoPagoService — a conta que RECEBE o dinheiro do ProveON.
 //
 // Só o dono do app usa isto. É a conta para onde vão as assinaturas e os
 // pacotes que os lojistas pagam — antes ela era um access token colado num

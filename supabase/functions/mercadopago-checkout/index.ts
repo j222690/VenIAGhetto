@@ -220,7 +220,7 @@ Deno.serve(async (req) => {
             failure: `${appUrl}/settings?checkout=cancel`,
           },
           auto_return: "approved",
-          statement_descriptor: "VESTAI",
+          statement_descriptor: "PROVEON",
         }),
       });
       return json({ url: pref.init_point });

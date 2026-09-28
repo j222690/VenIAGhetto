@@ -1,4 +1,4 @@
--- Vest Ai — teste grátis: 10 gerações, sem prazo
+-- ProveON — teste grátis: 10 gerações, sem prazo
 -- ---------------------------------------------------------------------------
 -- Cole no SQL Editor do Supabase e execute UMA vez. Idempotente.
 --

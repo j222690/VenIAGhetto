@@ -11,7 +11,7 @@ import { SUPPORT_PHONE_LABEL, SUPPORT_WHATSAPP } from "@/constants/contact";
 import { ArrowUpRight, MessageCircle } from "@/lib/icons";
 
 export const Route = createFileRoute("/ajuda")({
-  head: () => ({ meta: [{ title: "Ajuda — Vest Ai" }] }),
+  head: () => ({ meta: [{ title: "Ajuda — ProveON" }] }),
   component: AjudaPage,
 });
 

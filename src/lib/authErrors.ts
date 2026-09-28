@@ -18,7 +18,7 @@ const CODE_MESSAGES: Record<string, string> = {
   // Faltava, e era o buraco mais caro: quem não confirmou o e-mail via só
   // "Não foi possível entrar" e não tinha como adivinhar o que fazer.
   email_not_confirmed:
-    "Confirme seu e-mail antes de entrar. Procure a mensagem do Vest Ai na caixa de entrada e no spam.",
+    "Confirme seu e-mail antes de entrar. Procure a mensagem do ProveON na caixa de entrada e no spam.",
   phone_not_confirmed: "Confirme seu telefone antes de entrar.",
   user_banned: "Esta conta está bloqueada. Fale com o suporte.",
   session_expired: "Sua sessão expirou. Entre de novo.",

@@ -31,7 +31,7 @@ export const seedSocialCopy: SocialCopySet = {
   instagram: "Para quem entende que estilo é coerência. Look novo, atemporal, pronto para você. ✨",
   whatsapp: "Oi! Acabou de chegar uma peça que vai com tudo no seu guarda-roupa. Quer ver?",
   facebook: "Novidade fresca na loja — vem dar uma olhada nessa peça incrível!",
-  hashtags: ["#moda", "#vestia", "#tendencia", "#looknovo"],
+  hashtags: ["#moda", "#proveon", "#tendencia", "#looknovo"],
   cta: "Compre agora · link na bio",
 };
 

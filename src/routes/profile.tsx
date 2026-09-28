@@ -32,7 +32,7 @@ import type { PlanId, StoreInvite, User, UserRole } from "@/types";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/profile")({
-  head: () => ({ meta: [{ title: "Perfil da Loja — Vest Ai" }] }),
+  head: () => ({ meta: [{ title: "Perfil da Loja — ProveON" }] }),
   component: ProfilePage,
 });
 
@@ -262,7 +262,7 @@ function ProfilePage() {
 }
 
 // ---------------------------------------------------------------------------
-// Uso da plataforma (todas as lojas) — só visível/permitido pra admin da Vest
+// Uso da plataforma (todas as lojas) — só visível/permitido pra admin da ProveON
 // IA, não é uma métrica da loja individual. Ver supabase/functions/admin-stats.
 // ---------------------------------------------------------------------------
 function PlatformStatsSection() {
@@ -452,7 +452,7 @@ function TeamSection({ currentUserId, planId }: { currentUserId: string; planId:
     const url = InviteService.linkFor(invite);
     const result = await ShareService.share({
       title: "Convite para a equipe",
-      text: "Você foi convidado(a) para a equipe da loja no Vest Ai.",
+      text: "Você foi convidado(a) para a equipe da loja no ProveON.",
       url,
     });
     if (result === "copied") toast.success("Link copiado.");

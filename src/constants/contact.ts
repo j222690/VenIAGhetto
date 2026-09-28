@@ -1,4 +1,4 @@
-// Canais de contato da Vest Ai.
+// Canais de contato da ProveON.
 //
 // Ficam num arquivo só porque aparecem em lugares distantes — página de
 // vendas, Ajustes do app — e um número desatualizado num deles é um cliente
@@ -18,4 +18,4 @@ export const SALES_PHONE = "5549989033938";
 export const waLink = (phone: string, mensagem: string): string =>
   `https://wa.me/${phone}?text=${encodeURIComponent(mensagem)}`;
 
-export const SUPPORT_WHATSAPP = waLink(SUPPORT_PHONE, "Olá! Preciso de ajuda com o Vest Ai.");
+export const SUPPORT_WHATSAPP = waLink(SUPPORT_PHONE, "Olá! Preciso de ajuda com o ProveON.");

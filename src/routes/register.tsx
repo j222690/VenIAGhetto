@@ -31,7 +31,7 @@ const SEGMENT_OPTIONS: {
 ];
 
 export const Route = createFileRoute("/register")({
-  head: () => ({ meta: [{ title: "Criar conta — Vest Ai" }] }),
+  head: () => ({ meta: [{ title: "Criar conta — ProveON" }] }),
   // ?invite=<token> = veio de um link de convite de funcionário (ver InviteService).
   // ?mode=invited = clicou em "Entrar com convite" (convite por E-MAIL, sem
   // token — o cadastro simplifica mas só liga à loja se o e-mail bater com
@@ -106,7 +106,7 @@ function RegisterPage() {
       </h1>
       {invited ? (
         <p className="mt-2 text-sm text-muted-foreground">
-          Complete seu cadastro para começar a usar o Vest Ai.
+          Complete seu cadastro para começar a usar o ProveON.
         </p>
       ) : (
         <p className="mt-2 text-sm text-muted-foreground">

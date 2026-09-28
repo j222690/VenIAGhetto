@@ -12,7 +12,7 @@ import { GenerationService } from "@/services/GenerationService";
 import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/home")({
-  head: () => ({ meta: [{ title: "Início — Vest Ai" }] }),
+  head: () => ({ meta: [{ title: "Início — ProveON" }] }),
   component: HomePage,
 });
 

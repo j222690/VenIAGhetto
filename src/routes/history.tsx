@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import type { Generation, GenerationType, LookType } from "@/types";
 
 export const Route = createFileRoute("/history")({
-  head: () => ({ meta: [{ title: "Histórico — Vest Ai" }] }),
+  head: () => ({ meta: [{ title: "Histórico — ProveON" }] }),
   component: HistoryPage,
 });
 
