@@ -8,6 +8,7 @@ import type { Asset, AssetCategory } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { mapAsset } from "@/integrations/supabase/mappers";
 import { StoreService } from "./StoreService";
+import { apagaArquivos } from "@/lib/apagaArquivos";
 
 let assets: Asset[] = [];
 const listeners = new Set<() => void>();
@@ -64,6 +65,7 @@ export const AssetService = {
   },
 
   async remove(ids: string[]): Promise<void> {
+    const urls = assets.filter((a) => ids.includes(a.id)).map((a) => a.url);
     assets = assets.filter((a) => !ids.includes(a.id));
     notify();
     try {
@@ -71,6 +73,7 @@ export const AssetService = {
     } catch {
       // item local/pré-migration — segue só no cache.
     }
+    void apagaArquivos(urls);
   },
 
   subscribe(listener: () => void): () => void {

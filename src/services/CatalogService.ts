@@ -11,6 +11,7 @@ import { mapCatalogItem } from "@/integrations/supabase/mappers";
 import { AIService } from "./AIService";
 import { GenerationService } from "./GenerationService";
 import { StoreService } from "./StoreService";
+import { apagaArquivos } from "@/lib/apagaArquivos";
 
 export const CATALOG_CATEGORIES = [
   "Vestidos",
@@ -333,12 +334,16 @@ export const CatalogService = {
   },
 
   async remove(id: string): Promise<void> {
+    const item = cache.find((c) => c.id === id);
     try {
       await supabase.from("catalog_items").delete().eq("id", id);
     } catch {
       // ignora — remove do cache de qualquer forma (item de seed/local).
     }
     cache = cache.filter((c) => c.id !== id);
+
+    // A foto e a versão sem fundo existem só para este item.
+    void apagaArquivos([item?.imageUrl, item?.cleanImageUrl]);
   },
 
   reset(): void {

@@ -20,6 +20,7 @@ import { seedSocialCopy } from "./_temp/seed";
 import { AIService } from "./AIService";
 import { StoreService } from "./StoreService";
 import { TokenService } from "./TokenService";
+import { apagaArquivos } from "@/lib/apagaArquivos";
 
 // Prompt padrão (fallback) quando a tela não fornece um específico.
 function defaultPrompt(type: GenerationType, inputs: GenerationInputs): string {
@@ -498,12 +499,20 @@ export const GenerationService = {
   // cobre (generations_all_same_store, migration 0001). Não exclui o cliente,
   // só o registro da geração/imagem.
   async remove(id: string): Promise<void> {
+    // Guarda a URL ANTES de apagar: depois do filtro abaixo ela some do cache
+    // e não há mais como saber qual arquivo pertencia a esta geração.
+    const url = generations.find((g) => g.id === id)?.resultUrl;
     try {
       await supabase.from("generations").delete().eq("id", id);
     } catch {
       // item de seed/local — remove do cache mesmo assim.
     }
     generations = generations.filter((g) => g.id !== id);
+
+    // Só o resultUrl. As entradas (foto do cliente, peça do catálogo) são
+    // compartilhadas com outras gerações e com o cadastro — apagá-las aqui
+    // deixaria buraco em tela que não tem nada a ver com esta exclusão.
+    void apagaArquivos([url]);
   },
 
   // Busca no banco as gerações de um cliente (filtrando por client_id, sob o

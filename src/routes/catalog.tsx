@@ -25,6 +25,7 @@ import type { CatalogItem } from "@/types";
 import { cn } from "@/lib/utils";
 import { thumbUrl } from "@/lib/imageUrl";
 import { toast } from "sonner";
+import { apagaArquivos } from "@/lib/apagaArquivos";
 
 // Custo em tokens por item importado (foto ou link). O link tem um mínimo para
 // cobrir a leitura da página mesmo em importações pequenas.
@@ -221,13 +222,21 @@ function CatalogPage() {
         // imagem do nosso domínio, então salvar o link de fora criava peça com
         // foto invisível.
         const imageUrl = p.imageUrl ? await CatalogService.mirrorImage(p.imageUrl) : null;
-        await CatalogService.add({
-          name: p.name,
-          category: p.category || null,
-          price: p.price,
-          imageUrl,
-          active: true,
-        });
+        try {
+          await CatalogService.add({
+            name: p.name,
+            category: p.category || null,
+            price: p.price,
+            imageUrl,
+            active: true,
+          });
+        } catch (e) {
+          // A cópia já subiu. Se a peça não nasceu, esse arquivo não tem mais
+          // dono nenhum: ninguém o vê, ninguém o apaga, e ele fica ocupando
+          // espaço para sempre. Foi assim que o bucket chegou a 95% de lixo.
+          void apagaArquivos([imageUrl]);
+          throw e;
+        }
         done++;
       }
       await TokenService.debit(cost, `Importação de catálogo (${done} itens)`);
