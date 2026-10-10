@@ -14,6 +14,7 @@
 // -----------------------------------------------------------------------------
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeadersFor } from "../_shared/cors.ts";
+import { comprimeImagem } from "../_shared/comprime.ts";
 
 const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -129,12 +130,22 @@ Deno.serve(async (req) => {
         return json({ error: `Não foi possível baixar a imagem: ${(e as Error).message}` }, 502);
       }
 
-      const ext = tipo.includes("png") ? "png" : tipo.includes("webp") ? "webp" : "jpg";
+      // A imagem vem do site do fornecedor no tamanho que ele publicou, e ia
+      // para o disco exatamente assim: o bucket `catalog` chegou a 373 MB com
+      // 0,91 MB por arquivo. Aqui ela é reduzida a no máximo 1600px e regravada
+      // em JPEG 82, o mesmo que o envio manual já fazia no navegador.
+      const saida = await comprimeImagem(bytes, tipo);
+
+      const ext = saida.contentType.includes("png")
+        ? "png"
+        : saida.contentType.includes("webp")
+          ? "webp"
+          : "jpg";
       // store_id como primeira pasta: é o que a policy do Storage exige.
       const caminho = `${storeId}/${crypto.randomUUID()}.${ext}`;
       const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
-      const { error: upErr } = await admin.storage.from("catalog").upload(caminho, bytes, {
-        contentType: tipo,
+      const { error: upErr } = await admin.storage.from("catalog").upload(caminho, saida.bytes, {
+        contentType: saida.contentType,
         cacheControl: "31536000",
         upsert: false,
       });

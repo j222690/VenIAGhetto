@@ -15,6 +15,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeadersFor } from "../_shared/cors.ts";
 import { avisarUsuario } from "../_shared/push.ts";
+import { comprimeImagem } from "../_shared/comprime.ts";
 
 const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY")!;
 const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY")!;
@@ -458,12 +459,21 @@ async function gerarESubir(
     imageSize,
     orcamento,
   );
-  const ext = mimeType.includes("png") ? "png" : mimeType.includes("webp") ? "webp" : "jpg";
+  // O modelo devolve PNG ou JPEG quase sem compressão — 1,95 MB e 0,69 MB em
+  // média, medidos no bucket. Regravar em JPEG 82 corta ~88% sem diferença
+  // visível. Ver _shared/comprime.ts.
+  const saida = await comprimeImagem(base64ToBytes(data), mimeType);
+
+  const ext = saida.contentType.includes("png")
+    ? "png"
+    : saida.contentType.includes("webp")
+      ? "webp"
+      : "jpg";
   const path = `${userId}/${crypto.randomUUID()}.${ext}`;
   const { error: upErr } = await admin.storage
     .from("generated")
-    .upload(path, base64ToBytes(data), {
-      contentType: mimeType,
+    .upload(path, saida.bytes, {
+      contentType: saida.contentType,
       upsert: false,
       cacheControl: "31536000",
     });
