@@ -175,4 +175,20 @@ export const AuthService = {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) throw error;
   },
+
+  // Entrada com Google (OAuth). O redirect volta para /login?oauth=1 — lá o
+  // AuthContext monta a Session. Não manda direto para /home: sem a linha em
+  // public.users a AppLayout só redireciona de novo e parece que o Google falhou.
+  async signInWithGoogle(): Promise<void> {
+    const redirectTo =
+      typeof window !== "undefined" ? `${window.location.origin}/login?oauth=1` : undefined;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo,
+        queryParams: { access_type: "offline", prompt: "select_account" },
+      },
+    });
+    if (error) throw error;
+  },
 };

@@ -17,6 +17,7 @@ import { AppLayout } from "@/layouts/AppLayout";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { LookActions } from "@/components/LookActions";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { matchesClient } from "@/lib/clientSearch";
 import { ClientService } from "@/services/ClientService";
 import { AIService } from "@/services/AIService";
 import { TokenService } from "@/services/TokenService";
@@ -86,9 +87,8 @@ function ClientsPage() {
   }, [clientParam]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return clients;
-    return clients.filter((c) => c.name.toLowerCase().includes(q));
+    if (!query.trim()) return clients;
+    return clients.filter((c) => matchesClient(c, query));
   }, [clients, query]);
 
   const openNew = () => {

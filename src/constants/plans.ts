@@ -27,7 +27,6 @@ export const PLANS: Plan[] = [
     historyDays: "unlimited",
     features: [
       "Tudo do Starter",
-      "Criador de Posts",
       "Até 10 usuários",
       "Biblioteca até 300 itens",
       "Histórico ilimitado",
@@ -41,12 +40,7 @@ export const PLANS: Plan[] = [
     maxUsers: 25,
     librarySize: "unlimited",
     historyDays: "unlimited",
-    features: [
-      "Tudo do Pro",
-      "Até 25 usuários",
-      "Biblioteca ilimitada",
-      "Suporte prioritário",
-    ],
+    features: ["Tudo do Pro", "Até 25 usuários", "Biblioteca ilimitada", "Suporte prioritário"],
   },
 ];
 

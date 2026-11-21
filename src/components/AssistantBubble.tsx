@@ -19,7 +19,6 @@ const NOME_DA_TELA: Record<string, string> = {
   "/clients": "Clientes",
   "/catalog": "Catálogo",
   "/album": "Álbum de Looks",
-  "/posts": "Criador de Posts",
   "/scanner": "Scanner de peças",
   "/history": "Histórico",
   "/settings": "Ajustes",

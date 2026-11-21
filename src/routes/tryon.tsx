@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { BookImage, Expand, RotateCw, Sparkles, Trash2, Users } from "@/lib/icons";
+import { useEffect, useMemo, useState } from "react";
+import { BookImage, Expand, RotateCw, Search, Sparkles, Trash2, Users, X } from "@/lib/icons";
+import { matchesClient } from "@/lib/clientSearch";
 import { describeApiError } from "@/lib/apiErrors";
 import { AppLayout } from "@/layouts/AppLayout";
 import { BackgroundRefPicker } from "@/components/BackgroundRefPicker";
@@ -467,12 +468,23 @@ function TryOnPage() {
   return (
     <AppLayout title="Provador" subtitle="Monte o look, escolha a ocasião e vista no cliente">
       <div className="space-y-6">
+        <StepLabel n={1} title="Cliente" />
         <button
           onClick={() => setSheet("client")}
-          className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-left"
+          className="-mt-3 flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-left shadow-soft transition-colors hover:border-clay/40"
         >
-          <span className="flex items-center gap-3">
-            <Users className="h-5 w-5 text-clay" />
+          <span className="flex min-w-0 items-center gap-3">
+            {client?.photoUrl ? (
+              <img
+                src={thumbUrl(client.photoUrl, { width: 80 })}
+                alt=""
+                className="h-10 w-10 shrink-0 rounded-full object-cover object-top"
+              />
+            ) : (
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-secondary">
+                <Users className="h-5 w-5 text-clay" />
+              </span>
+            )}
             <span className="min-w-0">
               <span className="block text-[11px] uppercase tracking-wider text-muted-foreground">
                 Cliente
@@ -482,7 +494,10 @@ function TryOnPage() {
               </span>
             </span>
           </span>
-          <span className="text-sm text-clay">{client ? "Trocar" : "Escolher"}</span>
+          <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-sm font-medium text-clay">
+            <Search className="h-3.5 w-3.5" />
+            {client ? "Trocar" : "Buscar"}
+          </span>
         </button>
 
         {/* Grade de looks — compara vários looks completos numa imagem só. */}
@@ -517,10 +532,8 @@ function TryOnPage() {
         {/* Peças do look — uma ou várias (fotos separadas viram um look), OU
             looks completos pra comparar (modo grade) */}
         <section className="space-y-3">
-          <div>
-            <p className="text-sm font-semibold text-foreground">
-              {gridMode ? "Looks para comparar" : "O look"}
-            </p>
+          <StepLabel n={2} title={gridMode ? "Looks para comparar" : "O look"} />
+          <div className="-mt-1">
             <p className="text-xs text-muted-foreground">
               {gridMode
                 ? "Envie 2 ou 4 fotos — cada uma um look completo diferente."
@@ -681,6 +694,8 @@ function TryOnPage() {
         )}
 
         <div>
+          <StepLabel n={3} title="Foto do cliente" />
+          <div className="h-3" />
           <ImageUploadField
             bucket="clients"
             value={photoUrl}
@@ -867,6 +882,19 @@ function TryOnPage() {
   );
 }
 
+// Título numerado dos passos do Provador (1 Cliente, 2 Look, 3 Foto): dá
+// ordem à tela única, que antes misturava tudo no mesmo nível.
+function StepLabel({ n, title }: { n: number; title: string }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-clay text-xs font-bold text-clay-foreground">
+        {n}
+      </span>
+      <p className="font-display text-base font-semibold text-foreground">{title}</p>
+    </div>
+  );
+}
+
 // --- Bottom sheets -----------------------------------------------------------
 
 function SheetShell({
@@ -879,8 +907,14 @@ function SheetShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-50 grid items-end justify-items-center bg-foreground/30 backdrop-blur-sm">
-      <div className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-background p-5 pb-8">
+    <div
+      className="fixed inset-0 z-50 grid items-end justify-items-center bg-background/60 backdrop-blur-sm lg:items-center"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-[1.75rem] border border-border bg-background p-5 pb-[max(2rem,env(safe-area-inset-bottom))] shadow-elevated lg:rounded-[1.75rem]"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-border" />
         <div className="flex items-center justify-between">
           <h3 className="font-display text-lg font-semibold">{title}</h3>
@@ -902,14 +936,49 @@ function ClientSheet({
   onSelect: (c: Client | null) => void;
 }) {
   const clients = ClientService.list();
+  // Busca por nome ou telefone: com dezenas de clientes, rolar a lista
+  // inteira no balcão era o que mais atrasava a prova.
+  const [query, setQuery] = useState("");
+  const filtered = useMemo(
+    () => (query.trim() ? clients.filter((c) => matchesClient(c, query)) : clients),
+    [clients, query],
+  );
   return (
     <SheetShell title="Escolher cliente" onClose={onClose}>
-      <button
-        onClick={() => onSelect(null)}
-        className="mb-2 w-full rounded-xl border border-border bg-card px-4 py-3 text-left text-sm font-medium"
-      >
-        Seguir sem cliente
-      </button>
+      {clients.length > 0 ? (
+        <div className="sticky top-0 z-10 -mx-1 mb-3 bg-background px-1 pb-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              inputMode="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar por nome ou telefone"
+              aria-label="Buscar cliente por nome ou telefone"
+              className="w-full rounded-2xl border border-input bg-card py-3 pl-10 pr-10 text-sm outline-none focus:border-clay"
+            />
+            {query ? (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label="Limpar busca"
+                className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+      {!query ? (
+        <button
+          onClick={() => onSelect(null)}
+          className="mb-2 w-full rounded-2xl border border-dashed border-border bg-card px-4 py-3 text-left text-sm font-medium text-muted-foreground"
+        >
+          Seguir sem cliente
+        </button>
+      ) : null}
       {clients.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">
           Nenhum cliente.{" "}
@@ -917,17 +986,31 @@ function ClientSheet({
             Cadastrar
           </Link>
         </p>
+      ) : filtered.length === 0 ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">
+          Nenhum cliente encontrado para "{query}".
+        </p>
       ) : (
         <div className="space-y-2">
-          {clients.map((c) => (
+          {filtered.map((c) => (
             <button
               key={c.id}
               onClick={() => onSelect(c)}
-              className="flex w-full items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left"
+              className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-clay/50"
             >
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary text-sm font-semibold">
-                {c.name[0]}
-              </span>
+              {c.photoUrl ? (
+                <img
+                  src={thumbUrl(c.photoUrl, { width: 80 })}
+                  alt=""
+                  className="h-11 w-11 shrink-0 rounded-full object-cover object-top"
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : (
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-secondary text-sm font-semibold">
+                  {c.name[0]}
+                </span>
+              )}
               <span className="min-w-0">
                 <span className="block truncate font-medium text-foreground">{c.name}</span>
                 {c.phone ? (

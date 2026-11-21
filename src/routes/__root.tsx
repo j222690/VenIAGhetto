@@ -83,7 +83,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Conteúdo profissional de moda em segundos: provador virtual, scanner de peças e criador de posts com IA.",
+          "Conteúdo profissional de moda em segundos: provador virtual, scanner de peças e grade de looks com IA.",
       },
       { name: "author", content: "ProveON" },
       // Cara de app instalável (standalone) no iOS e Android.

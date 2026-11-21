@@ -23,9 +23,11 @@ const FILTERS: { id: GenerationType | "all"; label: string }[] = [
   { id: "scanner", label: "Scanner" },
 ];
 
-const ROUTE: Record<LookType, "/tryon" | "/posts" | "/scanner"> = {
+// Posts saíram do app: gerações antigas de post continuam no histórico, mas
+// "refazer" leva ao Provador.
+const ROUTE: Record<LookType, "/tryon" | "/scanner"> = {
   tryon: "/tryon",
-  post: "/posts",
+  post: "/tryon",
   scanner: "/scanner",
 };
 

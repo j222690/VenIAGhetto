@@ -8,7 +8,7 @@ export const Route = createFileRoute("/welcome")({
       {
         name: "description",
         content:
-          "Provador virtual, scanner de peças e criador de posts com IA para lojas e vendedores de moda.",
+          "Provador virtual, scanner de peças e grade de looks com IA para lojas e vendedores de moda.",
       },
     ],
   }),
@@ -25,8 +25,8 @@ function WelcomePage() {
           <span className="text-clay"> em segundos.</span>
         </h1>
         <p className="mt-4 text-base text-muted-foreground">
-          IA para vendedores e lojas: provador virtual, scanner de peças e posts prontos para suas
-          redes, com a estética da sua marca.
+          IA para vendedores e lojas: provador virtual, scanner de peças e grade de looks para
+          vender mais, com a estética da sua marca.
         </p>
 
         <div className="mt-10 grid gap-3">

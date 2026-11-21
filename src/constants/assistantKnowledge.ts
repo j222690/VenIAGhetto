@@ -27,7 +27,6 @@ montar imagens do catálogo sem ensaio fotográfico.
 - **Clientes**: fichas dos clientes, com as fotos de cada um.
 - **Catálogo**: as peças que a loja vende.
 - **Álbum**: tudo o que já foi gerado. O ♥ marca favorito.
-- **Criador de Posts**: imagem pronta para publicar, com legenda escrita pela IA.
 - **Scanner**: lê a foto de uma peça e devolve a ficha (nome, categoria, preço estimado).
 - **Ajustes** e **Perfil da loja**: plano, equipe, dados da loja.
 

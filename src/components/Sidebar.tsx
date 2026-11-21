@@ -17,20 +17,29 @@ export function Sidebar() {
       </Link>
 
       <nav className="flex flex-1 flex-col gap-1 p-3">
-        {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
-          <Link
-            key={to}
-            to={to}
-            activeProps={{ className: "bg-secondary text-foreground" }}
-            inactiveProps={{
-              className: "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
-            }}
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors"
-          >
-            <Icon className="h-5 w-5 shrink-0" />
-            <span>{label}</span>
-          </Link>
-        ))}
+        {/* Provar primeiro no desktop, em botão dourado; o resto vem abaixo. */}
+        {[...NAV_ITEMS]
+          .sort((a, b) => Number(b.primary) - Number(a.primary))
+          .map(({ to, label, icon: Icon, primary }) => (
+            <Link
+              key={to}
+              to={to}
+              activeProps={{
+                className: primary
+                  ? "mb-3 bg-clay text-clay-foreground shadow-soft"
+                  : "bg-secondary text-foreground",
+              }}
+              inactiveProps={{
+                className: primary
+                  ? "mb-3 bg-clay text-clay-foreground shadow-soft hover:opacity-90"
+                  : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+              }}
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors"
+            >
+              <Icon className="h-5 w-5 shrink-0" />
+              <span>{label}</span>
+            </Link>
+          ))}
       </nav>
 
       <div className="border-t border-border/60 p-4">

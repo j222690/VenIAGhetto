@@ -5,12 +5,19 @@
 // Quadrantes não usados ficam cinza-liso; o prompt (buildQuadrantClause em
 // @/constants/prompts) instrui a IA a ignorá-los.
 
-const CELL = 768;
+// Células em RETRATO (3:4), não quadradas. BUG REAL ("o botão da calça"):
+// com célula 768x768 e drawCover, uma foto de calça 900x1600 perdia ~22% em
+// cima e ~22% embaixo — justamente o cós com o botão/braguilha e a barra.
+// Sem o botão na referência, a IA inventava um (torto, fora do centro ou
+// sumido) sempre que o look tinha 2+ peças. Agora a peça entra INTEIRA
+// (drawContain) numa célula na proporção das fotos de peça.
+const CELL_W = 640;
+const CELL_H = 854;
 const QUAD_POSITIONS: [number, number][] = [
   [0, 0],
-  [CELL, 0],
-  [0, CELL],
-  [CELL, CELL],
+  [CELL_W, 0],
+  [0, CELL_H],
+  [CELL_W, CELL_H],
 ];
 
 // Exporta o canvas em JPEG cabendo num ORÇAMENTO DE BYTES, baixando a
@@ -47,8 +54,8 @@ function drawCover(
   img: HTMLImageElement,
   x: number,
   y: number,
-  w: number = CELL,
-  h: number = CELL,
+  w: number,
+  h: number,
 ) {
   const scale = Math.max(w / img.width, h / img.height);
   const sw = w / scale;
@@ -58,26 +65,48 @@ function drawCover(
   ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
 }
 
+// "contain": a peça inteira cabe na célula, sem cortar nada (fundo branco
+// liso nas sobras, diferente do cinza dos quadrantes vazios).
+function drawContain(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+) {
+  const scale = Math.min(w / img.width, h / img.height);
+  const dw = img.width * scale;
+  const dh = img.height * scale;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(x, y, w, h);
+  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+}
+
 export async function composeQuadrant(
   garmentUrls: string[],
 ): Promise<{ mimeType: string; data: string }> {
   const urls = garmentUrls.slice(0, 4);
   const canvas = document.createElement("canvas");
-  canvas.width = CELL * 2;
-  canvas.height = CELL * 2;
+  canvas.width = CELL_W * 2;
+  canvas.height = CELL_H * 2;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 2D não suportado.");
   ctx.fillStyle = "#ebebeb";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const images = await Promise.all(urls.map(loadImage));
-  images.forEach((img, i) => drawCover(ctx, img, QUAD_POSITIONS[i][0], QUAD_POSITIONS[i][1]));
+  images.forEach((img, i) =>
+    drawContain(ctx, img, QUAD_POSITIONS[i][0], QUAD_POSITIONS[i][1], CELL_W, CELL_H),
+  );
 
   // Mesmo orçamento de bytes da grade de looks: este quadrante é 1536x1536 e
   // saía a qualidade 0.92 fixa, o que o deixava pesado. Ele é REFERÊNCIA de
   // peça (o modelo copia cor, corte e fechos dali), não a base da saída — o
   // teto de bytes vale aqui pelo mesmo motivo que vale lá.
-  return { mimeType: "image/jpeg", data: toJpegUnder(canvas, 150 * 1024) };
+  return { mimeType: "image/jpeg", data: toJpegUnder(canvas, 200 * 1024) };
+  // 200 KB (era 150): fecho e botão são o detalhe fino que some primeiro na
+  // compressão, e é exatamente o que as cláusulas de fidelidade exigem.
 }
 
 // composeLookGrid: usada só na Grade de Looks

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Shirt, ScanLine, Sparkles, BookImage, History, Users, AlertTriangle } from "@/lib/icons";
+import { Shirt, ScanLine, BookImage, History, Users, AlertTriangle } from "@/lib/icons";
 import type { LucideIcon } from "@/lib/icons";
 import { AppLayout } from "@/layouts/AppLayout";
 import { FeatureCard } from "@/components/FeatureCard";
@@ -21,15 +21,18 @@ function HomePage() {
   const { balance, used, total, lowBalance } = useTokens();
   const recent = GenerationService.history().slice(0, 4);
 
+  const remaining = Math.floor(balance / GenerationService.tryonCost(1));
+  const pct = total > 0 ? Math.min(100, (balance / total) * 100) : 0;
+
   return (
     <AppLayout>
-      <div className="space-y-7">
+      <div className="space-y-8">
         <section>
           <p className="text-sm text-muted-foreground">
             Olá, <span className="text-foreground">{session?.user.name.split(" ")[0]}</span>
           </p>
-          <h1 className="mt-1 font-display text-3xl font-semibold leading-tight text-foreground">
-            O que vamos criar hoje?
+          <h1 className="mt-1 font-display text-[2rem] font-semibold leading-[1.1] tracking-tight text-foreground">
+            Quem vamos vestir hoje?
           </h1>
         </section>
 
@@ -37,64 +40,69 @@ function HomePage() {
 
         <PushPrompt />
 
-        <section className="rounded-3xl border border-border bg-card p-5 shadow-soft">
-          <div className="flex items-baseline justify-between">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Gerações este mês
-            </p>
-            <p className="text-xs text-muted-foreground">{used} usadas</p>
-          </div>
-          <p className="mt-2 font-display text-4xl font-semibold text-foreground">
-            {balance}
-            <span className="ml-1 text-base font-normal text-muted-foreground">/ {total}</span>
+        {/* Ação principal em destaque: provar é o que o lojista faz no balcão.
+            O saldo vem junto, compacto, em vez de um cartão maior que o botão. */}
+        <section className="relative overflow-hidden rounded-3xl border border-clay/30 bg-card p-5 shadow-elevated">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-clay/15 blur-3xl"
+          />
+          <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-clay">
+            Provador IA
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Vale pra Provador, Post, Refinar e Limpar peça: cada geração conta 1.
+          <p className="mt-2 max-w-[18rem] text-sm text-muted-foreground">
+            Escolha o cliente, a peça e veja o look vestido em segundos.
           </p>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
-            <div
-              className="h-full rounded-full bg-clay transition-all"
-              style={{ width: `${total > 0 ? (balance / total) * 100 : 0}%` }}
-            />
-          </div>
-          {lowBalance ? (
-            <div className="mt-4 flex items-start gap-2 rounded-xl bg-clay/10 p-3 text-sm text-clay">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <p>Saldo abaixo de 20%. Considere recarregar.</p>
+          <Link
+            to="/tryon"
+            search={{ g: undefined }}
+            className="mt-5 flex items-center justify-center gap-2 rounded-full bg-clay px-6 py-3.5 text-base font-semibold text-clay-foreground shadow-soft transition-transform active:scale-[0.98]"
+          >
+            <Shirt className="h-5 w-5" /> Provar agora
+          </Link>
+          <div className="mt-5 border-t border-border/70 pt-4">
+            <div className="flex items-baseline justify-between text-xs">
+              <span className="text-muted-foreground">Gerações este mês</span>
+              <span className="font-medium text-foreground">
+                {balance}
+                <span className="text-muted-foreground"> / {total}</span>
+              </span>
             </div>
-          ) : null}
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
+              <div
+                className="h-full rounded-full bg-clay transition-all"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              {remaining} provas restantes · {used} usadas. Provador, Refinar e Limpar peça contam 1
+              cada.
+            </p>
+            {lowBalance ? (
+              <div className="mt-3 flex items-start gap-2 rounded-xl bg-clay/10 p-3 text-sm text-clay">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>Saldo abaixo de 20%. Considere recarregar.</p>
+              </div>
+            ) : null}
+          </div>
         </section>
 
         <section className="space-y-3">
-          <SectionTitle eyebrow="Recursos" title="Crie com IA" />
-          <FeatureCard
-            to="/tryon"
-            title="Provador IA"
-            description={`Vista a peça em qualquer modelo. ${Math.floor(balance / GenerationService.tryonCost(1))} gerações restantes este mês.`}
-            icon={Shirt}
-            accent
-          />
-          {/* Criar corpo fica junto do Provador porque é pré-requisito dele:
-              a foto que o cliente manda quase sempre vem cortada, e antes esse
-              recurso só existia escondido dentro da ficha do cliente. */}
-          <FeatureCard
-            to="/corpo"
-            title="Criar corpo inteiro"
-            description="A foto do cliente veio cortada? A IA completa as pernas."
-            icon={Users}
-          />
+          <SectionTitle eyebrow="Ferramentas" title="Antes de provar" />
           <div className="grid grid-cols-2 gap-3">
+            {/* Criar corpo fica junto do Provador porque é pré-requisito dele:
+                a foto que o cliente manda quase sempre vem cortada. */}
+            <FeatureCard
+              to="/corpo"
+              title="Corpo inteiro"
+              description="Foto cortada? A IA completa as pernas."
+              icon={Users}
+            />
             <FeatureCard
               to="/scanner"
               title="Scanner"
               description="Ficha automática da peça."
               icon={ScanLine}
-            />
-            <FeatureCard
-              to="/posts"
-              title="Posts"
-              description="Imagem + copy pronta."
-              icon={Sparkles}
             />
           </div>
         </section>
@@ -102,7 +110,7 @@ function HomePage() {
         <section className="space-y-3">
           <SectionTitle
             eyebrow="Recentes"
-            title="Suas últimas gerações"
+            title="Últimas gerações"
             action={
               <Link to="/album" className="text-sm font-medium text-clay">
                 Ver álbum
@@ -110,15 +118,15 @@ function HomePage() {
             }
           />
           {recent.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nada por aqui ainda. Gere sua primeira imagem.
+            <p className="rounded-2xl border border-dashed border-border bg-card/50 px-4 py-6 text-center text-sm text-muted-foreground">
+              Nada por aqui ainda. Gere sua primeira prova.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1 lg:mx-0 lg:grid lg:grid-cols-4 lg:px-0">
               {recent.map((g) => (
                 <div
                   key={g.id}
-                  className="overflow-hidden rounded-2xl border border-border bg-card"
+                  className="w-[42%] shrink-0 snap-start overflow-hidden rounded-2xl border border-border bg-card lg:w-auto"
                 >
                   <div className="relative aspect-[3/4] w-full overflow-hidden bg-secondary">
                     <img
@@ -134,8 +142,8 @@ function HomePage() {
                       className="absolute right-2 top-2"
                     />
                   </div>
-                  <div className="p-3">
-                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <div className="px-3 py-2.5">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
                       {g.type === "tryon" ? "Provador" : g.type === "post" ? "Post" : "Scanner"}
                     </p>
                     <p className="truncate text-sm font-medium text-foreground">
@@ -171,7 +179,10 @@ function QuickLink({
   label: string;
 }) {
   return (
-    <Link to={to} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4">
+    <Link
+      to={to}
+      className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-clay/40 active:scale-[0.99]"
+    >
       <Icon className="h-5 w-5 shrink-0 text-clay" />
       <div className="min-w-0">
         <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{eyebrow}</p>

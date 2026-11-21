@@ -20,8 +20,8 @@ const STEPS = [
   },
   {
     icon: Sparkles,
-    title: "Posts em segundos",
-    desc: "Imagem tratada + 3 versões de copy (Instagram, WhatsApp e Facebook).",
+    title: "Grade de looks",
+    desc: "Compare até 4 looks no mesmo cliente numa imagem só e ajude a decidir na hora.",
   },
 ];
 

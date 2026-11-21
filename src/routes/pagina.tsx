@@ -9,7 +9,7 @@ export const Route = createFileRoute("/pagina")({
       {
         name: "description",
         content:
-          "Provador virtual, scanner de peças e criador de posts com IA para lojas e vendedores de moda.",
+          "Provador virtual, scanner de peças e grade de looks com IA para lojas e vendedores de moda.",
       },
     ],
   }),
@@ -75,7 +75,8 @@ function SalesPage() {
             </div>
             <div className="trust-row">
               <span className="trust-badge">
-                <CheckIcon />10 gerações grátis
+                <CheckIcon />
+                10 gerações grátis
               </span>
               <span className="trust-badge">
                 <CheckIcon />
@@ -203,11 +204,6 @@ function SalesPage() {
                 title="Grade de looks"
                 desc="Vários looks do mesmo modelo numa imagem só, prontos pra comparar e postar."
               />
-              <FeatureCard
-                icon={<path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />}
-                title="Posts prontos"
-                desc="Imagem + copy prontos pro Instagram, WhatsApp e Facebook."
-              />
             </div>
           </div>
         </section>
@@ -270,9 +266,7 @@ function SalesPage() {
           <div className="wrap problem">
             <div className="problem-copy reveal">
               <p className="eyebrow">O custo escondido do ensaio</p>
-              <h2 className="problem-title">
-                Quantas vendas você perde para o “vou pensar”?
-              </h2>
+              <h2 className="problem-title">Quantas vendas você perde para o “vou pensar”?</h2>
               <p>
                 Na maioria das vezes o cliente não está pensando no preço: ele não consegue imaginar
                 a peça no próprio corpo. Sem essa resposta, a conversa esfria e a peça continua no
@@ -401,8 +395,8 @@ function SalesPage() {
               <p className="eyebrow">Investimento</p>
               <h2>Custa menos que uma peça que volta.</h2>
               <p>
-                Todos os planos incluem provador, scanner de catálogo, grade de looks e posts
-                prontos. A diferença é quantos atendimentos sua loja atende por mês.
+                Todos os planos incluem provador, scanner de catálogo, e grade de looks. A diferença
+                é quantos atendimentos sua loja atende por mês.
               </p>
             </div>
             <div className="pricing-grid">
@@ -439,7 +433,6 @@ function SalesPage() {
                 <hr />
                 <ul className="plan-features">
                   <PlanFeature text="Tudo do Starter" />
-                  <PlanFeature text="Criador de Posts" />
                   <PlanFeature text="Até 10 usuários" />
                   <PlanFeature text="Biblioteca até 300 itens" />
                   <PlanFeature text="Histórico ilimitado" />
